@@ -4,7 +4,7 @@ import App from './App.tsx'
 import './index.css'
 
 import { ApolloClient, InMemoryCache, HttpLink } from '@apollo/client'
-import { ApolloProvider } from '@apollo/client/react'
+import { ApolloProvider } from '@apollo/client/react';
 import { setContext } from '@apollo/client/link/context'
 
 // 🔗 HTTP connection
