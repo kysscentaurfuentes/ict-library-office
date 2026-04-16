@@ -1,3 +1,4 @@
+// frontend/src/pages/SignUp.tsx
 import { gql } from '@apollo/client/core';
 import { useMutation } from '@apollo/client/react';
 import AuthForm from '../components/AuthForm';
@@ -55,11 +56,15 @@ export default function SignUp() {
 
   return (
     <div style={{ 
-      minHeight: '100vh', 
+      height: '100vh', 
+      width: '100vw', 
       display: 'flex', 
       alignItems: 'center', 
       justifyContent: 'center', 
-      background: 'linear-gradient(135deg, #0f172a, #1e293b, #0f172a)' 
+      background: '#0f172a', // Solid background color
+      position: 'fixed',
+      top: 0,
+      left: 0
     }}>
       <AuthForm
         title="Sign Up"

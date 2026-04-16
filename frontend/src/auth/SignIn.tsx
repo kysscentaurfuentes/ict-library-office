@@ -1,3 +1,4 @@
+// frontend/src/pages/SignIn.tsx
 import { gql } from '@apollo/client/core';
 import { useMutation } from '@apollo/client/react';
 import AuthForm from '../components/AuthForm';
@@ -41,10 +42,8 @@ export default function SignIn() {
       });
 
       if (res.data?.login.token) {
-        // ✅ I-store ang token at ang StudentId na galing sa database
         localStorage.setItem('token', res.data.login.token);
         localStorage.setItem('studentId', res.data.login.user.StudentId);
-        
         console.log("Login successful! Student ID saved:", res.data.login.user.StudentId);
         window.location.href = '/dashboard';
       }
@@ -55,11 +54,15 @@ export default function SignIn() {
 
   return (
     <div style={{ 
-      minHeight: '100vh', 
+      height: '100vh', 
+      width: '100vw', 
       display: 'flex', 
       alignItems: 'center', 
       justifyContent: 'center', 
-      background: 'linear-gradient(135deg, #0f172a, #1e293b, #0f172a)' 
+      background: '#0f172a', // Solid background color
+      position: 'fixed',    // Sinisiguro na hindi siya ma-aapektuhan ng ibang layout elements
+      top: 0,
+      left: 0
     }}>
       <AuthForm
         title="Sign In"
