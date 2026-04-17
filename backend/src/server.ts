@@ -11,9 +11,11 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import jwt from 'jsonwebtoken';
-import { resolvers } from './resolvers.js';
 import dotenv from 'dotenv';
 import { spawn } from 'child_process';
+
+import { resolvers } from './resolvers.js';
+import { typeDefs } from './schema.js'; // ✅ SINGLE SOURCE
 
 dotenv.config();
 
@@ -49,7 +51,7 @@ const cleanHLSSegments = () => {
     if (file.endsWith('.ts') || file.endsWith('.m3u8')) {
       try {
         fs.unlinkSync(path.join(HLS_DIR, file));
-      } catch (err) {
+      } catch {
         console.log('⚠️ Failed to delete:', file);
       }
     }
@@ -58,7 +60,7 @@ const cleanHLSSegments = () => {
   console.log('✅ HLS cleaned');
 };
 
-// ✅ START FFMPEG (LOW LATENCY)
+// ✅ START FFMPEG
 const startFFmpeg = () => {
   console.log('🎥 Starting FFmpeg...');
 
@@ -99,48 +101,26 @@ async function getUserFromToken(token: string | undefined) {
   }
 }
 
-// ✅ SERVER
+// ✅ SERVER START
 async function startServer() {
   const app = express();
   const httpServer = http.createServer(app);
 
   const server = new ApolloServer({
-    typeDefs: `#graphql
-      type User {
-        id: ID
-        username: String
-        StudentId: String
-        role: String
-      }
-
-      type AuthPayload {
-        token: String
-        user: User
-      }
-
-      type Query {
-        hello: String
-        me: User
-      }
-
-      type Mutation {
-        login(username: String!, password: String!): AuthPayload
-        signup(username: String!, password: String!, StudentId: String!): AuthPayload
-      }
-    `,
+    typeDefs, // ✅ galing schema.ts
     resolvers,
     plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
   });
 
   await server.start();
 
-  // ✅ START STREAM
+  // 🎥 Start stream
   startFFmpeg();
 
-  // ✅ SERVE HLS
+  // 📡 Serve HLS
   app.use('/hls', cors(), express.static(HLS_DIR));
 
-  // ✅ GRAPHQL
+  // 🔥 GraphQL
   app.use(
     '/graphql',
     cors({ origin: '*' }),
@@ -160,19 +140,16 @@ async function startServer() {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
 }
 
-// ✅ CLEAN SHUTDOWN (FIXED)
+// ✅ CLEAN SHUTDOWN
 const shutdown = async () => {
   console.log('\n🛑 Shutting down...');
 
   if (ffmpegProcess) {
     ffmpegProcess.kill('SIGINT');
-
-    // ⏳ wait para matapos write
     await new Promise((res) => setTimeout(res, 1000));
   }
 
   cleanHLSSegments();
-
   process.exit(0);
 };
 

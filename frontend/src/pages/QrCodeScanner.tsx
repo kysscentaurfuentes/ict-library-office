@@ -1,3 +1,4 @@
+// frontend/src/pages/QrCodeScanner.tsx
 import { QRCodeSVG } from 'qrcode.react';
 import Sidebar from '../components/Sidebar';
 

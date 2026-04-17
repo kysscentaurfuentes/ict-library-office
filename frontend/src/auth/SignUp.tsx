@@ -47,7 +47,7 @@ export default function SignUp() {
       if (res.data?.signup.token) {
         localStorage.setItem('token', res.data.signup.token);
         localStorage.setItem('studentId', res.data.signup.user.StudentId);
-        window.location.href = '/dashboard';
+        window.location.href = '/homescreen';
       }
     } catch (err) {
       console.error("Signup failed:", err);

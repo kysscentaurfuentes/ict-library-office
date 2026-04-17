@@ -16,10 +16,10 @@ export default function Sidebar({ hoveredFromParent, setHoverFromParent }: Sideb
   const location = useLocation();
 
   const menuItems = [
-    { name: 'Home', icon: <Home size={20} />, path: '/dashboard' },
+    { name: 'Home', icon: <Home size={20} />, path: '/homescreen' },
     { name: 'QR Code Scanner', icon: <QrCode size={20} />, path: '/qr-scanner' },
     { name: 'Live View', icon: <Tv size={20} />, path: '/live' },
-    { name: 'Router', icon: <Wifi size={20} />, path: '#' },
+    { name: 'Router', icon: <Wifi size={20} />, path: '/router' },
     { name: 'Attendance Log', icon: <ClipboardList size={20} />, path: '#' },
     { name: 'Check Availability', icon: <Search size={20} />, path: '#' },
     { name: 'Reserve a Computer', icon: <Monitor size={20} />, path: '#' },
@@ -33,15 +33,15 @@ export default function Sidebar({ hoveredFromParent, setHoverFromParent }: Sideb
 
   return (
     <div style={{ 
-      width: '260px', 
-      background: '#000', 
-      height: '100vh', 
-      padding: '20px',
-      display: 'flex',
-      flexDirection: 'column',
-      borderRight: '1px solid #222',
-      boxSizing: 'border-box'
-    }}>
+  width: '260px', 
+  background: '#020617', // darker than main
+  height: '100vh', 
+  padding: '20px',
+  display: 'flex',
+  flexDirection: 'column',
+  borderRight: '2px solid #1e293b', // stronger border
+  boxSizing: 'border-box'
+}}>
       <div onClick={() => navigate('/dashboard')} style={{ display: 'flex', gap: '10px', marginBottom: '30px', cursor: 'pointer', padding: '10px' }}>
         <span style={{ fontSize: '1.5rem' }}>🏠</span>
         <h2 style={{ fontSize: '1.2rem', margin: 0, color: '#fff' }}>Home</h2>

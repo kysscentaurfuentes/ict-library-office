@@ -1,37 +1,34 @@
+// src/routes/approuter.tsx
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import SignIn from '../auth/SignIn';
-import SignUp from '../auth/SignUp';
-import HomeScreen from '../pages/HomeScreen';
-import QrCodeScanner from '../pages/QrCodeScanner';
-import ProtectedRoute from '../guards/ProtectedRoute';
-import LiveView from '../pages/LiveView';
 
+import Router from '../pages/Router';
+import LiveView from '../pages/LiveView';
+import HomeScreen from '../pages/HomeScreen';
+import QrCodeScanner from '../pages/QrCodeScanner'; // 👉 ADD THIS
+import SignIn from '../auth/SignIn'; // 👉 ADD THIS
 
 export default function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/signin" />} />
-        <Route path="/signin" element={<SignIn />} />
-        <Route path="/signup" element={<SignUp />} />
-<Route path="/live" element={<LiveView />} />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <HomeScreen />
-            </ProtectedRoute>
-          }
-        />
 
-        <Route
-          path="/qr-scanner"
-          element={
-            <ProtectedRoute>
-              <QrCodeScanner />
-            </ProtectedRoute>
-          }
-        />
+        {/* Default route */}
+        <Route path="/" element={<Navigate to="/homescreen" />} />
+
+        {/* Pages */}
+        <Route path="/router" element={<Router />} />
+        <Route path="/live" element={<LiveView />} />
+        <Route path="/homescreen" element={<HomeScreen />} />
+        <Route path="/qr-scanner" element={<QrCodeScanner />} /> {/* ✅ FIX */}
+        <Route path="/signin" element={<SignIn />} />
+
+        {/* 404 */}
+        <Route path="*" element={
+          <div style={{ color: 'white', padding: '20px' }}>
+            <h2>404 - Page Not Found</h2>
+          </div>
+        } />
+
       </Routes>
     </BrowserRouter>
   );
