@@ -1,3 +1,4 @@
+// frontend/src/main.tsx
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
@@ -9,7 +10,7 @@ import { setContext } from '@apollo/client/link/context'
 
 // 🔗 HTTP connection
 const httpLink = new HttpLink({
-  uri: 'http://localhost:4000/',
+  uri: 'http://localhost:4000/graphql',
 })
 
 // 🔐 Auth middleware (adds JWT automatically)

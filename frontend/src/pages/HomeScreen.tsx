@@ -15,12 +15,11 @@ export default function HomeScreen() {
 
   const menuCards = [
     { name: 'QR Code Scanner', icon: <QrCode size={32} />, path: '/qr-scanner' },
-    { name: 'Live View', icon: <Tv size={32} />, path: '#' },
-    { name: 'Connect WiFi', icon: <Wifi size={32} />, path: '#' },
+    { name: 'Live View', icon: <Tv size={32} />, path: '/live' },
+    { name: 'Router', icon: <Wifi size={32} />, path: '#' },
     { name: 'Attendance Log', icon: <ClipboardList size={32} />, path: '#' },
     { name: 'Check Availability', icon: <Search size={32} />, path: '#' },
     { name: 'Reserve a Computer', icon: <Monitor size={32} />, path: '#' },
-    { name: 'Report Issue', icon: <AlertTriangle size={32} />, path: '#' },
     { name: 'My Account', icon: <User size={32} />, path: '#' },
     { name: 'Settings', icon: <Settings size={32} />, path: '#' },
     { name: 'Software Access', icon: <Code size={32} />, path: '#' },

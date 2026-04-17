@@ -1,0 +1,3 @@
+To be run to make the Ffmpeg work.
+
+& "C:\Users\ADMIN\Downloads\ffmpeg\ffmpeg\bin\ffmpeg.exe" -loglevel error -rtsp_transport tcp -i rtsp://Khysss333:Deluxbaby123@192.168.8.156:554/stream1 -c:v copy -preset veryfast -hls_time 2 -hls_list_size 3 -hls_flags delete_segments -f hls "C:\Users\ADMIN\Desktop\ICT Library Office\backend\public\hls\stream.m3u8"

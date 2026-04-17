@@ -1,3 +1,4 @@
+// frontend/src/guards/ProtectedRoute.tsx
 import { Navigate } from 'react-router-dom';
 
 type Props = {

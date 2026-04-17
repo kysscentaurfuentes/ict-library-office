@@ -4,6 +4,8 @@ import SignUp from '../auth/SignUp';
 import HomeScreen from '../pages/HomeScreen';
 import QrCodeScanner from '../pages/QrCodeScanner';
 import ProtectedRoute from '../guards/ProtectedRoute';
+import LiveView from '../pages/LiveView';
+
 
 export default function AppRouter() {
   return (
@@ -12,7 +14,7 @@ export default function AppRouter() {
         <Route path="/" element={<Navigate to="/signin" />} />
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
-
+<Route path="/live" element={<LiveView />} />
         <Route
           path="/dashboard"
           element={
