@@ -18,6 +18,8 @@ export const typeDefs = `#graphql
     mac: String
     name: String
     isAlive: Boolean
+    isBlocked: Boolean
+    lastSeen: String
   }
 
   type RenameResponse {
@@ -33,7 +35,8 @@ export const typeDefs = `#graphql
   type Mutation {
     login(username: String!, password: String!): AuthPayload
     signup(username: String!, password: String!, StudentId: String!): AuthPayload
-
+    blockDevice(mac: String!): Boolean
+    unblockDevice(mac: String!): Boolean
     # 🔥 NEW
     renameDevice(mac: String!, name: String!): RenameResponse
   }
