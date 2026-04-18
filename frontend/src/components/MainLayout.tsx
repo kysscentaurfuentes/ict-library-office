@@ -1,3 +1,4 @@
+// frontend/src/components/MainLayout.tsx
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { useState } from 'react';

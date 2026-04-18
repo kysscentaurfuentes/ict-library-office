@@ -6,6 +6,7 @@ import LiveView from '../pages/LiveView';
 import HomeScreen from '../pages/HomeScreen';
 import QrCodeScanner from '../pages/QrCodeScanner'; // 👉 ADD THIS
 import SignIn from '../auth/SignIn'; // 👉 ADD THIS
+import FaceDetect from "../components/FaceDetect"
 
 export default function AppRouter() {
   return (
@@ -21,6 +22,7 @@ export default function AppRouter() {
         <Route path="/homescreen" element={<HomeScreen />} />
         <Route path="/qr-scanner" element={<QrCodeScanner />} /> {/* ✅ FIX */}
         <Route path="/signin" element={<SignIn />} />
+        <Route path="/face-detect" element={<FaceDetect />} />
 
         {/* 404 */}
         <Route path="*" element={

@@ -1,3 +1,4 @@
+// frontend/src/components/AuthForm.tsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 

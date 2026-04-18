@@ -1,73 +1,73 @@
-// frontend/src/pages/LiveView.tsx
-import { useEffect, useRef } from 'react';
-import Hls from 'hls.js';
 import Sidebar from '../components/Sidebar';
 
 export default function LiveView() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const streamUrl = 'http://192.168.8.236:4000/hls/stream.m3u8';
-
-    let hls: Hls | null = null;
-
-    if (Hls.isSupported()) {
-      hls = new Hls();
-
-      hls.loadSource(streamUrl);
-      hls.attachMedia(video);
-
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        video.play().catch(() => {});
-      });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = streamUrl;
-      video.addEventListener('loadedmetadata', () => {
-        video.play().catch(() => {});
-      });
-    }
-
-    return () => {
-      if (hls) hls.destroy();
-    };
-  }, []);
+  const streamUrl = 'http://127.0.0.1:5000/video';
 
   return (
-    <div style={{ display: 'flex', height: '100vh', width: '100vw' }}>
-      
-      {/* SIDEBAR */}
+    <div style={{ 
+      display: 'flex', 
+      height: '100vh', 
+      width: '100vw', 
+      background: '#0f172a', 
+      fontFamily: 'sans-serif' 
+    }}>
       <Sidebar />
 
-      {/* MAIN CONTENT */}
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          background: '#0f172a',
-          color: 'white',
-        }}
-      >
-        <div style={{ textAlign: 'center' }}>
-          <h1 style={{ marginBottom: '20px' }}>Live CCTV View</h1>
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: '20px'
+      }}>
+        <div style={{ 
+          background: '#1e293b', 
+          padding: '20px', 
+          borderRadius: '16px', 
+          boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
+          maxWidth: '850px', 
+          width: '100%'
+        }}>
+          {/* CENTERED TITLE */}
+          <h2 style={{ 
+            color: 'white', 
+            marginBottom: '20px', 
+            fontSize: '1.4rem',
+            textAlign: 'center', // Ito ang nag-center sa text
+            fontWeight: '600',
+            letterSpacing: '1px'
+          }}>
+             CCTV LIVE VIEW
+          </h2>
+          
+          <div style={{ 
+            position: 'relative', 
+            borderRadius: '12px', 
+            overflow: 'hidden', 
+            backgroundColor: 'black',
+            border: '2px solid #334155'
+          }}>
+            <img
+              src={streamUrl}
+              alt="CCTV Stream"
+              style={{
+                width: '100%',
+                height: 'auto',
+                display: 'block'
+              }}
+            />
+          </div>
 
-          <video
-            ref={videoRef}
-            controls
-            autoPlay
-            muted
-            playsInline
-            style={{
-              width: '800px',
-              maxWidth: '90%',
-              borderRadius: '12px',
-              background: 'black',
-            }}
-          />
+          <div style={{ 
+            marginTop: '15px', 
+            textAlign: 'center', 
+            color: '#64748b', 
+            fontSize: '0.85rem' 
+          }}>
+            Status: <span style={{ color: '#10b981' }}>● Live</span> | 
+            Resolution: 800x450
+          </div>
         </div>
       </div>
     </div>
