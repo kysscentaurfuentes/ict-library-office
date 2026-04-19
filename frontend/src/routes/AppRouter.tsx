@@ -7,6 +7,13 @@ import HomeScreen from '../pages/HomeScreen';
 import QrCodeScanner from '../pages/QrCodeScanner'; // 👉 ADD THIS
 import SignIn from '../auth/SignIn'; // 👉 ADD THIS
 import FaceDetect from "../components/FaceDetect"
+import AttendanceLog from '../pages/AttendanceLog' // 👉 ADD THIS
+import CheckAvailability from '../pages/CheckAvailability'; // 👉 ADD THIS
+import Settings from '../pages/Settings'; // 👉 ADD THIS
+import SoftwareAccess from '../pages/SoftwareAccess'; // 👉 ADD THIS
+import Printer from '../pages/Printer'; // 👉 ADD THIS
+import Feedback from '../pages/Feedback'; // 👉 ADD THIS
+import About from '../pages/About'; // 👉 ADD THIS
 
 export default function AppRouter() {
   return (
@@ -23,7 +30,13 @@ export default function AppRouter() {
         <Route path="/qr-scanner" element={<QrCodeScanner />} /> {/* ✅ FIX */}
         <Route path="/signin" element={<SignIn />} />
         <Route path="/face-detect" element={<FaceDetect />} />
-
+        <Route path="/attendance-log" element={<AttendanceLog />} />
+        <Route path="/check-availability" element={<CheckAvailability />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/software-access" element={<SoftwareAccess />} />
+        <Route path="/printer" element={<Printer />} />
+        <Route path="/feedback" element={<Feedback />} />
+        <Route path="/about" element={<About />} />
         {/* 404 */}
         <Route path="*" element={
           <div style={{ color: 'white', padding: '20px' }}>

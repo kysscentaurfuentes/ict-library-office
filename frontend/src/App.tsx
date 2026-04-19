@@ -1,6 +1,11 @@
 // frontend/src/App.tsx
 import AppRouter from './routes/AppRouter';
+import { PCProvider } from './context/PCContext';
 
 export default function App() {
-  return <AppRouter />;
+  return (
+    <PCProvider>
+      <AppRouter />
+    </PCProvider>
+  );
 }
