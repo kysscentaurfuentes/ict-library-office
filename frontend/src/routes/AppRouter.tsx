@@ -1,4 +1,4 @@
-// src/routes/approuter.tsx
+// frontend/src/routes/approuter.tsx
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 import Router from '../pages/Router';
@@ -6,6 +6,7 @@ import LiveView from '../pages/LiveView';
 import HomeScreen from '../pages/HomeScreen';
 import QrCodeScanner from '../pages/QrCodeScanner'; // 👉 ADD THIS
 import SignIn from '../auth/SignIn'; // 👉 ADD THIS
+import SignUp from '../auth/SignUp'; // 👉 ADD THIS
 import FaceDetect from "../components/FaceDetect"
 import AttendanceLog from '../pages/AttendanceLog' // 👉 ADD THIS
 import CheckAvailability from '../pages/CheckAvailability'; // 👉 ADD THIS
@@ -29,6 +30,7 @@ export default function AppRouter() {
         <Route path="/homescreen" element={<HomeScreen />} />
         <Route path="/qr-scanner" element={<QrCodeScanner />} /> {/* ✅ FIX */}
         <Route path="/signin" element={<SignIn />} />
+        <Route path="/signup" element={<SignUp />} />
         <Route path="/face-detect" element={<FaceDetect />} />
         <Route path="/attendance-log" element={<AttendanceLog />} />
         <Route path="/check-availability" element={<CheckAvailability />} />

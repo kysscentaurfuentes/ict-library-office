@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "jsx": "react-jsx",
+    "noEmit": false,
+    "types": ["vitest/globals"],   // ✅ Vitest types lang
+    "skipLibCheck": true,          // ✅ para hindi na mag-error sa jest-dom
+    "module": "esnext",            // ✅ required para gumana ang bundler
+    "moduleResolution": "bundler"  // ✅ Vite + Rollup compatible
+  },
+  "include": ["src/**/*"],
+  "exclude": ["tests-jest", "node_modules"],
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
+}

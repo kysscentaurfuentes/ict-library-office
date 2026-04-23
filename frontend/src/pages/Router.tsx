@@ -148,7 +148,7 @@ export default function Router() {
         };
       });
 
-      const JUST_SEEN_THRESHOLD = 5000;
+      const JUST_SEEN_THRESHOLD = 4000;
 
       Object.values(updated).forEach((d) => {
         const recentlySeen = now - d.lastSeenTs < JUST_SEEN_THRESHOLD;

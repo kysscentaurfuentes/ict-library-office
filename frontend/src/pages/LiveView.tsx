@@ -1,3 +1,4 @@
+// frontend/src/pages/LiveView.tsx
 import { useState, useEffect, useRef } from 'react';
 import Sidebar from '../components/Sidebar';
 
@@ -7,7 +8,7 @@ export default function LiveView() {
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  const streamUrl = 'http://127.0.0.1:5000/video';
+  const streamUrl = 'http://192.168.8.236:4000/video';
 
   // Load dark mode preference
   useEffect(() => {

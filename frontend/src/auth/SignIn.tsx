@@ -1,4 +1,4 @@
-// frontend/src/pages/SignIn.tsx
+// frontend/src/auth/SignIn.tsx
 import { gql } from '@apollo/client/core';
 import { useMutation } from '@apollo/client/react';
 import AuthForm from '../components/AuthForm';

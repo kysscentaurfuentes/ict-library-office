@@ -1758,7 +1758,7 @@ layer {
   name: "mbox_conf_flatten"
   type: "Flatten"
   bottom: "mbox_conf_softmax"
-  top: "mbox_conf_flatten"
+  top: "mbox_conf_flatten"  
   flatten_param {
     axis: 1
   }

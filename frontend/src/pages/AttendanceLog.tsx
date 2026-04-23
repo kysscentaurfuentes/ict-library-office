@@ -14,6 +14,7 @@ interface StudentAttendance {
 }
 
 export default function AttendanceLog() {
+  const API = import.meta.env.VITE_API_URL;
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
@@ -21,10 +22,13 @@ export default function AttendanceLog() {
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [showYearPicker, setShowYearPicker] = useState(false);
   const [showStudentModal, setShowStudentModal] = useState(false);
-  const [studentId, setStudentId] = useState('');
+const [myStudentId] = useState(
+  localStorage.getItem("studentId") || ""
+);
+  const [searchId, setSearchId] = useState('');
   const [studentResult, setStudentResult] = useState<StudentAttendance | null>(null);
   const [isSearching, setIsSearching] = useState(false);
-    const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
 
   // Load dark mode preference
   useEffect(() => {
@@ -57,7 +61,6 @@ export default function AttendanceLog() {
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
-  
 
   // Get Philippines timezone
   const getPHTime = () => {
@@ -66,207 +69,82 @@ export default function AttendanceLog() {
     return phTime;
   };
 
-  // Generate dummy attendance records (past dates only)
-  useEffect(() => {
-    const generateDummyRecords = () => {
-      const records: AttendanceRecord[] = [];
-      const today = getPHTime();
-      today.setHours(0, 0, 0, 0);
 
-      // Generate records for past 3 months (weekdays only)
-      for (let i = 1; i <= 90; i++) {
-        const date = new Date(today);
-        date.setDate(today.getDate() - i);
-        
-        const dayOfWeek = date.getDay();
-        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-        
-        // Only generate attendance for weekdays
-        if (!isWeekend) {
-          // Randomly decide if user attended (70% chance)
-          const attended = Math.random() > 0.3;
-          
-          if (attended) {
-            // Generate random check-in time between 7:00 AM and 5:00 PM
-            const checkInHour = 7 + Math.floor(Math.random() * 11);
-            const checkInMinute = Math.floor(Math.random() * 60);
-            
-            const ampm = checkInHour >= 12 ? 'PM' : 'AM';
-            const hour12 = checkInHour === 0 ? 12 : (checkInHour > 12 ? checkInHour - 12 : checkInHour);
-            const checkInTime = `${hour12}:${checkInMinute.toString().padStart(2, '0')} ${ampm}`;
-            
-            records.push({
-              date: date.toISOString().split('T')[0],
-              checkIn: checkInTime,
-              status: 'present'
-            });
-          } else {
-            records.push({
-              date: date.toISOString().split('T')[0],
-              checkIn: '',
-              status: 'absent'
-            });
-          }
-        }
-      }
-      
-      setAttendanceRecords(records);
-    };
-    
-    generateDummyRecords();
-  }, []);
 
-  // Dummy student database (for demonstration)
-  const studentDatabase: { [key: string]: StudentAttendance } = {
-    '2024-001': {
-      studentId: '2024-001',
-      name: 'Maria Santos',
-      records: []
-    },
-    '2024-002': {
-      studentId: '2024-002',
-      name: 'Juan Dela Cruz',
-      records: []
-    },
-    '2024-003': {
-      studentId: '2024-003',
-      name: 'Jose Rizal',
-      records: []
-    },
-    '2024-004': {
-      studentId: '2024-004',
-      name: 'Andres Bonifacio',
-      records: []
-    },
-    '2024-005': {
-      studentId: '2024-005',
-      name: 'Gabriela Silang',
-      records: []
+useEffect(() => {
+  const fetchAttendance = async () => {
+    try {
+      if (!myStudentId) return;
+
+      const res = await fetch(`${API}/api/attendance/${myStudentId}`)
+      const data = await res.json();
+
+      const formatted = data.map((row: any) => ({
+        date: new Date(row.check_in).toISOString().split('T')[0],
+        checkIn: new Date(row.check_in).toLocaleTimeString(),
+        status: 'present'
+      }));
+
+      setAttendanceRecords(formatted);
+    } catch (err) {
+      console.error("Failed to fetch attendance", err);
     }
   };
 
-  // Generate attendance for a specific student in the current month only
-  const generateStudentAttendance = (studentId: string, month: number, year: number): AttendanceRecord[] => {
-    const records: AttendanceRecord[] = [];
-    const today = getPHTime();
-    const firstDayOfMonth = new Date(year, month, 1);
-    const lastDayOfMonth = new Date(year, month + 1, 0);
-    
-    // Only generate for current month (not past months)
-    if (year === today.getFullYear() && month === today.getMonth()) {
-      // Generate attendance from 1st of month up to today
-      for (let d = 1; d <= today.getDate(); d++) {
-        const date = new Date(year, month, d);
-        const dayOfWeek = date.getDay();
-        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-        
-        if (!isWeekend && date <= today) {
-          // Random attendance pattern for demo (60% chance)
-          const attended = Math.random() > 0.4;
-          
-          if (attended) {
-            const checkInHour = 7 + Math.floor(Math.random() * 11);
-            const checkInMinute = Math.floor(Math.random() * 60);
-            const ampm = checkInHour >= 12 ? 'PM' : 'AM';
-            const hour12 = checkInHour === 0 ? 12 : (checkInHour > 12 ? checkInHour - 12 : checkInHour);
-            const checkInTime = `${hour12}:${checkInMinute.toString().padStart(2, '0')} ${ampm}`;
-            
-            records.push({
-              date: date.toISOString().split('T')[0],
-              checkIn: checkInTime,
-              status: 'present'
-            });
-          } else {
-            records.push({
-              date: date.toISOString().split('T')[0],
-              checkIn: '',
-              status: 'absent'
-            });
-          }
-        }
-      }
-    } else if (year === today.getFullYear() && month < today.getMonth()) {
-      // Generate full month attendance for past months within current year
-      for (let d = 1; d <= lastDayOfMonth.getDate(); d++) {
-        const date = new Date(year, month, d);
-        const dayOfWeek = date.getDay();
-        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-        
-        if (!isWeekend) {
-          const attended = Math.random() > 0.4;
-          
-          if (attended) {
-            const checkInHour = 7 + Math.floor(Math.random() * 11);
-            const checkInMinute = Math.floor(Math.random() * 60);
-            const ampm = checkInHour >= 12 ? 'PM' : 'AM';
-            const hour12 = checkInHour === 0 ? 12 : (checkInHour > 12 ? checkInHour - 12 : checkInHour);
-            const checkInTime = `${hour12}:${checkInMinute.toString().padStart(2, '0')} ${ampm}`;
-            
-            records.push({
-              date: date.toISOString().split('T')[0],
-              checkIn: checkInTime,
-              status: 'present'
-            });
-          } else {
-            records.push({
-              date: date.toISOString().split('T')[0],
-              checkIn: '',
-              status: 'absent'
-            });
-          }
-        }
-      }
-    }
-    
-    return records;
-  };
+  fetchAttendance();
+}, [myStudentId]);
 
-  const handleSearchStudent = () => {
-    if (!studentId.trim()) {
-      alert('Please enter a Student ID');
-      return;
-    }
+const handleSearchStudent = async () => {
+  if (!searchId.trim()) {
+    alert('Please enter a Student ID');
+    return;
+  }
 
+  try {
     setIsSearching(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      const student = studentDatabase[studentId];
-      const today = getPHTime();
-      const currentMonth = today.getMonth();
-      const currentYear = today.getFullYear();
-      
-      if (student) {
-        // Generate attendance for current month only
-        const attendanceRecords = generateStudentAttendance(studentId, currentMonth, currentYear);
-        setStudentResult({
-          ...student,
-          records: attendanceRecords
-        });
-      } else {
-        // For demo purposes, generate for any student ID entered
-        const dummyStudent: StudentAttendance = {
-          studentId: studentId,
-          name: `Student ${studentId}`,
-          records: generateStudentAttendance(studentId, currentMonth, currentYear)
-        };
-        setStudentResult(dummyStudent);
-      }
-      setIsSearching(false);
-    }, 500);
-  };
+
+    const res = await fetch(`${API}/api/attendance/${searchId}`);
+    const data = await res.json();
+
+if (!data || data.length === 0) {
+  setStudentResult({
+    studentId: searchId,
+    name: `Student ${searchId}`,
+    records: []
+  });
+  return;
+}
+
+    const formattedRecords = data.map((row: any) => ({
+      date: new Date(row.check_in).toISOString().split('T')[0],
+      checkIn: new Date(row.check_in).toLocaleTimeString(),
+      status: 'present'
+    }));
+
+setStudentResult({
+  studentId: searchId,
+  name: `Student ${searchId}`,
+  records: formattedRecords
+});
+
+  } catch (err) {
+    console.error("Search failed:", err);
+  } finally {
+    setIsSearching(false);
+  }
+};
 
   const closeModal = () => {
     setShowStudentModal(false);
-    setStudentId('');
+    setSearchId('');
     setStudentResult(null);
   };
 
   // Check if user attended on a specific date
-  const getAttendanceForDate = (date: Date): AttendanceRecord | null => {
-    const dateStr = date.toISOString().split('T')[0];
-    return attendanceRecords.find(record => record.date === dateStr) || null;
-  };
+const getAttendanceForDate = (date: Date): AttendanceRecord[] => {
+  const dateStr = date.toISOString().split('T')[0];
+  return attendanceRecords.filter(r => r.date === dateStr);
+};
 
   // Get attendance for student result on a specific date
   const getStudentAttendanceForDate = (date: Date): AttendanceRecord | null => {
@@ -407,7 +285,7 @@ export default function AttendanceLog() {
                   top: '45px',
                   left: '0',
                   backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
-color: isDarkMode ? 'white' : '#1e293b',
+                  color: isDarkMode ? 'white' : '#1e293b',
                   borderRadius: '8px',
                   padding: '10px',
                   zIndex: 10,
@@ -465,7 +343,7 @@ color: isDarkMode ? 'white' : '#1e293b',
                   top: '45px',
                   left: '0',
                   backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
-color: isDarkMode ? 'white' : '#1e293b',
+                  color: isDarkMode ? 'white' : '#1e293b',
                   borderRadius: '8px',
                   padding: '10px',
                   zIndex: 10,
@@ -505,7 +383,7 @@ color: isDarkMode ? 'white' : '#1e293b',
               style={{
                 padding: '8px 16px',
                 backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
-color: isDarkMode ? 'white' : '#1e293b',
+                color: isDarkMode ? 'white' : '#1e293b',
                 border: 'none',
                 borderRadius: '8px',
                 cursor: 'pointer',
@@ -545,16 +423,16 @@ color: isDarkMode ? 'white' : '#1e293b',
         }}>
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
             <div
-  key={day}
-  style={{
-    textAlign: 'center',
-    padding: '10px',
-    fontWeight: 'bold',
-    backgroundColor: isDarkMode ? '#1e293b' : '#f1f5f9',
-    color: day === 'Sun' || day === 'Sat' ? '#ef4444' : (isDarkMode ? 'white' : '#1e293b'),
-    borderRadius: '8px'
-  }}
->
+              key={day}
+              style={{
+                textAlign: 'center',
+                padding: '10px',
+                fontWeight: 'bold',
+                backgroundColor: isDarkMode ? '#1e293b' : '#f1f5f9',
+                color: day === 'Sun' || day === 'Sat' ? '#ef4444' : (isDarkMode ? 'white' : '#1e293b'),
+                borderRadius: '8px'
+              }}
+            >
               {day}
             </div>
           ))}
@@ -569,10 +447,10 @@ color: isDarkMode ? 'white' : '#1e293b',
         }}>
           {calendarDays.map((date, index) => {
             if (!date) {
-  return <div key={`empty-${index}`} style={{ padding: '10px', backgroundColor: 'transparent' }} />;
-}
+              return <div key={`empty-${index}`} style={{ padding: '10px', backgroundColor: 'transparent' }} />;
+            }
 
-            const attendance = getAttendanceForDate(date);
+            const attendances = getAttendanceForDate(date);
             const weekend = isWeekend(date);
             const today = isToday(date);
             const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString();
@@ -585,31 +463,31 @@ color: isDarkMode ? 'white' : '#1e293b',
                 onMouseEnter={() => setHoveredDate(date)}
                 onMouseLeave={() => setHoveredDate(null)}
                 style={{
-  padding: '15px 10px',
-  backgroundColor: isSelected ? '#3b82f6' : (isHovered ? (isDarkMode ? '#334155' : '#cbd5e1') : (isDarkMode ? '#1e293b' : '#ffffff')),
-  borderRadius: '12px',
-  cursor: 'pointer',
-  textAlign: 'center',
-  transition: 'all 0.3s ease',
-  transform: isHovered ? 'scale(1.02)' : 'scale(1)',
-  border: today ? '2px solid #10b981' : 'none',
-  position: 'relative'
-}}
+                  padding: '15px 10px',
+                  backgroundColor: isSelected ? '#3b82f6' : (isHovered ? (isDarkMode ? '#334155' : '#cbd5e1') : (isDarkMode ? '#1e293b' : '#ffffff')),
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  transition: 'all 0.3s ease',
+                  transform: isHovered ? 'scale(1.02)' : 'scale(1)',
+                  border: today ? '2px solid #10b981' : 'none',
+                  position: 'relative'
+                }}
               >
                 <div style={{
-  fontSize: '18px',
-  fontWeight: 'bold',
-  color: weekend ? '#ef4444' : (today ? '#10b981' : (isDarkMode ? 'white' : '#1e293b')),
-  marginBottom: '8px'
-}}>
+                  fontSize: '18px',
+                  fontWeight: 'bold',
+                  color: weekend ? '#ef4444' : (today ? '#10b981' : (isDarkMode ? 'white' : '#1e293b')),
+                  marginBottom: '8px'
+                }}>
                   {date.getDate()}
                 </div>
 
-                {attendance && attendance.status === 'present' && (
-                  <div style={{ fontSize: '20px' }}>
-                    ✅
-                  </div>
-                )}
+{attendances.length > 0 && (
+  <div style={{ fontSize: '20px' }}>
+    ✅
+  </div>
+)}
 
                 {weekend && (
                   <div style={{
@@ -646,26 +524,26 @@ color: isDarkMode ? 'white' : '#1e293b',
         {selectedDate && (
           <div style={{
             backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
-color: isDarkMode ? 'white' : '#1e293b',
+            color: isDarkMode ? 'white' : '#1e293b',
             borderRadius: '12px',
             padding: '20px',
             marginTop: '20px'
           }}>
             <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: isDarkMode ? 'white' : '#1e293b', marginBottom: '15px' }}>
-  📋 Attendance Details
-</h3>
+              📋 Attendance Details
+            </h3>
             
             <div style={{ borderTop: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`, paddingTop: '15px' }}>
               <div style={{ marginBottom: '15px' }}>
                 <span style={{ color: '#94a3b8' }}>Date: </span>
                 <span style={{ color: isDarkMode ? 'white' : '#1e293b', fontWeight: 'bold' }}>
-  {selectedDate.toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  })}
-</span>
+                  {selectedDate.toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}
+                </span>
               </div>
 
               {isWeekend(selectedDate) ? (
@@ -687,44 +565,56 @@ color: isDarkMode ? 'white' : '#1e293b',
               ) : (
                 <>
                   {(() => {
-                    const attendance = getAttendanceForDate(selectedDate);
-                    if (attendance && attendance.status === 'present') {
-                      return (
-                        <div>
-                          <div style={{ 
-                            backgroundColor: '#064e3b',
-                            padding: '15px',
-                            borderRadius: '8px',
-                            marginBottom: '10px'
-                          }}>
-                            <div style={{ color: '#10b981', fontSize: '18px', marginBottom: '10px' }}>
-                              ✅ You came to the office
-                            </div>
-                            <div style={{ color: '#a7f3d0' }}>
-                              Time: {attendance.checkIn}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    } else {
-                      return (
-                        <div>
-                          <div style={{ 
+                    const attendances = getAttendanceForDate(selectedDate);
+                    if (attendances.length > 0) {
+  return (
+    <div>
+      {attendances.map((attendance, index) => (
+        <div
+          key={index}
+          style={{
+            backgroundColor: '#064e3b',
+            padding: '15px',
+            borderRadius: '8px',
+            marginBottom: '10px',
+          }}
+        >
+          <div style={{ color: '#10b981', fontSize: '18px' }}>
+            ✅ You came to the office
+          </div>
+          <div style={{ color: '#a7f3d0' }}>
+            Time: {attendance.checkIn}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+                    return (
+                      <div>
+                        <div
+                          style={{
                             backgroundColor: '#1e3a8a',
                             padding: '15px',
                             borderRadius: '8px',
-                            marginBottom: '10px'
-                          }}>
-                            <div style={{ color: '#60a5fa', fontSize: '18px', marginBottom: '10px' }}>
-                              📅 You didn't go to the office today
-                            </div>
-                            <div style={{ color: '#bfdbfe' }}>
-                              No attendance record found for this date.
-                            </div>
+                            marginBottom: '10px',
+                          }}
+                        >
+                          <div
+                            style={{
+                              color: '#60a5fa',
+                              fontSize: '18px',
+                              marginBottom: '10px',
+                            }}
+                          >
+                            📅 You didn't go to the office today
+                          </div>
+                          <div style={{ color: '#bfdbfe' }}>
+                            No attendance record found for this date.
                           </div>
                         </div>
-                      );
-                    }
+                      </div>
+                    );
                   })()}
                 </>
               )}
@@ -749,7 +639,7 @@ color: isDarkMode ? 'white' : '#1e293b',
           }}>
             <div style={{
               backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
-color: isDarkMode ? 'white' : '#1e293b',
+              color: isDarkMode ? 'white' : '#1e293b',
               borderRadius: '16px',
               padding: '30px',
               width: '90%',
@@ -781,8 +671,8 @@ color: isDarkMode ? 'white' : '#1e293b',
               </button>
 
               <h2 style={{ color: isDarkMode ? 'white' : '#1e293b', marginBottom: '20px', fontSize: '24px' }}>
-  🔍 Track Student Attendance
-</h2>
+                🔍 Track Student Attendance
+              </h2>
               
               <p style={{ color: '#94a3b8', marginBottom: '20px', fontSize: '14px' }}>
                 Enter Student ID to view their attendance record for this month only.
@@ -791,21 +681,21 @@ color: isDarkMode ? 'white' : '#1e293b',
               {!studentResult ? (
                 <>
                   <input
-  type="text"
-  value={studentId}
-  onChange={(e) => setStudentId(e.target.value)}
-  placeholder="Enter Student ID (e.g., 000-00000  )"
-  style={{
-    width: '100%',
-    padding: '12px',
-    backgroundColor: isDarkMode ? '#0f172a' : '#f1f5f9',
-    border: `1px solid ${isDarkMode ? '#334155' : '#cbd5e1'}`,
-    borderRadius: '8px',
-    color: isDarkMode ? 'white' : '#1e293b',
-    fontSize: '16px',
-    marginBottom: '15px'
-  }}
-/>
+                    type="text"
+                    value={searchId}
+onChange={(e) => setSearchId(e.target.value)}
+                    placeholder="Enter Student ID (e.g., 000-00000)"
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      backgroundColor: isDarkMode ? '#0f172a' : '#f1f5f9',
+                      border: `1px solid ${isDarkMode ? '#334155' : '#cbd5e1'}`,
+                      borderRadius: '8px',
+                      color: isDarkMode ? 'white' : '#1e293b',
+                      fontSize: '16px',
+                      marginBottom: '15px'
+                    }}
+                  />
                   
                   <button
                     onClick={handleSearchStudent}
@@ -929,7 +819,7 @@ color: isDarkMode ? 'white' : '#1e293b',
           marginTop: '30px',
           padding: '15px',
           backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
-color: isDarkMode ? 'white' : '#1e293b',
+          color: isDarkMode ? 'white' : '#1e293b',
           borderRadius: '12px',
           flexWrap: 'wrap'
         }}>

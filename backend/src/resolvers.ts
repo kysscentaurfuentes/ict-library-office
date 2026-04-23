@@ -134,9 +134,9 @@ export const resolvers = {
 
         // ✅ NAME: DB → DHCP → Vendor → fallback
         const dbRes = await pool.query(
-          "SELECT custom_name FROM devices WHERE mac_address = $1",
-          [device.mac]
-        );
+  "SELECT custom_name FROM devices WHERE device_id = $1",
+  [device.mac]
+);
 
         let name = dbRes.rows[0]?.custom_name ?? null;
 
@@ -195,21 +195,21 @@ const lastSeen = isAlive
       })
     );
 
-    // 🔥 9. SAVE (NON-BLOCKING STYLE)
-    await Promise.allSettled(
-      devices.map(d =>
-        pool.query(
-          `
-          INSERT INTO devices (mac_address, custom_name)
-          VALUES ($1, $2)
-          ON CONFLICT (mac_address)
-          DO UPDATE SET
-            custom_name = COALESCE(devices.custom_name, EXCLUDED.custom_name)
-          `,
-          [d.mac, d.name]
-        )
-      )
-    );
+// 🔥 9. SAVE (AUTO DETECT)
+await Promise.allSettled(
+  devices.map(d =>
+    pool.query(
+      `
+      INSERT INTO devices (device_id, custom_name)
+      VALUES ($1, $2)
+      ON CONFLICT (device_id)
+      DO UPDATE SET
+        custom_name = COALESCE(devices.custom_name, EXCLUDED.custom_name)
+      `,
+      [d.mac, d.name]
+    )
+  )
+);
 
     return devices;
 
@@ -272,20 +272,20 @@ assertUser(user);
     },
 
     renameDevice: async (_: any, { mac, name }: any) => {
-      const normalizedMac = normalizeMac(mac);
+  const normalizedMac = normalizeMac(mac);
 
-      await pool.query(
-        `
-        INSERT INTO devices (mac_address, custom_name)
-        VALUES ($1, $2)
-        ON CONFLICT (mac_address)
-        DO UPDATE SET custom_name = EXCLUDED.custom_name
-        `,
-        [normalizedMac, name]
-      );
+  await pool.query(
+    `
+    INSERT INTO devices (device_id, custom_name)
+    VALUES ($1, $2)
+    ON CONFLICT (device_id)
+    DO UPDATE SET custom_name = EXCLUDED.custom_name
+    `,
+    [normalizedMac, name]
+  );
 
-      return { success: true };
-    },
+  return { success: true };
+},
 
     blockDevice: async (_: any, { mac }: { mac: string }) => {
       const normalizedMac = normalizeMac(mac);

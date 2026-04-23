@@ -10,7 +10,7 @@ import { setContext } from '@apollo/client/link/context'
 
 // 🔗 HTTP connection
 const httpLink = new HttpLink({
-  uri: 'http://localhost:4000/graphql',
+  uri: 'http://192.168.8.236:4000/graphql',
 })
 
 // 🔐 Auth middleware (adds JWT automatically)
