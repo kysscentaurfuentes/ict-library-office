@@ -5,7 +5,7 @@ import { Helmet, HelmetProvider } from "react-helmet-async";
 function App() {
   useEffect(() => {
     axios
-      .get("http://localhost:3000/api/data")
+      .get("http://192.168.8.156:4000/api/data")
       .then((res) => console.log(res.data))
       .catch((err) => console.error(err));
   }, []);

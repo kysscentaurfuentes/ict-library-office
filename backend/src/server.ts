@@ -1,15 +1,9 @@
 // backend/src/server.ts
 // import mime-types from 'mime-types';
-// import {createHandler} from 'graphql-http/lib/use/express';
-// import { schema }
-// import { startHlsTranscoder}
-// import { connectDb }
 // import { createContext }
 // import {GraphQLContext}
 // import {ParsedQs} from 'qs'
-// import type {ParamsDictionary} from 'express-serve-static-core'
-// import type {OperationContext} from 'graphql-http'
-// backend/src/server.ts
+import type { ParamsDictionary } from 'express-serve-static-core'
 import express from "express";
 import type { Request, Response } from "express";
 import http from "http";
@@ -19,18 +13,20 @@ import path from "path";
 import fs from "fs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
-import { spawn } from "child_process";
-import type { ChildProcessWithoutNullStreams } from "child_process";
 import { ApolloServer } from "@apollo/server";
 import { expressMiddleware } from "@apollo/server/express4";
 import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
 import { resolvers } from "./resolvers.js";
 import { typeDefs } from "./schema.js";
 import { fileURLToPath } from "url";
-import { pool } from "./db.js"; // 🔥 IMPORTANT
-
+import { pool } from "./db.js";
+import shareRoutes from "./routes/shareRoutes.js";
+import helmet from 'helmet';
+import os from 'os';
 
 dotenv.config();
+const app = express();
+app.use(helmet());
 
 // ==========================
 // 🎨 LOG COLORS
@@ -41,6 +37,7 @@ const LOG = {
   red: "\x1b[31m",
   yellow: "\x1b[33m",
   cyan: "\x1b[36m",
+  blue: "\x1b[34m",
 };
 
 // ==========================
@@ -48,8 +45,24 @@ const LOG = {
 // ==========================
 const PORT = Number(process.env.PORT || 4000);
 const SECRET = process.env.JWT_SECRET || "dev_secret";
-const FFMPEG_PATH = process.env.FFMPEG_PATH || "ffmpeg";
-const RTSP_URL = process.env.RTSP_URL || "";
+
+// ==========================
+// 🌐 GET LOCAL IP ADDRESS
+// ==========================
+function getLocalIP(): string {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name] || []) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return '192.168.8.236'; // fallback to your IP
+}
+
+const LOCAL_IP = getLocalIP();
+console.log(`${LOG.blue}🌐 Detected IP: ${LOCAL_IP}${LOG.reset}`);
 
 // ==========================
 // 🧠 FORMAT HELPERS
@@ -58,13 +71,12 @@ const normalizeID = (id: string): string => id.replace(/-/g, "");
 
 const formatID = (id: string): string => {
   const clean = normalizeID(id);
-
   if (clean.length === 8) {
     return `${clean.slice(0, 3)}-${clean.slice(3)}`;
   }
-
-  return id; // fallback
+  return id;
 };
+
 // ==========================
 // 📁 PATH
 // ==========================
@@ -73,94 +85,19 @@ const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.resolve(__dirname, "..");
 
 const HLS_DIR = path.join(ROOT_DIR, "public", "hls");
-const HLS_OUTPUT = path.join(HLS_DIR, "stream.m3u8");
 
-// ==========================
-// 🧠 STATE
-// ==========================
-let ffmpegProcess: ChildProcessWithoutNullStreams | null = null;
-let restarting = false;
 // ==========================
 // ⏱️ DEVICE RATE LIMIT
 // ==========================
 const deviceCooldown: Record<string, number> = {};
 const ONE_HOUR = 60 * 60 * 1000;
+
 // ==========================
 // 📁 ENSURE DIR
 // ==========================
 if (!fs.existsSync(HLS_DIR)) {
   fs.mkdirSync(HLS_DIR, { recursive: true });
-}
-
-// ==========================
-// 🧹 CLEAN HLS
-// ==========================
-function cleanHLS() {
-  if (!fs.existsSync(HLS_DIR)) return;
-
-  for (const file of fs.readdirSync(HLS_DIR)) {
-    if (file.endsWith(".ts") || file.endsWith(".m3u8")) {
-      try {
-        fs.unlinkSync(path.join(HLS_DIR, file));
-      } catch {}
-    }
-  }
-}
-
-// ==========================
-// 🎥 START FFMPEG
-// ==========================
-function startFFmpeg() {
-  if (!RTSP_URL) return;
-
-  console.log("🎥 Starting FFmpeg...");
-  cleanHLS();
-
-  ffmpegProcess = spawn(FFMPEG_PATH, [
-    "-loglevel", "error",
-    "-nostats",
-    "-rtsp_transport", "tcp",
-    "-fflags", "+genpts",
-    "-use_wallclock_as_timestamps", "1",
-    "-i", RTSP_URL,
-
-    "-c:v", "libx264",
-    "-preset", "veryfast",
-    "-tune", "zerolatency",
-    "-pix_fmt", "yuv420p",
-    "-profile:v", "baseline",
-    "-level", "3.0",
-
-    "-c:a", "aac",
-    "-ar", "44100",
-    "-b:a", "128k",
-
-    "-f", "hls",
-    "-hls_time", "2",
-    "-hls_list_size", "3",
-    "-hls_flags", "delete_segments+append_list+independent_segments",
-
-    HLS_OUTPUT
-  ]);
-
-  ffmpegProcess.stderr.on("data", (data) => {
-    const msg = data.toString();
-    if (msg.toLowerCase().includes("error")) {
-      console.log("FFmpeg ERROR:", msg);
-    }
-  });
-
-  ffmpegProcess.on("close", (code) => {
-    console.log(`❌ FFmpeg stopped (${code})`);
-
-    if (!restarting) {
-      restarting = true;
-      setTimeout(() => {
-        restarting = false;
-        startFFmpeg();
-      }, 2000);
-    }
-  });
+  console.log(`${LOG.cyan}📁 Created HLS directory: ${HLS_DIR}${LOG.reset}`);
 }
 
 // ==========================
@@ -179,18 +116,22 @@ async function getUser(token?: string) {
 // 🚀 START SERVER
 // ==========================
 async function startServer() {
-  const app = express();
   const httpServer = http.createServer(app);
 
-  app.use(cors());
+  // CORS - allow all devices on network
+  app.use(cors({
+    origin: '*',
+    credentials: true,
+  }));
   app.use(bodyParser.json());
+  app.use("/api", shareRoutes);
 
   // ==========================
   // 🔥 SCAN API
   // ==========================
   app.post("/api/scan", async (req: Request, res: Response) => {
-let attendanceSaved = false;
-let finalStatus = "fail";
+    let attendanceSaved = false;
+    let finalStatus = "fail";
     const rawID = String(req.body.student_id || "");
     const deviceID = String(req.headers["x-device-id"] || "UNKNOWN");
     const now = Date.now();
@@ -199,8 +140,8 @@ let finalStatus = "fail";
       timeZone: "Asia/Manila",
     });
 
-    const cleanID = normalizeID(rawID); // ginagamit lang for compare
-    const displayID = rawID; // 🔥 IMPORTANT: KEEP DASH FORMAT
+    const cleanID = normalizeID(rawID);
+    const displayID = rawID;
 
     console.log(`${LOG.cyan}[${time}] SCAN:${LOG.reset} ${displayID}`);
 
@@ -209,16 +150,15 @@ let finalStatus = "fail";
         `SELECT username, "StudentId" 
          FROM users 
          WHERE "StudentId" = $1`,
-        [displayID] // 🔥 EXACT MATCH NA (may dash)
+        [displayID]
       );
 
-      // ❌ NOT FOUND
       if (result.rows.length === 0) {
         await pool.query(
-  `INSERT INTO scan_logs (student_id, device_id, status, flag, risk_score)
-   VALUES ($1, $2, $3, $4, $5)`,
-  [displayID, deviceID, "fail", "not_found", 0]
-);
+          `INSERT INTO scan_logs (student_id, device_id, status, flag, risk_score)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [displayID, deviceID, "fail", "not_found", 0]
+        );
 
         return res.status(404).json({
           status: "fail",
@@ -229,45 +169,39 @@ let finalStatus = "fail";
 
       const user = result.rows[0];
 
-      // ==========================
-      // 🧠 DEVICE ANOMALY DETECTION
-      // ==========================
-let flags: string[] = [];
-let riskScore = 0;
+      let flags: string[] = [];
+      let riskScore = 0;
 
-// 🔍 Check last device used by this student
-const devicesResult = await pool.query(
-  `SELECT DISTINCT device_id 
-   FROM scan_logs 
-   WHERE student_id = $1`,
-  [displayID]
-);
+      const devicesResult = await pool.query(
+        `SELECT DISTINCT device_id 
+         FROM scan_logs 
+         WHERE student_id = $1`,
+        [displayID]
+      );
 
-const knownDevices = devicesResult.rows.map(r => r.device_id);
+      const knownDevices = devicesResult.rows.map(r => r.device_id);
 
-if (knownDevices.length > 0 && !knownDevices.includes(deviceID)) {
-  flags.push("new_device");
-  riskScore += 1;
-}
+      if (knownDevices.length > 0 && !knownDevices.includes(deviceID)) {
+        flags.push("new_device");
+        riskScore += 1;
+      }
 
-// 🔍 Check if this device is used by other students
-const otherUsersOnDevice = await pool.query(
-  `SELECT DISTINCT student_id 
-   FROM scan_logs 
-   WHERE device_id = $1 AND student_id != $2`,
-  [deviceID, displayID]
-);
+      const otherUsersOnDevice = await pool.query(
+        `SELECT DISTINCT student_id 
+         FROM scan_logs 
+         WHERE device_id = $1 AND student_id != $2`,
+        [deviceID, displayID]
+      );
 
-if (otherUsersOnDevice.rows.length > 0) {
-  flags.push("multi_account_device");
-  riskScore += 1;
-}
+      if (otherUsersOnDevice.rows.length > 0) {
+        flags.push("multi_account_device");
+        riskScore += 1;
+      }
 
-if (riskScore >= 2) {
-  flags.push("high_risk");
-}
+      if (riskScore >= 2) {
+        flags.push("high_risk");
+      }
 
-      // 🔍 LAST SCAN (PER STUDENT)
       const lastScan = await pool.query(
         `SELECT created_at 
          FROM scan_logs
@@ -281,71 +215,65 @@ if (riskScore >= 2) {
         const lastTime = new Date(lastScan.rows[0].created_at).getTime();
         const diffMinutes = (now - lastTime) / (1000 * 60);
 
-       if (diffMinutes < 60) {
-  await pool.query(
-    `INSERT INTO scan_logs (student_id, device_id, status, flag, risk_score)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [displayID, deviceID, "blocked", "cooldown_violation", riskScore]
-  );
+        if (diffMinutes < 60) {
+          await pool.query(
+            `INSERT INTO scan_logs (student_id, device_id, status, flag, risk_score)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [displayID, deviceID, "blocked", "cooldown_violation", riskScore]
+          );
 
-  return res.status(429).json({ status: "blocked" });
-}
+          return res.status(429).json({ status: "blocked" });
+        }
       }
 
-      // ✅ SUCCESS
       console.log(
         `${LOG.green}[${time}] SUCCESS:${LOG.reset} ${displayID} - ${user.username}`
       );
 
-      // 🕒 OFFICE HOURS CHECK + ATTENDANCE SAVE
-const nowPH = new Date();
-const hour = new Intl.DateTimeFormat("en-US", {
-  timeZone: "Asia/Manila",
-  hour: "numeric",
-  hour12: false,
-}).format(nowPH);
+      const nowPH = new Date();
+      const hour = new Intl.DateTimeFormat("en-US", {
+        timeZone: "Asia/Manila",
+        hour: "numeric",
+        hour12: false,
+      }).format(nowPH);
 
-const hourNum = Number(hour);
+      const hourNum = Number(hour);
+      console.log("HOUR:", hourNum);
 
-console.log("HOUR:", hourNum);
+      if (true) {
+        try {
+          await pool.query(
+            `INSERT INTO attendance (student_id, check_in)
+             VALUES ($1, $2)`,
+            [displayID, nowPH]
+          );
 
-// ✅ CHECK OFFICE HOURS
-if (true) {
-  try {
-    await pool.query(
-      `INSERT INTO attendance (student_id, check_in)
-       VALUES ($1, $2)`,
-      [displayID, nowPH]
-    );
+          attendanceSaved = true;
+          finalStatus = "success";
 
-    attendanceSaved = true;
-    finalStatus = "success";
+        } catch (err: any) {
+          if (err.code === "23505") {
+            attendanceSaved = true;
+            finalStatus = "success";
+          } else {
+            throw err;
+          }
+        }
+      } else {
+        finalStatus = "closed";
+      }
 
-  } catch (err: any) {
-    if (err.code === "23505") {
-      // already exists (same day)
-      attendanceSaved = true;
-      finalStatus = "success";
-    } else {
-      throw err;
-    }
-  }
-
-} else {
-  finalStatus = "closed";
-}
-
-await pool.query(
-  `INSERT INTO scan_logs (student_id, device_id, status, flag, risk_score) 
-   VALUES ($1, $2, $3, $4, $5)`,
-  [
-    displayID,
-    deviceID,
-    finalStatus,
-  flags.length ? flags.join(",") : null,
-  riskScore
-]
-);
+      await pool.query(
+        `INSERT INTO scan_logs (student_id, device_id, status, flag, risk_score) 
+         VALUES ($1, $2, $3, $4, $5)`,
+        [
+          displayID,
+          deviceID,
+          finalStatus,
+          flags.length ? flags.join(",") : null,
+          riskScore
+        ]
+      );
 
       return res.json({
         status: finalStatus,
@@ -358,7 +286,6 @@ await pool.query(
 
     } catch (err) {
       console.log(`${LOG.red}ERROR:${LOG.reset}`, err);
-
       return res.status(500).json({
         status: "fail",
         message: "Server error",
@@ -367,33 +294,129 @@ await pool.query(
   });
 
   // ==========================
-// 📊 ATTENDANCE API
-// ==========================
-app.get("/api/attendance/:studentId", async (req, res) => {
-  const { studentId } = req.params;
+  // ✅ ATTENDANCE APIs
+  // ==========================
+  app.get("/api/attendance/me", async (req, res) => {
+    try {
+      const studentId = String(req.headers["x-student-id"] || "");
+      if (!studentId) {
+        return res.status(400).json({ message: "Missing student ID" });
+      }
+      const result = await pool.query(
+        `SELECT * FROM attendance WHERE student_id = $1 ORDER BY check_in ASC`,
+        [studentId]
+      );
+      res.json(result.rows);
+    } catch {
+      res.status(500).json({ message: "Server error" });
+    }
+  });
 
-  const result = await pool.query(
-    `SELECT * FROM attendance
-     WHERE student_id = $1
-     ORDER BY check_in ASC`,
-    [studentId]
-  );
+  app.get("/api/attendance/:studentId", async (req: Request<ParamsDictionary>, res) => {
+    const { studentId } = req.params;
+    const result = await pool.query(
+      `SELECT * FROM attendance WHERE student_id = $1 ORDER BY check_in ASC`,
+      [studentId]
+    );
+    res.json(result.rows);
+  });
 
-  res.json(result.rows);
-});
+  app.get("/api/share/:token", async (req, res) => {
+    const { token } = req.params;
+    console.log("TOKEN:", token);
+    const result = await pool.query(
+      "SELECT student_id FROM share_tokens WHERE token = $1",
+      [token]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Invalid token" });
+    }
+    const studentId = result.rows[0].student_id;
+    console.log("FOUND STUDENT:", studentId);
+    const attendance = await pool.query(
+      "SELECT * FROM attendance WHERE student_id = $1 ORDER BY check_in ASC",
+      [studentId]
+    );
+    console.log("ATTENDANCE:", attendance.rows);
+    res.json(attendance.rows);
+  });
+
+  app.post("/api/attendance", async (req, res) => {
+    try {
+      const { studentId } = req.body;
+      if (!studentId) {
+        return res.status(400).json({ message: "Missing studentId" });
+      }
+      const now = new Date();
+      const result = await pool.query(
+        `INSERT INTO attendance (student_id, check_in) VALUES ($1, $2) RETURNING *`,
+        [studentId, now]
+      );
+      res.json(result.rows[0]);
+    } catch (err) {
+      console.error("CREATE ATTENDANCE ERROR:", err);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+
+  app.delete("/api/attendance/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await pool.query(`DELETE FROM attendance WHERE id = $1`, [id]);
+      res.json({ success: true });
+    } catch (err) {
+      console.error("DELETE ERROR:", err);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
 
   // ==========================
-  // 📡 HLS
+  // 📡 HLS STATIC SERVE (from Python processed stream)
   // ==========================
-  app.use("/hls", express.static(HLS_DIR));
+  app.use("/hls", express.static(HLS_DIR, {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith(".m3u8")) {
+        res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
+        res.setHeader("Cache-Control", "no-cache");
+      }
+      if (filePath.endsWith(".ts")) {
+        res.setHeader("Content-Type", "video/mp2t");
+        res.setHeader("Cache-Control", "no-cache");
+      }
+    }
+  }));
 
   // ==========================
-  // 🧪 HEALTH
+  // 🧪 HEALTH CHECK
   // ==========================
   app.get("/health", (_: Request, res: Response) => {
+    const hlsExists = fs.existsSync(path.join(HLS_DIR, "stream.m3u8"));
     res.json({
       status: "ok",
-      ffmpeg: !!ffmpegProcess,
+      server_ip: LOCAL_IP,
+      port: PORT,
+      hls_stream_available: hlsExists,
+      hls_url: `http://${LOCAL_IP}:${PORT}/hls/stream.m3u8`,
+      python_stream_url: `http://${LOCAL_IP}:5000/hls/stream.m3u8`,
+      message: "Node.js backend running"
+    });
+  });
+
+  // ==========================
+  // 🔥 PROXY ENDPOINT para i-check ang Python status
+  // ==========================
+  app.get("/api/stream-status", async (_: Request, res: Response) => {
+    const hlsPath = path.join(HLS_DIR, "stream.m3u8");
+    const exists = fs.existsSync(hlsPath);
+    const stats = exists ? fs.statSync(hlsPath) : null;
+    
+    res.json({
+      python_stream_active: exists,
+      last_updated: stats ? stats.mtime : null,
+      node_server: `http://${LOCAL_IP}:${PORT}`,
+      python_server: `http://${LOCAL_IP}:5000`,
+      hls_url_via_node: `http://${LOCAL_IP}:${PORT}/hls/stream.m3u8`,
+      hls_url_direct_python: `http://${LOCAL_IP}:5000/hls/stream.m3u8`
     });
   });
 
@@ -411,26 +434,40 @@ app.get("/api/attendance/:studentId", async (req, res) => {
   app.use(
     "/graphql",
     expressMiddleware(apollo, {
-      context: async ({ req }) => ({
+      context: async ({ req }: { req: Request }) => ({
         authUser: await getUser(req.headers.authorization),
       }),
     })
   );
 
   // ==========================
-  // ▶ START
+  // ▶ START SERVER (listen on all interfaces)
   // ==========================
   await new Promise<void>((resolve) =>
-    httpServer.listen({ port: PORT }, resolve)
+    httpServer.listen({ port: PORT, host: '0.0.0.0' }, resolve)
   );
 
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📡 Scan API: http://localhost:${PORT}/api/scan`);
-
-  startFFmpeg();
+  console.log("=".repeat(60));
+  console.log(`${LOG.green}🚀 Node.js Backend Running${LOG.reset}`);
+  console.log("=".repeat(60));
+  console.log(`${LOG.blue}📡 Server IP:${LOG.reset} ${LOCAL_IP}`);
+  console.log(`${LOG.blue}🔌 Port:${LOG.reset} ${PORT}`);
+  console.log(`${LOG.blue}🔗 GraphQL:${LOG.reset} http://${LOCAL_IP}:${PORT}/graphql`);
+  console.log(`${LOG.blue}📸 Scan API:${LOG.reset} http://${LOCAL_IP}:${PORT}/api/scan`);
+  console.log(`${LOG.blue}📺 HLS Stream:${LOG.reset} http://${LOCAL_IP}:${PORT}/hls/stream.m3u8`);
+  console.log(`${LOG.blue}❤️  Health:${LOG.reset} http://${LOCAL_IP}:${PORT}/health`);
+  console.log("=".repeat(60));
+  console.log(`${LOG.yellow}⚠️  IMPORTANT:${LOG.reset}`);
+  console.log(`${LOG.yellow}   Python Flask (port 5000) MUST be running for HLS stream${LOG.reset}`);
+  console.log(`${LOG.yellow}   Run: cd ai-service && python flask_stream.py${LOG.reset}`);
+  console.log("=".repeat(60));
+  console.log(`${LOG.cyan}📱 For Mobile App:${LOG.reset}`);
+  console.log(`${LOG.cyan}   Stream URL: http://${LOCAL_IP}:5000/hls/stream.m3u8${LOG.reset}`);
+  console.log(`${LOG.cyan}   API Base: http://${LOCAL_IP}:4000${LOG.reset}`);
+  console.log("=".repeat(60));
 }
 
 // ==========================
 // ▶ RUN
 // ==========================
-startServer();
+startServer().catch(console.error);
