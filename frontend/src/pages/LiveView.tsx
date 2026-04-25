@@ -1,14 +1,17 @@
-// frontend/src/pages/LiveView.tsx
 import { useState, useEffect, useRef } from 'react';
 import Sidebar from '../components/Sidebar';
+import Hls from 'hls.js';
 
 export default function LiveView() {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const videoContainerRef = useRef<HTMLDivElement>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
+  const [faceCount, setFaceCount] = useState<number>(0);
+  const [latency, setLatency] = useState<number>(0);
+  const [bufferHealth, setBufferHealth] = useState<number>(0);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
 
-  const streamUrl = 'http://192.168.8.236:4000/video';
+  const STREAM_URL = 'http://192.168.8.236:5000/hls/stream.m3u8';
+  const FACES_API = 'http://192.168.8.236:5000/faces';
 
   // Load dark mode preference
   useEffect(() => {
@@ -23,7 +26,6 @@ export default function LiveView() {
     }
   }, []);
 
-  // Listen for changes in localStorage from Settings page
   useEffect(() => {
     const handleStorageChange = () => {
       const savedDarkMode = localStorage.getItem('darkMode');
@@ -42,34 +44,197 @@ export default function LiveView() {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // Simulate loading (remove this in production)
+  // Fetch face count from backend
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 1000);
-    return () => clearTimeout(timer);
+    const fetchFaceCount = async () => {
+      try {
+        const response = await fetch(FACES_API);
+        const data = await response.json();
+        setFaceCount(data.faces);
+      } catch (error) {
+        console.error('Error fetching face count:', error);
+      }
+    };
+
+    fetchFaceCount();
+    const interval = setInterval(fetchFaceCount, 1000); // Update every second
+    return () => clearInterval(interval);
   }, []);
 
-  // Handle fullscreen
+  // Monitor latency and buffer
+  // Monitor latency and buffer
+useEffect(() => {
+  const monitorPerformance = () => {
+    if (hlsRef.current && videoRef.current) {
+      const hls = hlsRef.current;
+      const video = videoRef.current;
+      
+      if (hls.liveSyncPosition && video.currentTime > 0) {
+        const currentLatency = Math.abs(video.currentTime - hls.liveSyncPosition) * 1000;
+        setLatency(Math.round(currentLatency));
+      }
+      
+      // Get buffer length from video element
+      let bufferLen = 0;
+      if (video.buffered.length > 0) {
+        bufferLen = video.buffered.end(video.buffered.length - 1) - video.currentTime;
+      }
+      setBufferHealth(Math.max(0, bufferLen));
+    }
+  };
+  
+  const interval = setInterval(monitorPerformance, 500);
+  return () => clearInterval(interval);
+}, []);
+
+  // Initialize HLS with ultra low latency settings
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    // Disable all video controls
+    video.controls = false;
+    video.disableRemotePlayback = true;
+    
+    // Force autoplay
+    video.autoplay = true;
+    video.muted = true;
+    video.playsInline = true;
+    video.setAttribute('playsinline', '');
+    video.setAttribute('autoplay', '');
+    video.setAttribute('muted', '');
+    
+    // Prevent any user interaction
+    video.style.pointerEvents = 'none';
+
+    const initHls = () => {
+      if (Hls.isSupported()) {
+        if (hlsRef.current) {
+          hlsRef.current.destroy();
+        }
+        
+        const hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true,
+          liveSyncDurationCount: 1,  // Reduced for lower latency
+          liveMaxLatencyDurationCount: 2,
+          maxLiveSyncPlaybackRate: 1.5,  // Allow faster catch-up
+          startLevel: -1,
+          maxBufferLength: 1,  // Smaller buffer for lower latency
+          maxMaxBufferLength: 2,
+          backBufferLength: 0.5,
+          liveDurationInfinity: true,
+          manifestLoadingTimeOut: 1000,
+          manifestLoadingMaxRetry: 2,
+          levelLoadingTimeOut: 1000,
+          levelLoadingMaxRetry: 2,
+          fragLoadingTimeOut: 2000,
+          fragLoadingMaxRetry: 3,
+          startFragPrefetch: true,
+          testBandwidth: false,
+          abrEwmaDefaultEstimate: 5000000,
+          abrBandWidthFactor: 0.95,
+          abrBandWidthUpFactor: 1,
+          minAutoBitrate: 2000000
+        });
+        
+        hls.loadSource(STREAM_URL);
+        hls.attachMedia(video);
+        
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          video.play().catch(e => console.log('Auto-play:', e));
+        });
+        
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                console.log('Network error, retrying...');
+                hls.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                console.log('Media error, recovering...');
+                hls.recoverMediaError();
+                break;
+              default:
+                hls.destroy();
+                setTimeout(initHls, 1000);
+                break;
+            }
+          } else if (data.details === 'bufferStalledError') {
+            // Try to recover from buffer stall
+            hls.startLoad();
+          }
+        });
+        
+        hlsRef.current = hls;
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = STREAM_URL;
+        video.addEventListener('loadedmetadata', () => {
+          video.play().catch(e => console.log('Auto-play:', e));
+        });
+      }
+    };
+    
+    initHls();
+    
+    // Cleanup
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, []);
+
+  // Fullscreen
   const toggleFullscreen = () => {
-    if (!videoContainerRef.current) return;
+    const video = videoRef.current;
+    if (!video) return;
     
     if (!document.fullscreenElement) {
-      videoContainerRef.current.requestFullscreen().catch(err => {
-        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+      video.requestFullscreen().catch(err => {
+        console.error(`Fullscreen error: ${err.message}`);
       });
     } else {
       document.exitFullscreen();
     }
   };
 
-  // Handle refresh
+  // Refresh - reload HLS
   const handleRefresh = () => {
-    setIsLoading(true);
-    if (imgRef.current) {
-      const currentSrc = imgRef.current.src;
-      imgRef.current.src = '';
-      imgRef.current.src = currentSrc;
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      const video = videoRef.current;
+      if (video) {
+        const newHls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true,
+          liveSyncDurationCount: 1,
+          liveMaxLatencyDurationCount: 2,
+          maxLiveSyncPlaybackRate: 1.5,
+          maxBufferLength: 1,
+          maxMaxBufferLength: 2,
+          backBufferLength: 0.5,
+          liveDurationInfinity: true,
+          manifestLoadingTimeOut: 1000,
+          manifestLoadingMaxRetry: 2,
+          levelLoadingTimeOut: 1000,
+          fragLoadingTimeOut: 2000,
+          startFragPrefetch: true
+        });
+        newHls.loadSource(STREAM_URL);
+        newHls.attachMedia(video);
+        hlsRef.current = newHls;
+      }
     }
-    setTimeout(() => setIsLoading(false), 1000);
+  };
+
+  // Get latency color
+  const getLatencyColor = () => {
+    if (latency < 500) return '#10b981';
+    if (latency < 1000) return '#fbbf24';
+    return '#ef4444';
   };
 
   return (
@@ -135,7 +300,7 @@ export default function LiveView() {
           width: '100%',
           border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`
         }}>
-          {/* Header with icon and title */}
+          {/* Header */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -181,7 +346,7 @@ export default function LiveView() {
               </div>
             </div>
             
-            {/* Status Badge - Green Recording Indicator outside video */}
+            {/* LIVE Badge */}
             <div style={{
               display: 'flex',
               alignItems: 'center',
@@ -206,59 +371,69 @@ export default function LiveView() {
           </div>
           
           {/* Video Container */}
-          <div 
-            ref={videoContainerRef}
-            style={{ 
-              position: 'relative', 
-              borderRadius: '16px', 
-              overflow: 'hidden', 
-              backgroundColor: '#000',
-              border: `2px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`,
-              boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
-            }}
-          >
-            {/* Loading Overlay */}
-            {isLoading && (
-              <div style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: 'rgba(0,0,0,0.8)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 10,
-                flexDirection: 'column',
-                gap: '12px'
-              }}>
-                <div style={{
-                  width: '40px',
-                  height: '40px',
-                  border: '3px solid #334155',
-                  borderTopColor: '#3b82f6',
-                  borderRadius: '50%',
-                  animation: 'spin 1s linear infinite'
-                }} />
-                <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>Connecting to camera...</span>
-              </div>
-            )}
-            
-            <img
-              ref={imgRef}
-              src={streamUrl}
-              alt="CCTV Stream"
+          <div style={{ 
+            position: 'relative', 
+            borderRadius: '16px', 
+            overflow: 'hidden', 
+            backgroundColor: '#000',
+            border: `2px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+            cursor: 'default'
+          }}>
+            <video
+              ref={videoRef}
+              autoPlay
+              muted
+              playsInline
+              disablePictureInPicture
+              controlsList="nodownload nofullscreen noplaybackrate"
               style={{
                 width: '100%',
                 height: 'auto',
-                display: 'block'
+                display: 'block',
+                transformOrigin: 'center center',
               }}
-              onLoad={() => setIsLoading(false)}
-              onError={() => setIsLoading(false)}
             />
 
-            {/* Combined Recording Indicator + Camera Info (Upper Right) */}
+            {/* Face Detection Overlay */}
+            <div style={{
+              position: 'absolute',
+              top: '10px',
+              left: '10px',
+              background: faceCount > 0 ? 'rgba(239, 68, 68, 0.9)' : 'rgba(0,0,0,0.7)',
+              backdropFilter: 'blur(8px)',
+              padding: '8px 16px',
+              borderRadius: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              zIndex: 5,
+              pointerEvents: 'none',
+              transition: 'all 0.3s ease',
+              boxShadow: faceCount > 0 ? '0 0 15px rgba(239,68,68,0.5)' : 'none'
+            }}>
+              <span style={{ fontSize: '16px' }}>👤</span>
+              <span style={{ 
+                color: 'white', 
+                fontSize: '14px', 
+                fontWeight: 'bold'
+              }}>
+                Faces: {faceCount}
+              </span>
+              {faceCount > 0 && (
+                <span style={{
+                  display: 'inline-block',
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: '#10b981',
+                  animation: 'pulse 1s infinite',
+                  marginLeft: '4px'
+                }} />
+              )}
+            </div>
+
+            {/* REC + Camera Overlay */}
             <div style={{
               position: 'absolute',
               top: '10px',
@@ -270,7 +445,8 @@ export default function LiveView() {
               display: 'flex',
               alignItems: 'center',
               gap: '10px',
-              zIndex: 5
+              zIndex: 5,
+              pointerEvents: 'none'
             }}>
               <div style={{
                 display: 'flex',
@@ -315,7 +491,8 @@ export default function LiveView() {
             <div style={{ 
               display: 'flex',
               alignItems: 'center',
-              gap: '12px'
+              gap: '12px',
+              flexWrap: 'wrap'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style={{ 
@@ -336,6 +513,25 @@ export default function LiveView() {
               <span style={{ color: isDarkMode ? '#94a3b8' : '#64748b', fontSize: '0.7rem' }}>
                 FPS: 60
               </span>
+              <span style={{ color: isDarkMode ? '#64748b' : '#94a3b8', fontSize: '0.7rem' }}>|</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '0.7rem', color: isDarkMode ? '#64748b' : '#94a3b8' }}>⚡ Latency:</span>
+                <span style={{ fontSize: '0.7rem', fontWeight: 'bold', color: getLatencyColor() }}>
+                  {latency}ms
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '0.7rem', color: isDarkMode ? '#64748b' : '#94a3b8' }}>📊 Buffer:</span>
+                <span style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#3b82f6' }}>
+                  {bufferHealth.toFixed(1)}s
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '0.7rem', color: isDarkMode ? '#64748b' : '#94a3b8' }}>👤 Faces:</span>
+                <span style={{ fontSize: '0.7rem', fontWeight: 'bold', color: faceCount > 0 ? '#ef4444' : '#10b981' }}>
+                  {faceCount}
+                </span>
+              </div>
             </div>
             
             {/* Control Buttons */}
@@ -421,6 +617,22 @@ export default function LiveView() {
         
         @keyframes spin {
           to { transform: rotate(360deg); }
+        }
+        
+        video::-webkit-media-controls {
+          display: none !important;
+        }
+        
+        video::-webkit-media-controls-enclosure {
+          display: none !important;
+        }
+        
+        video::-webkit-media-controls-panel {
+          display: none !important;
+        }
+        
+        video::-webkit-media-controls-overlay-play-button {
+          display: none !important;
         }
       `}</style>
     </div>

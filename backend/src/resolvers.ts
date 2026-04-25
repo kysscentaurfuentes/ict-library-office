@@ -34,6 +34,16 @@ function requireAuth(context: Context) {
   return context.authUser;
 }
 
+function requireAdmin(context: Context) {
+  const user = requireAuth(context);
+
+  if (user.role !== 'admin') {
+    throw new Error('Unauthorized: Admin only');
+  }
+
+  return user;
+}
+
 function normalizeMac(mac: string) {
   return mac.toLowerCase().replace(/-/g, ':');
 }
@@ -287,16 +297,20 @@ assertUser(user);
   return { success: true };
 },
 
-    blockDevice: async (_: any, { mac }: { mac: string }) => {
-      const normalizedMac = normalizeMac(mac);
-      await execRouterCommand(`ipset add GL_MAC_BLOCK ${normalizedMac} -exist`);
-      return true;
-    },
+    blockDevice: async (_: any, { mac }: { mac: string }, context: Context) => {
+  requireAdmin(context); // 🔥 IMPORTANT
 
-    unblockDevice: async (_: any, { mac }: { mac: string }) => {
-      const normalizedMac = normalizeMac(mac);
-      await execRouterCommand(`ipset del GL_MAC_BLOCK ${normalizedMac}`);
-      return true;
-    }
+  const normalizedMac = normalizeMac(mac);
+  await execRouterCommand(`ipset add GL_MAC_BLOCK ${normalizedMac} -exist`);
+  return true;
+},
+
+    unblockDevice: async (_: any, { mac }: { mac: string }, context: Context) => {
+  requireAdmin(context); // 🔥 IMPORTANT
+
+  const normalizedMac = normalizeMac(mac);
+  await execRouterCommand(`ipset del GL_MAC_BLOCK ${normalizedMac}`);
+  return true;
+}
   },
 };

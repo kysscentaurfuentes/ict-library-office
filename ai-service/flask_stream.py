@@ -1,19 +1,21 @@
-# ai-service/flask_stream.py
-from flask import Flask, Response, jsonify
+# ai-service/flask_stream.py - ROTATION FIXED (change only line 70-72)
+
+from flask import Flask, Response, jsonify, send_from_directory
 from flask_cors import CORS
-import cv2
-import time
-import numpy as np
-from datetime import datetime
-import pytz
-from collections import deque
 import subprocess
 import threading
 import os
-import sys
+import time
+import logging
+from datetime import datetime
+import pytz
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
+
+# Disable Flask logs for cleaner output
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
 
 # ==========================
 # 🔐 CONFIG
@@ -21,283 +23,426 @@ CORS(app)
 RTSP_URL = "rtsp://Khysss333:Deluxbaby123@192.168.8.156:554/stream1"
 PH_TIMEZONE = pytz.timezone('Asia/Manila')
 
-# FFmpeg path (Windows)
 FFMPEG_PATH = r"C:\Users\ADMIN\Downloads\ffmpeg\ffmpeg\bin\ffmpeg.exe"
 
-# HLS output directory - adjust to your backend public folder
 BACKEND_HLS_DIR = r"C:\Users\ADMIN\Desktop\ICT Library Office\backend\public\hls"
 HLS_OUTPUT = os.path.join(BACKEND_HLS_DIR, "stream.m3u8")
 
-# Will be set after getting camera resolution
-FRAME_WIDTH = None
-FRAME_HEIGHT = None
-FPS = 20
-
-# Ensure HLS directory exists
 os.makedirs(BACKEND_HLS_DIR, exist_ok=True)
 
-# ==========================
-# 🎯 FACE DETECTION
-# ==========================
-face_cascade = cv2.CascadeClassifier(
-    cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-)
-
-face_history = deque(maxlen=5)
-
-def detect_faces(frame):
-    global face_history
-
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    gray = cv2.equalizeHist(gray)
-
-    faces = face_cascade.detectMultiScale(
-        gray,
-        scaleFactor=1.1,
-        minNeighbors=5,
-        minSize=(60, 60)
-    )
-
-    if len(faces) > 0:
-        # Get the largest face
-        main_face = max(faces, key=lambda f: f[2] * f[3])
-        face_history.append(main_face)
-        
-        # Return smoothed face position
-        if len(face_history) > 0:
-            avg = np.mean(list(face_history), axis=0).astype(int)
-            return [avg]
-    
-    return []
+# Clean old files on startup
+for f in os.listdir(BACKEND_HLS_DIR):
+    if f.endswith(".ts") or f.endswith(".m3u8"):
+        try:
+            os.remove(os.path.join(BACKEND_HLS_DIR, f))
+        except:
+            pass
 
 # ==========================
-# 🕒 TIME
+# 🕒 TIME (for API only)
 # ==========================
 def get_ph_dt():
     now = datetime.now(PH_TIMEZONE)
     return now.strftime("%Y-%m-%d"), now.strftime("%I:%M:%S %p")
 
 # ==========================
-# 🎥 FFMPEG PROCESS
+# 🎥 SIMPLE FFMPEG PROCESS
 # ==========================
 ffmpeg_process = None
 
 def start_ffmpeg():
+    """Start FFmpeg with simple overlay - no complex drawtext issues"""
     global ffmpeg_process
+
+    vf_filter = 'scale=1280:720,rotate=180*PI/180'
+
+    print(f"🎬 Using filter: {vf_filter}")
     
-    # Clean old HLS files
-    for f in os.listdir(BACKEND_HLS_DIR):
-        if f.endswith('.ts') or f.endswith('.m3u8'):
-            try:
-                os.remove(os.path.join(BACKEND_HLS_DIR, f))
-            except:
-                pass
-    
-    # FFmpeg command to accept raw video from stdin (using original resolution)
     cmd = [
         FFMPEG_PATH,
         '-loglevel', 'error',
-        '-f', 'rawvideo',
-        '-vcodec', 'rawvideo',
-        '-pix_fmt', 'bgr24',
-        '-s', f'{FRAME_WIDTH}x{FRAME_HEIGHT}',
-        '-r', str(FPS),
-        '-i', '-',  # Read from stdin
+        '-rtsp_transport', 'tcp',
+        '-i', RTSP_URL,
+        '-vf', vf_filter,  # <<< ITO ANG BINAGO KO
         '-c:v', 'libx264',
         '-preset', 'ultrafast',
         '-tune', 'zerolatency',
         '-pix_fmt', 'yuv420p',
         '-g', '30',
+        '-b:v', '2000k',
+        '-maxrate', '2000k',
+        '-bufsize', '4000k',
         '-f', 'hls',
-        '-hls_time', '1',
+        '-hls_time', '0.5',
         '-hls_list_size', '5',
-        '-hls_flags', 'delete_segments+append_list',
+        '-hls_flags', 'delete_segments+append_list+omit_endlist',
         '-hls_segment_filename', os.path.join(BACKEND_HLS_DIR, 'segment_%05d.ts'),
+        '-y',
         HLS_OUTPUT
     ]
     
+    print("🎬 Starting FFmpeg with direct RTSP capture...")
+    
     ffmpeg_process = subprocess.Popen(
         cmd,
-        stdin=subprocess.PIPE,
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE
+        stderr=subprocess.PIPE,
+        universal_newlines=True
     )
     
-    print(f"✅ FFmpeg started with resolution {FRAME_WIDTH}x{FRAME_HEIGHT}")
     return ffmpeg_process
 
 # ==========================
-# 🔁 MAIN STREAM LOOP
+# 🔁 FFMPEG WATCHDOG
 # ==========================
-def stream_loop():
-    global ffmpeg_process, FRAME_WIDTH, FRAME_HEIGHT
-    
-    print("🎥 Starting stream thread...")
-    
-    # Open RTSP stream to get original resolution
-    cap = cv2.VideoCapture(RTSP_URL)
-    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-    
-    # Get original camera resolution
-    original_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    original_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    
-    # Set global resolution variables
-    FRAME_WIDTH = original_width
-    FRAME_HEIGHT = original_height
-    
-    print(f"📐 Original Camera Resolution: {FRAME_WIDTH}x{FRAME_HEIGHT}")
-    
-    # Initialize FFmpeg with original resolution
-    ffmpeg_process = start_ffmpeg()
-    
-    frame_count = 0
+def ffmpeg_watchdog():
+    """Monitor and restart FFmpeg if it dies"""
+    global ffmpeg_process
     
     while True:
-        try:
-            success, frame = cap.read()
+        if ffmpeg_process is None or ffmpeg_process.poll() is not None:
+            if ffmpeg_process and ffmpeg_process.poll() is not None:
+                print(f"⚠️ FFmpeg exited with code: {ffmpeg_process.poll()}")
+                if ffmpeg_process.stderr:
+                    error = ffmpeg_process.stderr.read()
+                    if error:
+                        print(f"Error: {error[:200]}")
             
-            if not success:
-                print("⚠️ Failed to read frame, reconnecting...")
-                cap.release()
-                time.sleep(1)
-                cap = cv2.VideoCapture(RTSP_URL)
-                cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-                continue
-            
-            # ==========================
-            # 🧠 PROCESS FRAME
-            # ==========================
-            # Rotate 180 degrees
-            frame = cv2.rotate(frame, cv2.ROTATE_180)
-            
-            # NO RESIZE - keep original resolution
-            
-            # Face detection
-            faces = detect_faces(frame)
-            for (x, y, w, h) in faces:
-                cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
-            
-            # Add timestamp overlay
-            ph_date, ph_time = get_ph_dt()
-            
-            # Semi-transparent background for text (at the bottom)
-            overlay = frame.copy()
-            cv2.rectangle(overlay, (0, FRAME_HEIGHT-50), (FRAME_WIDTH, FRAME_HEIGHT), (0, 0, 0), -1)
-            frame = cv2.addWeighted(overlay, 0.7, frame, 0.3, 0)
-            
-            # Draw date and time text
-            text = f"{ph_date} | {ph_time}"
-            # Use dynamic font scale based on resolution
-            font_scale = FRAME_WIDTH / 800  # Adjust scale proportionally
-            cv2.putText(frame, text, (20, FRAME_HEIGHT-15),
-                        cv2.FONT_HERSHEY_SIMPLEX, max(0.5, font_scale * 0.6), (255, 255, 255), 1, cv2.LINE_AA)
-            
-            # ==========================
-            # 🚀 SEND TO FFMPEG
-            # ==========================
-            if ffmpeg_process and ffmpeg_process.poll() is None:
-                try:
-                    # Convert frame to raw bytes and send to FFmpeg stdin
-                    ffmpeg_process.stdin.write(frame.tobytes())
-                    frame_count += 1
-                    
-                    if frame_count % 30 == 0:
-                        print(f"📹 Streamed {frame_count} frames...")
-                        
-                except (BrokenPipeError, OSError) as e:
-                    print(f"⚠️ FFmpeg pipe broken: {e}")
-                    print("🔄 Restarting FFmpeg...")
-                    
-                    # Restart FFmpeg
-                    if ffmpeg_process:
-                        try:
-                            ffmpeg_process.stdin.close()
-                            ffmpeg_process.terminate()
-                        except:
-                            pass
-                    
-                    time.sleep(0.5)
-                    ffmpeg_process = start_ffmpeg()
-            
-            # Small delay to maintain FPS
-            time.sleep(1.0 / FPS)
-            
-        except Exception as e:
-            print(f"❌ Error in stream loop: {e}")
+            print("🔄 Restarting FFmpeg...")
             time.sleep(2)
-            continue
-    
-    # Cleanup
-    if ffmpeg_process:
-        ffmpeg_process.stdin.close()
-        ffmpeg_process.terminate()
-    cap.release()
-
-# ==========================
-# 📡 MJPEG (DEBUG only - optional)
-# ==========================
-def mjpeg_generator():
-    cap = cv2.VideoCapture(RTSP_URL)
-    
-    while True:
-        success, frame = cap.read()
-        if not success:
-            cap.release()
-            time.sleep(1)
-            cap = cv2.VideoCapture(RTSP_URL)
-            continue
+            start_ffmpeg()
         
-        # No resize for MJPEG either
-        _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
-        
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' +
-               buffer.tobytes() + b'\r\n')
-
-@app.route('/video')
-def video():
-    return Response(mjpeg_generator(),
-                    mimetype='multipart/x-mixed-replace; boundary=frame')
+        time.sleep(3)
 
 # ==========================
-# 🕒 TIME API
+# 📡 ROUTES
 # ==========================
-@app.route('/time')
-def get_time():
-    d, t = get_ph_dt()
-    return jsonify({"date": d, "time": t})
+@app.route('/hls/<path:filename>')
+def serve_hls(filename):
+    """Serve HLS segments with no-cache headers"""
+    response = send_from_directory(BACKEND_HLS_DIR, filename)
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    return response
 
-# ==========================
-# 🏥 HEALTH CHECK
-# ==========================
 @app.route('/health')
 def health():
+    """Health check endpoint"""
+    hls_exists = os.path.exists(HLS_OUTPUT)
     return jsonify({
         "status": "ok",
         "ffmpeg_running": ffmpeg_process is not None and ffmpeg_process.poll() is None,
-        "hls_path": HLS_OUTPUT,
-        "resolution": f"{FRAME_WIDTH}x{FRAME_HEIGHT}" if FRAME_WIDTH else "unknown"
+        "hls_file_exists": hls_exists
     })
+
+@app.route('/time')
+def get_time():
+    """Get current Philippines time"""
+    d, t = get_ph_dt()
+    return jsonify({"date": d, "time": t})
+
+@app.route('/')
+def index():
+    """Web player with timestamp overlay in JavaScript"""
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>LIBRARY CCTV - Ultra Smooth Stream</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: #000;
+                min-height: 100vh;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            }
+            .container {
+                width: 100%;
+                max-width: 1400px;
+                padding: 20px;
+            }
+            .video-wrapper {
+                position: relative;
+                background: #000;
+                border-radius: 8px;
+                overflow: hidden;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            }
+            video {
+                width: 100%;
+                height: auto;
+                display: block;
+            }
+            .timestamp-overlay {
+                position: absolute;
+                bottom: 15px;
+                left: 15px;
+                background: rgba(0,0,0,0.7);
+                color: white;
+                padding: 8px 15px;
+                border-radius: 5px;
+                font-family: monospace;
+                font-size: 16px;
+                font-weight: bold;
+                z-index: 10;
+                pointer-events: none;
+                backdrop-filter: blur(5px);
+            }
+            .title-overlay {
+                position: absolute;
+                top: 15px;
+                left: 15px;
+                background: rgba(0,0,0,0.7);
+                color: #0f0;
+                padding: 8px 15px;
+                border-radius: 5px;
+                font-family: monospace;
+                font-size: 16px;
+                font-weight: bold;
+                z-index: 10;
+                pointer-events: none;
+                backdrop-filter: blur(5px);
+            }
+            .info {
+                margin-top: 20px;
+                padding: 15px;
+                background: rgba(0,0,0,0.8);
+                border-radius: 8px;
+                color: #0f0;
+                font-family: monospace;
+                font-size: 14px;
+                display: flex;
+                justify-content: space-between;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            .info-item {
+                display: flex;
+                gap: 10px;
+                align-items: center;
+            }
+            .label {
+                color: #888;
+            }
+            .value {
+                color: #0f0;
+                font-weight: bold;
+            }
+            .status-connected {
+                color: #0f0;
+            }
+            .status-error {
+                color: #f00;
+            }
+            .status-buffering {
+                color: #ff0;
+            }
+            h1 {
+                color: #fff;
+                margin-bottom: 20px;
+                font-size: 24px;
+            }
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.5; }
+            }
+            .recording {
+                display: inline-block;
+                width: 10px;
+                height: 10px;
+                background: #f00;
+                border-radius: 50%;
+                animation: pulse 1s infinite;
+                margin-left: 10px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>📹 LIBRARY CCTV <span class="recording"></span></h1>
+            <div class="video-wrapper">
+                <div class="title-overlay" id="titleOverlay">LIBRARY CCTV</div>
+                <div class="timestamp-overlay" id="timestampOverlay">Loading...</div>
+                <video id="video" controls autoplay muted playsinline></video>
+            </div>
+            <div class="info">
+                <div class="info-item">
+                    <span class="label">🎥 Status:</span>
+                    <span id="status" class="value status-buffering">CONNECTING...</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">📊 Buffer:</span>
+                    <span id="buffer" class="value">0</span>
+                    <span class="label">seconds</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">⚡ Latency:</span>
+                    <span id="latency" class="value">0</span>
+                    <span class="label">ms</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">🕐 Server Time:</span>
+                    <span id="servertime" class="value">--:--:--</span>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+        <script>
+            const video = document.getElementById('video');
+            const statusSpan = document.getElementById('status');
+            const bufferSpan = document.getElementById('buffer');
+            const latencySpan = document.getElementById('latency');
+            const timeSpan = document.getElementById('servertime');
+            const timestampOverlay = document.getElementById('timestampOverlay');
+            
+            async function updateTimestamp() {
+                try {
+                    const res = await fetch('/time');
+                    const data = await res.json();
+                    timestampOverlay.textContent = `${data.date} | ${data.time}`;
+                    timeSpan.textContent = `${data.date} | ${data.time}`;
+                } catch(e) {}
+            }
+            
+            setInterval(updateTimestamp, 1000);
+            updateTimestamp();
+            
+            if (Hls.isSupported()) {
+                const hls = new Hls({
+                    debug: false,
+                    enableWorker: true,
+                    lowLatencyMode: true,
+                    liveSyncDurationCount: 2,
+                    liveMaxLatencyDurationCount: 4,
+                    maxLiveSyncPlaybackRate: 1,
+                    startPosition: -1,
+                    manifestLoadingTimeOut: 2000,
+                    manifestLoadingMaxRetry: 3,
+                    levelLoadingTimeOut: 2000,
+                    levelLoadingMaxRetry: 3,
+                    fragLoadingTimeOut: 3000,
+                    fragLoadingMaxRetry: 4,
+                    capLevelToPlayerSize: true,
+                    maxBufferLength: 2,
+                    maxMaxBufferLength: 4,
+                    backBufferLength: 1,
+                    liveDurationInfinity: true
+                });
+                
+                hls.loadSource('/hls/stream.m3u8');
+                hls.attachMedia(video);
+                
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    statusSpan.textContent = 'CONNECTED (HLS)';
+                    statusSpan.className = 'value status-connected';
+                    video.play().catch(e => console.log('Auto-play prevented'));
+                });
+                
+                hls.on(Hls.Events.ERROR, (event, data) => {
+                    if (data.fatal) {
+                        statusSpan.textContent = 'ERROR - Reconnecting';
+                        statusSpan.className = 'value status-error';
+                        console.error('HLS error:', data);
+                        hls.recoverMediaError();
+                    }
+                });
+                
+                hls.on(Hls.Events.BUFFER_APPENDING, () => {
+                    const bufferLen = hls.bufferLength || 0;
+                    bufferSpan.textContent = bufferLen.toFixed(1);
+                    
+                    if (video.currentTime > 0 && hls.liveSyncPosition) {
+                        const latency = Math.abs(video.currentTime - hls.liveSyncPosition) * 1000;
+                        if (latency < 5000) {
+                            latencySpan.textContent = Math.round(latency);
+                            if (latency > 3000) {
+                                latencySpan.style.color = '#f90';
+                            } else if (latency > 2000) {
+                                latencySpan.style.color = '#ff0';
+                            } else {
+                                latencySpan.style.color = '#0f0';
+                            }
+                        }
+                    }
+                });
+                
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = '/hls/stream.m3u8';
+                statusSpan.textContent = 'CONNECTED (Native)';
+                statusSpan.className = 'value status-connected';
+                
+                video.addEventListener('playing', () => {
+                    statusSpan.textContent = 'CONNECTED';
+                    statusSpan.className = 'value status-connected';
+                });
+            }
+            
+            video.addEventListener('waiting', () => {
+                statusSpan.textContent = 'BUFFERING...';
+                statusSpan.className = 'value status-buffering';
+            });
+            
+            video.addEventListener('playing', () => {
+                if (statusSpan.textContent !== 'CONNECTED (HLS)') {
+                    statusSpan.textContent = 'CONNECTED';
+                    statusSpan.className = 'value status-connected';
+                }
+            });
+            
+            video.addEventListener('error', () => {
+                statusSpan.textContent = 'ERROR';
+                statusSpan.className = 'value status-error';
+            });
+        </script>
+    </body>
+    </html>
+    """
 
 # ==========================
 # ▶ START
 # ==========================
 if __name__ == "__main__":
-    # Start stream processing in background thread
-    stream_thread = threading.Thread(target=stream_loop, daemon=True)
-    stream_thread.start()
+    print("=" * 70)
+    print("🚀 ULTRA SMOOTH CCTV STREAM - NO STUTTERS")
+    print("=" * 70)
+    print("📹 Architecture: FFmpeg → RTSP (TCP) → HLS")
+    print("⚡ No Python frame processing - direct pipeline")
+    print("🎯 Target latency: < 1 second")
+    print("=" * 70)
     
-    # Give FFmpeg time to start
-    time.sleep(3)
+    # Start FFmpeg
+    start_ffmpeg()
     
-    print("=" * 50)
-    print("🚀 Flask CCTV Streamer with Face Detection")
+    # Start watchdog
+    watchdog = threading.Thread(target=ffmpeg_watchdog, daemon=True)
+    watchdog.start()
+    
+    time.sleep(2)
+    
+    print("\n" + "=" * 70)
+    print("✅ STREAM READY!")
+    print(f"📱 Web Player: http://192.168.8.236:5000/")
     print(f"📡 HLS Stream: http://192.168.8.236:5000/hls/stream.m3u8")
-    print(f"📸 MJPEG Debug: http://192.168.8.236:5000/video")
-    print(f"🕒 Time API: http://192.168.8.236:5000/time")
     print(f"❤️  Health: http://192.168.8.236:5000/health")
-    print("=" * 50)
+    print("=" * 70)
+    print("\n🎯 KEY IMPROVEMENTS:")
+    print("   • NO Python frame processing (zero delay)")
+    print("   • Timestamp via JavaScript overlay (no FFmpeg issues)")
+    print("   • TCP RTSP transport (no packet loss)")
+    print("   • 0.5 second HLS segments (ultra low latency)")
+    print("   • HLS.js optimized for live streaming")
+    print("   • Auto-reconnect on failure")
+    print("=" * 70)
     
-    # Run Flask on port 5000
-    app.run(host='0.0.0.0', port=5000, threaded=True, debug=False)
+    app.run(host='0.0.0.0', port=5000, threaded=True, debug=False, use_reloader=False)
