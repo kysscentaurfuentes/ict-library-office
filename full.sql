@@ -1,5 +1,5 @@
 --
--- PostgreSQL database dump
+
 --
 
 \restrict QNxT8n8klMOQL4FWwjB7vji2Jn1NybTuxOg0iwLN3NWO0eWkvJXH38FTYXjkLyv
@@ -425,7 +425,7 @@ ALTER TABLE ONLY public.attendance
 
 
 --
--- PostgreSQL database dump complete
+
 --
 
 \unrestrict QNxT8n8klMOQL4FWwjB7vji2Jn1NybTuxOg0iwLN3NWO0eWkvJXH38FTYXjkLyv
