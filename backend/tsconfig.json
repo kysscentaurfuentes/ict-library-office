@@ -1,45 +1,44 @@
 {
   "compilerOptions": {
-    // 📁 Project structure
+    /* 📁 Structure */
     "rootDir": "./src",
     "outDir": "./dist",
 
-    // ⚙️ ESM setup (FIXED)
+    /* ⚙️ ESM (CRITICAL FIX) */
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "target": "ES2022",
     "lib": ["ES2022"],
 
-    // 🌐 Node environment
+    /* 🌐 Node */
     "types": ["node"],
 
-    // 🛠️ Output
+    /* 🛠️ Output */
     "sourceMap": true,
     "declaration": false,
     "removeComments": true,
 
-    // 🔒 Strictness
+    /* 🔒 Strict */
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
 
-    // ⚡ Compatibility
+    /* ⚡ Compatibility */
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
-    "isolatedModules": true,
 
-    // 🚀 Performance
+    /* 🚀 Important for ESM */
+    "verbatimModuleSyntax": true,
+
+    /* 🧹 Clean */
     "skipLibCheck": true
   },
 
   "include": ["src"],
-
   "exclude": [
     "node_modules",
     "dist",
-    "public",
-    "uploads",
-    "streams",
     "**/*.test.ts"
   ]
 }

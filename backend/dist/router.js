@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.execRouterCommand = execRouterCommand;
-const ssh2_1 = require("ssh2");
+import { Client } from 'ssh2';
 const ROUTER_CONFIG = {
     host: process.env.ROUTER_HOST,
     username: process.env.ROUTER_USER,
@@ -9,9 +6,9 @@ const ROUTER_CONFIG = {
     readyTimeout: 10000,
 };
 const DEBUG_SSH = false;
-function execRouterCommand(command) {
+export function execRouterCommand(command) {
     return new Promise((resolve, reject) => {
-        const conn = new ssh2_1.Client();
+        const conn = new Client();
         let output = '';
         let errorOutput = '';
         conn

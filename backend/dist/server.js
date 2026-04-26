@@ -1,29 +1,25 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
-const http_1 = __importDefault(require("http"));
-const cors_1 = __importDefault(require("cors"));
-const path_1 = __importDefault(require("path"));
-const fs_1 = __importDefault(require("fs"));
-const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const dotenv_1 = __importDefault(require("dotenv"));
-const server_1 = require("@apollo/server");
-const express4_1 = require("@apollo/server/express4");
-const drainHttpServer_1 = require("@apollo/server/plugin/drainHttpServer");
-const resolvers_js_1 = require("./resolvers.js");
-const schema_js_1 = require("./schema.js");
-const db_js_1 = require("./db.js");
-const shareRoutes_js_1 = __importDefault(require("./routes/shareRoutes.js"));
-const helmet_1 = __importDefault(require("helmet"));
-const os_1 = __importDefault(require("os"));
-const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
-dotenv_1.default.config();
-const app = (0, express_1.default)();
-app.use((0, helmet_1.default)());
-const limiter = (0, express_rate_limit_1.default)({
+import express from "express";
+import http from "http";
+import cors from "cors";
+import bodyParser from "body-parser";
+import path from "path";
+import fs from "fs";
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+import { ApolloServer } from "@apollo/server";
+import { expressMiddleware } from "@apollo/server/express4";
+import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
+import { resolvers } from "./resolvers.js";
+import { typeDefs } from "./schema.js";
+import { pool } from "./db.js";
+import shareRoutes from "./routes/shareRoutes.js";
+import helmet from 'helmet';
+import os from 'os';
+import rateLimit from "express-rate-limit";
+dotenv.config();
+const app = express();
+app.use(helmet());
+const limiter = rateLimit({
     windowMs: 60 * 1000,
     max: 30,
 });
@@ -42,7 +38,7 @@ if (!process.env.JWT_SECRET) {
 }
 const SECRET = process.env.JWT_SECRET;
 function getLocalIP() {
-    const interfaces = os_1.default.networkInterfaces();
+    const interfaces = os.networkInterfaces();
     for (const name of Object.keys(interfaces)) {
         for (const iface of interfaces[name] || []) {
             if (iface.family === 'IPv4' && !iface.internal) {
@@ -62,32 +58,32 @@ const formatID = (id) => {
     }
     return id;
 };
-const ROOT_DIR = path_1.default.resolve(__dirname, "..");
-const HLS_DIR = path_1.default.join(ROOT_DIR, "public", "hls");
+const ROOT_DIR = path.resolve(__dirname, "..");
+const HLS_DIR = path.join(ROOT_DIR, "public", "hls");
 const deviceCooldown = {};
 const ONE_HOUR = 60 * 60 * 1000;
-if (!fs_1.default.existsSync(HLS_DIR)) {
-    fs_1.default.mkdirSync(HLS_DIR, { recursive: true });
+if (!fs.existsSync(HLS_DIR)) {
+    fs.mkdirSync(HLS_DIR, { recursive: true });
     console.log(`${LOG.cyan}📁 Created HLS directory: ${HLS_DIR}${LOG.reset}`);
 }
 async function getUser(token) {
     try {
         if (!token)
             return null;
-        return jsonwebtoken_1.default.verify(token.replace("Bearer ", ""), SECRET);
+        return jwt.verify(token.replace("Bearer ", ""), SECRET);
     }
     catch {
         return null;
     }
 }
 async function startServer() {
-    const httpServer = http_1.default.createServer(app);
-    app.use((0, cors_1.default)({
+    const httpServer = http.createServer(app);
+    app.use(cors({
         origin: process.env.CORS_ORIGIN,
         credentials: true,
     }));
-    app.use("/api", shareRoutes_js_1.default);
-    app.use("/api/scan", (0, express_rate_limit_1.default)({
+    app.use("/api", shareRoutes);
+    app.use("/api/scan", rateLimit({
         windowMs: 60 * 1000,
         max: 10,
     }));
@@ -104,11 +100,11 @@ async function startServer() {
         const displayID = rawID;
         console.log(`${LOG.cyan}[${time}] SCAN:${LOG.reset} ${displayID}`);
         try {
-            const result = await db_js_1.pool.query(`SELECT username, "StudentId" 
+            const result = await pool.query(`SELECT username, "StudentId" 
          FROM users 
          WHERE "StudentId" = $1`, [displayID]);
             if (result.rows.length === 0) {
-                await db_js_1.pool.query(`INSERT INTO scan_logs (student_id, device_id, status, flag, risk_score)
+                await pool.query(`INSERT INTO scan_logs (student_id, device_id, status, flag, risk_score)
            VALUES ($1, $2, $3, $4, $5)`, [displayID, deviceID, "fail", "not_found", 0]);
                 return res.status(404).json({
                     status: "fail",
@@ -119,7 +115,7 @@ async function startServer() {
             const user = result.rows[0];
             let flags = [];
             let riskScore = 0;
-            const devicesResult = await db_js_1.pool.query(`SELECT DISTINCT device_id 
+            const devicesResult = await pool.query(`SELECT DISTINCT device_id 
          FROM scan_logs 
          WHERE student_id = $1`, [displayID]);
             const knownDevices = devicesResult.rows.map(r => r.device_id);
@@ -127,7 +123,7 @@ async function startServer() {
                 flags.push("new_device");
                 riskScore += 1;
             }
-            const otherUsersOnDevice = await db_js_1.pool.query(`SELECT DISTINCT student_id 
+            const otherUsersOnDevice = await pool.query(`SELECT DISTINCT student_id 
          FROM scan_logs 
          WHERE device_id = $1 AND student_id != $2`, [deviceID, displayID]);
             if (otherUsersOnDevice.rows.length > 0) {
@@ -137,7 +133,7 @@ async function startServer() {
             if (riskScore >= 2) {
                 flags.push("high_risk");
             }
-            const lastScan = await db_js_1.pool.query(`SELECT created_at 
+            const lastScan = await pool.query(`SELECT created_at 
          FROM scan_logs
          WHERE student_id = $1
          ORDER BY created_at DESC
@@ -146,7 +142,7 @@ async function startServer() {
                 const lastTime = new Date(lastScan.rows[0].created_at).getTime();
                 const diffMinutes = (now - lastTime) / (1000 * 60);
                 if (diffMinutes < 60) {
-                    await db_js_1.pool.query(`INSERT INTO scan_logs (student_id, device_id, status, flag, risk_score)
+                    await pool.query(`INSERT INTO scan_logs (student_id, device_id, status, flag, risk_score)
              VALUES ($1, $2, $3, $4, $5)`, [displayID, deviceID, "blocked", "cooldown_violation", riskScore]);
                     return res.status(429).json({ status: "blocked" });
                 }
@@ -162,7 +158,7 @@ async function startServer() {
             console.log("HOUR:", hourNum);
             if (true) {
                 try {
-                    await db_js_1.pool.query(`INSERT INTO attendance (student_id, check_in)
+                    await pool.query(`INSERT INTO attendance (student_id, check_in)
              VALUES ($1, $2)`, [displayID, nowPH]);
                     attendanceSaved = true;
                     finalStatus = "success";
@@ -180,7 +176,7 @@ async function startServer() {
             else {
                 finalStatus = "closed";
             }
-            await db_js_1.pool.query(`INSERT INTO scan_logs (student_id, device_id, status, flag, risk_score) 
+            await pool.query(`INSERT INTO scan_logs (student_id, device_id, status, flag, risk_score) 
          VALUES ($1, $2, $3, $4, $5)`, [
                 displayID,
                 deviceID,
@@ -211,7 +207,7 @@ async function startServer() {
             if (!studentId) {
                 return res.status(400).json({ message: "Missing student ID" });
             }
-            const result = await db_js_1.pool.query(`SELECT * FROM attendance WHERE student_id = $1 ORDER BY check_in ASC`, [studentId]);
+            const result = await pool.query(`SELECT * FROM attendance WHERE student_id = $1 ORDER BY check_in ASC`, [studentId]);
             res.json(result.rows);
         }
         catch {
@@ -220,19 +216,19 @@ async function startServer() {
     });
     app.get("/api/attendance/:studentId", async (req, res) => {
         const { studentId } = req.params;
-        const result = await db_js_1.pool.query(`SELECT * FROM attendance WHERE student_id = $1 ORDER BY check_in ASC`, [studentId]);
+        const result = await pool.query(`SELECT * FROM attendance WHERE student_id = $1 ORDER BY check_in ASC`, [studentId]);
         res.json(result.rows);
     });
     app.get("/api/share/:token", async (req, res) => {
         const { token } = req.params;
         console.log("TOKEN:", token);
-        const result = await db_js_1.pool.query("SELECT student_id FROM share_tokens WHERE token = $1", [token]);
+        const result = await pool.query("SELECT student_id FROM share_tokens WHERE token = $1", [token]);
         if (result.rows.length === 0) {
             return res.status(404).json({ message: "Invalid token" });
         }
         const studentId = result.rows[0].student_id;
         console.log("FOUND STUDENT:", studentId);
-        const attendance = await db_js_1.pool.query("SELECT * FROM attendance WHERE student_id = $1 ORDER BY check_in ASC", [studentId]);
+        const attendance = await pool.query("SELECT * FROM attendance WHERE student_id = $1 ORDER BY check_in ASC", [studentId]);
         console.log("ATTENDANCE:", attendance.rows);
         res.json(attendance.rows);
     });
@@ -243,7 +239,7 @@ async function startServer() {
                 return res.status(400).json({ message: "Missing studentId" });
             }
             const now = new Date();
-            const result = await db_js_1.pool.query(`INSERT INTO attendance (student_id, check_in) VALUES ($1, $2) RETURNING *`, [studentId, now]);
+            const result = await pool.query(`INSERT INTO attendance (student_id, check_in) VALUES ($1, $2) RETURNING *`, [studentId, now]);
             res.json(result.rows[0]);
         }
         catch (err) {
@@ -254,7 +250,7 @@ async function startServer() {
     app.delete("/api/attendance/:id", async (req, res) => {
         try {
             const { id } = req.params;
-            await db_js_1.pool.query(`DELETE FROM attendance WHERE id = $1`, [id]);
+            await pool.query(`DELETE FROM attendance WHERE id = $1`, [id]);
             res.json({ success: true });
         }
         catch (err) {
@@ -262,7 +258,7 @@ async function startServer() {
             res.status(500).json({ message: "Server error" });
         }
     });
-    app.use("/hls", express_1.default.static(HLS_DIR, {
+    app.use("/hls", express.static(HLS_DIR, {
         setHeaders: (res, filePath) => {
             if (filePath.endsWith(".m3u8")) {
                 res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
@@ -275,7 +271,7 @@ async function startServer() {
         }
     }));
     app.get("/health", (_, res) => {
-        const hlsExists = fs_1.default.existsSync(path_1.default.join(HLS_DIR, "stream.m3u8"));
+        const hlsExists = fs.existsSync(path.join(HLS_DIR, "stream.m3u8"));
         res.json({
             status: "ok",
             server_ip: LOCAL_IP,
@@ -287,9 +283,9 @@ async function startServer() {
         });
     });
     app.get("/api/stream-status", async (_, res) => {
-        const hlsPath = path_1.default.join(HLS_DIR, "stream.m3u8");
-        const exists = fs_1.default.existsSync(hlsPath);
-        const stats = exists ? fs_1.default.statSync(hlsPath) : null;
+        const hlsPath = path.join(HLS_DIR, "stream.m3u8");
+        const exists = fs.existsSync(hlsPath);
+        const stats = exists ? fs.statSync(hlsPath) : null;
         res.json({
             python_stream_active: exists,
             last_updated: stats ? stats.mtime : null,
@@ -299,14 +295,14 @@ async function startServer() {
             hls_url_direct_python: `process.env.PUBLIC_URL:5000/hls/stream.m3u8`
         });
     });
-    const apollo = new server_1.ApolloServer({
-        typeDefs: schema_js_1.typeDefs,
-        resolvers: resolvers_js_1.resolvers,
+    const apollo = new ApolloServer({
+        typeDefs,
+        resolvers,
         introspection: process.env.NODE_ENV !== "production",
-        plugins: [(0, drainHttpServer_1.ApolloServerPluginDrainHttpServer)({ httpServer })],
+        plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
     });
     await apollo.start();
-    app.use("/graphql", express_1.default.json(), (0, express4_1.expressMiddleware)(apollo, {
+    app.use("/graphql", express.json(), expressMiddleware(apollo, {
         context: async ({ req }) => {
             const user = await getUser(req.headers.authorization);
             return { authUser: user };

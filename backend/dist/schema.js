@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.typeDefs = void 0;
-exports.typeDefs = `#graphql
+export const typeDefs = `#graphql
   type User {
     id: ID
     username: String
