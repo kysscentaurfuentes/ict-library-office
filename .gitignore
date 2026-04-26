@@ -4,3 +4,4 @@ package-lock.json
 .venv/
 __pycache__/
 *.pyc
+ict_library_db.sql

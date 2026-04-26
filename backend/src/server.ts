@@ -18,15 +18,22 @@ import { expressMiddleware } from "@apollo/server/express4";
 import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
 import { resolvers } from "./resolvers.js";
 import { typeDefs } from "./schema.js";
-import { fileURLToPath } from "url";
 import { pool } from "./db.js";
 import shareRoutes from "./routes/shareRoutes.js";
 import helmet from 'helmet';
 import os from 'os';
+import rateLimit from "express-rate-limit";
 
 dotenv.config();
 const app = express();
 app.use(helmet());
+
+const limiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 30, // max 30 requests per minute
+});
+
+app.use(limiter);
 
 // ==========================
 // 🎨 LOG COLORS
@@ -44,7 +51,10 @@ const LOG = {
 // 🔐 ENV
 // ==========================
 const PORT = Number(process.env.PORT || 4000);
-const SECRET = process.env.JWT_SECRET || "dev_secret";
+if (!process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET is not defined");
+}
+const SECRET = process.env.JWT_SECRET;
 
 // ==========================
 // 🌐 GET LOCAL IP ADDRESS
@@ -58,7 +68,7 @@ function getLocalIP(): string {
       }
     }
   }
-  return '192.168.8.236'; // fallback to your IP
+  throw new Error("No network interface found");
 }
 
 const LOCAL_IP = getLocalIP();
@@ -78,10 +88,9 @@ const formatID = (id: string): string => {
 };
 
 // ==========================
-// 📁 PATH
+// 📁 PATH (COMMONJS SAFE)
 // ==========================
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+
 const ROOT_DIR = path.resolve(__dirname, "..");
 
 const HLS_DIR = path.join(ROOT_DIR, "public", "hls");
@@ -120,11 +129,14 @@ async function startServer() {
 
   // CORS - allow all devices on network
   app.use(cors({
-    origin: '*',
-    credentials: true,
+origin: process.env.CORS_ORIGIN,
+credentials: true,
   }));
-  app.use(bodyParser.json());
   app.use("/api", shareRoutes);
+  app.use("/api/scan", rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+}));
 
   // ==========================
   // 🔥 SCAN API
@@ -396,8 +408,8 @@ async function startServer() {
       server_ip: LOCAL_IP,
       port: PORT,
       hls_stream_available: hlsExists,
-      hls_url: `http://${LOCAL_IP}:${PORT}/hls/stream.m3u8`,
-      python_stream_url: `http://${LOCAL_IP}:5000/hls/stream.m3u8`,
+      hls_url: process.env.PUBLIC_HLS_URL,
+python_stream_url: process.env.PUBLIC_PYTHON_URL,
       message: "Node.js backend running"
     });
   });
@@ -413,32 +425,35 @@ async function startServer() {
     res.json({
       python_stream_active: exists,
       last_updated: stats ? stats.mtime : null,
-      node_server: `http://${LOCAL_IP}:${PORT}`,
-      python_server: `http://${LOCAL_IP}:5000`,
-      hls_url_via_node: `http://${LOCAL_IP}:${PORT}/hls/stream.m3u8`,
-      hls_url_direct_python: `http://${LOCAL_IP}:5000/hls/stream.m3u8`
+      node_server: process.env.PUBLIC_URL,
+      python_server: `${process.env.PUBLIC_URL}:5000`,
+      hls_url_via_node: `process.env.PUBLIC_URL/hls/stream.m3u8`,
+      hls_url_direct_python: `process.env.PUBLIC_URL:5000/hls/stream.m3u8`
     });
   });
 
   // ==========================
   // 🔥 GRAPHQL
   // ==========================
-  const apollo = new ApolloServer({
-    typeDefs,
-    resolvers,
-    plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
-  });
+ const apollo = new ApolloServer({
+  typeDefs,
+  resolvers,
+  introspection: process.env.NODE_ENV !== "production",
+  plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
+});
 
   await apollo.start();
 
-  app.use(
-    "/graphql",
-    expressMiddleware(apollo, {
-      context: async ({ req }: { req: Request }) => ({
-        authUser: await getUser(req.headers.authorization),
-      }),
-    })
-  );
+app.use(
+  "/graphql",
+  express.json(), // ✅ IMPORTANT
+  expressMiddleware(apollo, {
+    context: async ({ req }: { req: Request }) => {
+      const user = await getUser(req.headers.authorization);
+      return { authUser: user };
+    },
+  })
+);
 
   // ==========================
   // ▶ START SERVER (listen on all interfaces)
@@ -446,16 +461,16 @@ async function startServer() {
   await new Promise<void>((resolve) =>
     httpServer.listen({ port: PORT, host: '0.0.0.0' }, resolve)
   );
-
+const BASE_URL = process.env.PUBLIC_URL || `http://${LOCAL_IP}:${PORT}`;
   console.log("=".repeat(60));
   console.log(`${LOG.green}🚀 Node.js Backend Running${LOG.reset}`);
   console.log("=".repeat(60));
   console.log(`${LOG.blue}📡 Server IP:${LOG.reset} ${LOCAL_IP}`);
   console.log(`${LOG.blue}🔌 Port:${LOG.reset} ${PORT}`);
-  console.log(`${LOG.blue}🔗 GraphQL:${LOG.reset} http://${LOCAL_IP}:${PORT}/graphql`);
-  console.log(`${LOG.blue}📸 Scan API:${LOG.reset} http://${LOCAL_IP}:${PORT}/api/scan`);
-  console.log(`${LOG.blue}📺 HLS Stream:${LOG.reset} http://${LOCAL_IP}:${PORT}/hls/stream.m3u8`);
-  console.log(`${LOG.blue}❤️  Health:${LOG.reset} http://${LOCAL_IP}:${PORT}/health`);
+  console.log(`${LOG.blue}🔗 GraphQL:${LOG.reset} ${BASE_URL}/graphql`);
+  console.log(`${LOG.blue}📸 Scan API:${LOG.reset} ${BASE_URL}/api/scan`);
+  console.log(`${LOG.blue}📺 HLS Stream:${LOG.reset} ${BASE_URL}/hls/stream.m3u8`);
+  console.log(`${LOG.blue}❤️  Health:${LOG.reset} ${BASE_URL}/health`);
   console.log("=".repeat(60));
   console.log(`${LOG.yellow}⚠️  IMPORTANT:${LOG.reset}`);
   console.log(`${LOG.yellow}   Python Flask (port 5000) MUST be running for HLS stream${LOG.reset}`);
