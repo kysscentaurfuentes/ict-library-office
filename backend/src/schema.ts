@@ -1,5 +1,4 @@
 // backend/src/schema.ts
-
 export const typeDefs = `#graphql
   type User {
     id: ID

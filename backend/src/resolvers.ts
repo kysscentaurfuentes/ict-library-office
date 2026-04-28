@@ -1,5 +1,4 @@
 // backend/src/resolvers.ts
-
 import jwt from 'jsonwebtoken';
 import { pool } from './db.js';
 import bcrypt from 'bcrypt';

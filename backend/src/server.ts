@@ -14,8 +14,8 @@ import fs from "fs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { ApolloServer } from "@apollo/server";
-import { expressMiddleware } from "@apollo/server/express4";
 import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
+import { createRequire } from 'module'; // ✅ Standard import for ESM
 import { resolvers } from "./resolvers.js";
 import { typeDefs } from "./schema.js";
 import { pool } from "./db.js";
@@ -23,6 +23,12 @@ import shareRoutes from "./routes/shareRoutes.js";
 import helmet from 'helmet';
 import os from 'os';
 import rateLimit from "express-rate-limit";
+import { fileURLToPath } from "url";
+
+// Setup require for ESM
+const require = createRequire(import.meta.url);
+// ✅ Gagamitin natin ang 'expressMiddleware' na variable name dito
+const { expressMiddleware } = require('@apollo/server/express4');
 
 dotenv.config();
 const app = express();
@@ -90,9 +96,10 @@ const formatID = (id: string): string => {
 // ==========================
 // 📁 PATH (COMMONJS SAFE)
 // ==========================
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const ROOT_DIR = path.resolve(__dirname, "..");
-
 const HLS_DIR = path.join(ROOT_DIR, "public", "hls");
 
 // ==========================
@@ -446,9 +453,10 @@ python_stream_url: process.env.PUBLIC_PYTHON_URL,
 
 app.use(
   "/graphql",
-  express.json(), // ✅ IMPORTANT
+  express.json(), // ✅ IMPORTANT: Kailangan ito bago ang middleware
   expressMiddleware(apollo, {
     context: async ({ req }: { req: Request }) => {
+      // Kunin ang user base sa Authorization header
       const user = await getUser(req.headers.authorization);
       return { authUser: user };
     },

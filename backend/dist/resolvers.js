@@ -1,15 +1,10 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolvers = void 0;
-const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const db_js_1 = require("./db.js");
-const bcrypt_1 = __importDefault(require("bcrypt"));
-const dotenv_1 = __importDefault(require("dotenv"));
-const router_js_1 = require("./router.js");
-dotenv_1.default.config();
+// backend/src/resolvers.ts
+import jwt from 'jsonwebtoken';
+import { pool } from './db.js';
+import bcrypt from 'bcrypt';
+import dotenv from 'dotenv';
+import { execRouterCommand } from './router.js';
+dotenv.config();
 const SECRET = process.env.JWT_SECRET;
 function assertUser(user) {
     if (!user)
@@ -31,9 +26,10 @@ function normalizeMac(mac) {
     return mac.toLowerCase().replace(/-/g, ':');
 }
 const lastSeenMap = {};
+// 🔥 FAST: get ALL blocked MACs once
 async function getBlockedMacs() {
     try {
-        const result = await (0, router_js_1.execRouterCommand)("ipset list GL_MAC_BLOCK");
+        const result = await execRouterCommand("ipset list GL_MAC_BLOCK");
         const macs = result
             .split('\n')
             .filter(line => line.match(/([0-9a-f]{2}:){5}[0-9a-f]{2}/i))
@@ -44,6 +40,7 @@ async function getBlockedMacs() {
         return new Set();
     }
 }
+// ✅ Vendor lookup
 async function getVendor(mac) {
     try {
         const res = await fetch(`https://api.macvendors.com/${mac}`);
@@ -55,25 +52,30 @@ async function getVendor(mac) {
         return null;
     }
 }
-exports.resolvers = {
+export const resolvers = {
     Query: {
         hello: () => "Backend is working with Router 🚀",
         me: async (_, __, context) => {
             const auth = requireAuth(context);
-            const res = await db_js_1.pool.query('SELECT id, username, "StudentId", role FROM users WHERE id = $1', [auth.userId]);
+            const res = await pool.query('SELECT id, username, "StudentId", role FROM users WHERE id = $1', [auth.userId]);
             const user = res.rows[0];
             assertUser(user);
             return user;
         },
         routerDevices: async () => {
             try {
+                // 🔥 1. GET BASE DATA (parallel)
                 const [arpResult, dhcpResult] = await Promise.all([
-                    (0, router_js_1.execRouterCommand)("cat /proc/net/arp"),
-                    (0, router_js_1.execRouterCommand)("cat /tmp/dhcp.leases"),
+                    execRouterCommand("cat /proc/net/arp"),
+                    execRouterCommand("cat /tmp/dhcp.leases"),
                 ]);
-                await (0, router_js_1.execRouterCommand)("for ip in $(cat /proc/net/arp | awk 'NR>1 {print $1}'); do ping -c 1 -W 1 $ip >/dev/null 2>&1; done");
-                const neighResult = await (0, router_js_1.execRouterCommand)("ip neigh");
+                // 🔥 2. CLEAR OLD NEIGHBOR CACHE
+                await execRouterCommand("for ip in $(cat /proc/net/arp | awk 'NR>1 {print $1}'); do ping -c 1 -W 1 $ip >/dev/null 2>&1; done");
+                // 🔥 3. READ FRESH NEIGHBOR STATE
+                const neighResult = await execRouterCommand("ip neigh");
+                // 🔥 4. GET BLOCKED ONCE
                 const blockedSet = await getBlockedMacs();
+                // 🔥 5. BUILD DHCP MAP
                 const dhcpMap = {};
                 dhcpResult.split('\n').forEach(line => {
                     const parts = line.trim().split(/\s+/);
@@ -85,6 +87,7 @@ exports.resolvers = {
                         }
                     }
                 });
+                // 🔥 7. PARSE ARP DEVICES
                 const rawDevices = arpResult
                     .split('\n')
                     .slice(1)
@@ -95,8 +98,10 @@ exports.resolvers = {
                     mac: normalizeMac(parts[3] ?? "")
                 }))
                     .filter(d => d.ip && d.mac && d.mac !== "00:00:00:00:00:00");
+                // 🔥 8. PROCESS DEVICES (NO SSH INSIDE LOOP 🚀)
                 const devices = await Promise.all(rawDevices.map(async (device) => {
-                    const dbRes = await db_js_1.pool.query("SELECT custom_name FROM devices WHERE device_id = $1", [device.mac]);
+                    // ✅ NAME: DB → DHCP → Vendor → fallback
+                    const dbRes = await pool.query("SELECT custom_name FROM devices WHERE device_id = $1", [device.mac]);
                     let name = dbRes.rows[0]?.custom_name ?? null;
                     if (!name)
                         name = dhcpMap[device.mac] ?? null;
@@ -107,19 +112,24 @@ exports.resolvers = {
                     }
                     if (!name)
                         name = `Unknown (${device.ip})`;
+                    // 🔥 FAST ONLINE CHECK (NO EXTRA SSH)
                     const now = Date.now();
+                    // detect via neigh (fast online trigger)
                     let detectedNow = neighResult.includes(device.mac) &&
                         !neighResult.includes(`${device.mac} FAILED`);
+                    // 🔥 IF NOT SURE → DO 1 FAST PING (ONLY WHEN NEEDED)
                     if (!detectedNow) {
-                        const ping = await (0, router_js_1.execRouterCommand)(`ping -c 1 -W 1 ${device.ip}`);
+                        const ping = await execRouterCommand(`ping -c 1 -W 1 ${device.ip}`);
                         if (!ping.includes("100% packet loss")) {
                             detectedNow = true;
                         }
                     }
+                    // update last seen
                     if (detectedNow) {
                         lastSeenMap[device.mac] = now;
                     }
-                    const OFFLINE_THRESHOLD = 1000;
+                    // 🔥 CONFIG (tune this!)
+                    const OFFLINE_THRESHOLD = 1000; // 1 second
                     const lastSeenTs = lastSeenMap[device.mac] || 0;
                     const recentlySeen = now - lastSeenTs < OFFLINE_THRESHOLD;
                     const isAlive = recentlySeen;
@@ -136,7 +146,8 @@ exports.resolvers = {
                         isBlocked: blocked,
                     };
                 }));
-                await Promise.allSettled(devices.map(d => db_js_1.pool.query(`
+                // 🔥 9. SAVE (AUTO DETECT)
+                await Promise.allSettled(devices.map(d => pool.query(`
       INSERT INTO devices (device_id, custom_name)
       VALUES ($1, $2)
       ON CONFLICT (device_id)
@@ -153,30 +164,30 @@ exports.resolvers = {
     },
     Mutation: {
         login: async (_, { username, password }) => {
-            const res = await db_js_1.pool.query('SELECT * FROM users WHERE username = $1', [username]);
+            const res = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
             const user = res.rows[0];
             assertUser(user);
-            const isValid = await bcrypt_1.default.compare(password, user.password);
+            const isValid = await bcrypt.compare(password, user.password);
             if (!isValid)
                 throw new Error('Invalid credentials');
-            const token = jsonwebtoken_1.default.sign({ userId: user.id, role: user.role }, SECRET, { expiresIn: '1d' });
+            const token = jwt.sign({ userId: user.id, role: user.role }, SECRET, { expiresIn: '1d' });
             return { token, user: user };
         },
         signup: async (_, { username, password, StudentId }) => {
-            const existing = await db_js_1.pool.query('SELECT * FROM users WHERE username = $1 OR "StudentId" = $2', [username, StudentId]);
+            const existing = await pool.query('SELECT * FROM users WHERE username = $1 OR "StudentId" = $2', [username, StudentId]);
             if (existing.rows.length > 0) {
                 throw new Error('Already exists');
             }
-            const hashedPassword = await bcrypt_1.default.hash(password, 10);
-            const result = await db_js_1.pool.query('INSERT INTO users (username, password, "StudentId") VALUES ($1, $2, $3) RETURNING *', [username, hashedPassword, StudentId]);
+            const hashedPassword = await bcrypt.hash(password, 10);
+            const result = await pool.query('INSERT INTO users (username, password, "StudentId") VALUES ($1, $2, $3) RETURNING *', [username, hashedPassword, StudentId]);
             const user = result.rows[0];
             assertUser(user);
-            const token = jsonwebtoken_1.default.sign({ userId: user.id, role: user.role }, SECRET, { expiresIn: '1d' });
+            const token = jwt.sign({ userId: user.id, role: user.role }, SECRET, { expiresIn: '1d' });
             return { token, user: user };
         },
         renameDevice: async (_, { mac, name }) => {
             const normalizedMac = normalizeMac(mac);
-            await db_js_1.pool.query(`
+            await pool.query(`
     INSERT INTO devices (device_id, custom_name)
     VALUES ($1, $2)
     ON CONFLICT (device_id)
@@ -185,15 +196,15 @@ exports.resolvers = {
             return { success: true };
         },
         blockDevice: async (_, { mac }, context) => {
-            requireAdmin(context);
+            requireAdmin(context); // 🔥 IMPORTANT
             const normalizedMac = normalizeMac(mac);
-            await (0, router_js_1.execRouterCommand)(`ipset add GL_MAC_BLOCK ${normalizedMac} -exist`);
+            await execRouterCommand(`ipset add GL_MAC_BLOCK ${normalizedMac} -exist`);
             return true;
         },
         unblockDevice: async (_, { mac }, context) => {
-            requireAdmin(context);
+            requireAdmin(context); // 🔥 IMPORTANT
             const normalizedMac = normalizeMac(mac);
-            await (0, router_js_1.execRouterCommand)(`ipset del GL_MAC_BLOCK ${normalizedMac}`);
+            await execRouterCommand(`ipset del GL_MAC_BLOCK ${normalizedMac}`);
             return true;
         }
     },
