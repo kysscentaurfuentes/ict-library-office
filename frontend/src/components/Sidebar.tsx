@@ -27,6 +27,7 @@ export default function Sidebar({ hoveredFromParent, setHoverFromParent }: Sideb
     { name: 'Printing Services', icon: <Printer size={20} />, path: '/printer' },
     { name: 'Feedback', icon: <MessageSquare size={20} />, path: '/feedback' },
     { name: 'About', icon: <Info size={20} />, path: '/about' },
+    // { name: 'Resume', icon: <Info size={20} />, path: '/resume' },
   ];
 
   return (
@@ -77,7 +78,7 @@ export default function Sidebar({ hoveredFromParent, setHoverFromParent }: Sideb
       </div>
       
       <div 
-        onClick={() => { localStorage.clear(); window.location.href = '/signin'; }}
+        onClick={() => { localStorage.clear(); window.location.hash = '#/signin'; }}
         onMouseEnter={() => setHoverFromParent?.('Log Out')}
         onMouseLeave={() => setHoverFromParent?.(null)}
         style={{ 

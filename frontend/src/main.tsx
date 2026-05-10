@@ -10,7 +10,10 @@ import { setContext } from '@apollo/client/link/context'
 
 // 🔗 HTTP connection
 const httpLink = new HttpLink({
-  uri: 'http://192.168.8.236:4000/graphql',
+  uri: 'https://dioxide-gibberish-enforcer.ngrok-free.dev/graphql',
+  headers: {
+    'ngrok-skip-browser-warning': 'true',
+  },
 })
 
 // 🔐 Auth middleware (adds JWT automatically)

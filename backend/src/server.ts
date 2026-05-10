@@ -28,11 +28,15 @@ import { fileURLToPath } from "url";
 // Setup require for ESM
 const require = createRequire(import.meta.url);
 // ✅ Gagamitin natin ang 'expressMiddleware' na variable name dito
-const { expressMiddleware } = require('@apollo/server/express4');
+import { expressMiddleware } from "@apollo/server/express4";
 
 dotenv.config();
 const app = express();
+app.set('trust proxy', 1);
 app.use(helmet());
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 const limiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
@@ -135,10 +139,21 @@ async function startServer() {
   const httpServer = http.createServer(app);
 
   // CORS - allow all devices on network
-  app.use(cors({
-origin: process.env.CORS_ORIGIN,
-credentials: true,
-  }));
+const allowedOrigins = process.env.CORS_ORIGIN
+  ?.split(',')
+  .map(o => o.trim()) || [];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("CORS blocked: " + origin));
+    }
+  },
+  credentials: true,
+}));
+
   app.use("/api", shareRoutes);
   app.use("/api/scan", rateLimit({
   windowMs: 60 * 1000,
@@ -434,8 +449,8 @@ python_stream_url: process.env.PUBLIC_PYTHON_URL,
       last_updated: stats ? stats.mtime : null,
       node_server: process.env.PUBLIC_URL,
       python_server: `${process.env.PUBLIC_URL}:5000`,
-      hls_url_via_node: `process.env.PUBLIC_URL/hls/stream.m3u8`,
-      hls_url_direct_python: `process.env.PUBLIC_URL:5000/hls/stream.m3u8`
+      hls_url_via_node: `${process.env.PUBLIC_URL}/hls/stream.m3u8`,
+hls_url_direct_python: `${process.env.PUBLIC_URL}:5000/hls/stream.m3u8`,
     });
   });
 

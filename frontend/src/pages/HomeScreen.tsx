@@ -95,7 +95,7 @@ export default function HomeScreen() {
   const handleAction = (path: string) => {
     if (path === 'logout') {
       localStorage.clear();
-      window.location.href = '/signin';
+      window.location.hash = '#/signin';
     } else if (path !== '#') {
       navigate(path);
     }

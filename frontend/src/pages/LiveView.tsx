@@ -10,8 +10,8 @@ export default function LiveView() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
 
-  const STREAM_URL = 'http://192.168.8.236:5000/hls/stream.m3u8';
-  const FACES_API = 'http://192.168.8.236:5000/faces';
+  const STREAM_URL = 'https://dioxide-gibberish-enforcer.ngrok-free.dev/hls/stream.m3u8';
+  const FACES_API = 'https://dioxide-gibberish-enforcer.ngrok-free.dev/faces';
 
   // Load dark mode preference
   useEffect(() => {

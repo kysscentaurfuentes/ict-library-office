@@ -26,7 +26,7 @@ const LOG = {
 // ==========================
 // 🔐 ENV
 // ==========================
-const API_URL = process.env.API_URL || "http://192.168.8.236:4000/api/scan";
+const API_URL = process.env.API_URL || "http://https://dioxide-gibberish-enforcer.ngrok-free.dev/api/scan";
 
 const DEVICE_FILE = path.join(process.cwd(), "device_id.txt");
 

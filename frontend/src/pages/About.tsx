@@ -168,9 +168,9 @@ const [imageError, setImageError] = useState(false);
             <div className="developer-profile">
               <div className="developer-avatar">
                 {!imageError ? (
- <img 
-  src="/tor.jpg" 
-  alt="Kyss Centaur Fuentes" 
+<img
+  src={import.meta.env.BASE_URL + "tor.jpg"}
+  alt="Kyss Centaur Fuentes"
   className="developer-image"
   onError={() => setImageError(true)}
 />

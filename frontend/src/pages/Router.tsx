@@ -53,6 +53,7 @@ export default function Router() {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [lastUpdated, setLastUpdated] = useState<string>(new Date().toLocaleTimeString());
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
   const savedDarkMode = localStorage.getItem('darkMode');
@@ -67,6 +68,11 @@ export default function Router() {
     document.body.style.backgroundColor = bgDay;
   }
 }, [isDarkMode]);
+
+useEffect(() => {
+  const role = localStorage.getItem('role');
+  setUserRole(role);
+}, []);
 
   // Load dark mode preference
   useEffect(() => {
@@ -429,6 +435,7 @@ export default function Router() {
                     formatTime={formatTime}
                     onToggleBlock={handleToggleBlock}
                     isDarkMode={isDarkMode}
+                    userRole={userRole}
                   />
                 ))
               ) : (
@@ -489,6 +496,7 @@ export default function Router() {
                     formatTime={formatTime}
                     onToggleBlock={handleToggleBlock}
                     isDarkMode={isDarkMode}
+                    userRole={userRole}
                   />
                 ))
               ) : (
@@ -552,7 +560,7 @@ export default function Router() {
 }
 
 // 🔥 DEVICE CARD - Improved Design
-function DeviceCard({ device, formatTime, onToggleBlock, isDarkMode }: any) {
+function DeviceCard({ device, formatTime, onToggleBlock, isDarkMode, userRole }: any) {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -636,29 +644,31 @@ function DeviceCard({ device, formatTime, onToggleBlock, isDarkMode }: any) {
         </div>
 
         {/* BUTTON */}
-        <button
-          onClick={() => onToggleBlock(device)}
-          style={{
-            padding: '6px 14px',
-            cursor: 'pointer',
-            backgroundColor: device.isBlocked ? '#22c55e' : '#ef4444',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '12px',
-            fontWeight: '500',
-            transition: 'all 0.2s ease',
-            opacity: isHovered ? 1 : 0.85
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'scale(1.02)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'scale(1)';
-          }}
-        >
-          {device.isBlocked ? 'Unblock' : 'Block'}
-        </button>
+        {userRole === 'admin' && (
+  <button
+    onClick={() => onToggleBlock(device)}
+    style={{
+      padding: '6px 14px',
+      cursor: 'pointer',
+      backgroundColor: device.isBlocked ? '#22c55e' : '#ef4444',
+      color: 'white',
+      border: 'none',
+      borderRadius: '8px',
+      fontSize: '12px',
+      fontWeight: '500',
+      transition: 'all 0.2s ease',
+      opacity: isHovered ? 1 : 0.85
+    }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.transform = 'scale(1.02)';
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.transform = 'scale(1)';
+    }}
+  >
+    {device.isBlocked ? 'Unblock' : 'Block'}
+  </button>
+)}
       </div>
     </div>
   );

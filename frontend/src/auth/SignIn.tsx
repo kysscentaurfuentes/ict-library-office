@@ -44,8 +44,9 @@ export default function SignIn() {
       if (res.data?.login.token) {
         localStorage.setItem('token', res.data.login.token);
         localStorage.setItem('studentId', res.data.login.user.StudentId);
+        localStorage.setItem('role', res.data.login.user.role);
         console.log("Login successful! Student ID saved:", res.data.login.user.StudentId);
-        window.location.href = '/homescreen';
+        window.location.hash = '#/homescreen';
       }
     } catch (err) {
       console.error("Login failed:", err);

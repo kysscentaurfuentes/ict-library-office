@@ -1,5 +1,5 @@
 // frontend/src/routes/approuter.tsx
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 import Router from '../pages/Router';
 import LiveView from '../pages/LiveView';
@@ -15,10 +15,11 @@ import SoftwareAccess from '../pages/SoftwareAccess'; // 👉 ADD THIS
 import Printer from '../pages/Printer'; // 👉 ADD THIS
 import Feedback from '../pages/Feedback'; // 👉 ADD THIS
 import About from '../pages/About'; // 👉 ADD THIS
+import Resume from '../pages/Resume';
 
 export default function AppRouter() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
 
         {/* Default route */}
@@ -28,7 +29,7 @@ export default function AppRouter() {
         <Route path="/router" element={<Router />} />
         <Route path="/live" element={<LiveView />} />
         <Route path="/homescreen" element={<HomeScreen />} />
-        <Route path="/qr-scanner" element={<QrCodeScanner />} /> {/* ✅ FIX */}
+        <Route path="/qr-scanner" element={<QrCodeScanner />} />
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/face-detect" element={<FaceDetect />} />
@@ -39,6 +40,7 @@ export default function AppRouter() {
         <Route path="/printer" element={<Printer />} />
         <Route path="/feedback" element={<Feedback />} />
         <Route path="/about" element={<About />} />
+        {/* <Route path="/resume" element={<Resume />} /> */}
         {/* 404 */}
         <Route path="*" element={
           <div style={{ color: 'white', padding: '20px' }}>
@@ -47,6 +49,6 @@ export default function AppRouter() {
         } />
 
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
