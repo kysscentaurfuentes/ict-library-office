@@ -6,14 +6,27 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const SECRET = process.env.JWT_SECRET as string;
+if (!process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET missing");
+}
+
+const SECRET = process.env.JWT_SECRET;
 
 interface UserRow {
   id: number;
-  username: string;
+  first_name: string;
+  middle_name: string | null;
+  last_name: string;
+  email: string;
   password: string;
   StudentId: string;
+  course: string;
+  school_id_image?: string;
   role: string;
+
+  suffix?: string;
+suffix_locked?: boolean;
+phone_number?: string;
 }
 
 type Context = {
@@ -28,15 +41,20 @@ function assertUser(user: UserRow | undefined): asserts user is UserRow {
 }
 
 function requireAuth(context: Context) {
-  if (!context.authUser) throw new Error('Not authenticated');
+  if (!context.authUser) {
+    throw new Error('Not authenticated');
+  }
+
   return context.authUser;
 }
 
 function requireAdmin(context: Context) {
   const user = requireAuth(context);
+
   if (user.role !== 'admin') {
     throw new Error('Unauthorized: Admin only');
   }
+
   return user;
 }
 
@@ -48,18 +66,76 @@ function isValidMac(mac: string) {
   return /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/i.test(mac);
 }
 
+function normalizeIdentifier(identifier: string) {
+  return identifier.trim().toLowerCase();
+}
+
+function normalizeStudentId(id: string) {
+  const clean = id.replace(/-/g, '');
+
+  if (clean.length === 7) {
+    return `${clean.slice(0,3)}-${clean.slice(3)}`;
+  }
+
+  return id;
+}
+
+function isStudentId(value: string) {
+  return /^\d{3}-?\d+$/.test(value);
+}
+
+function buildEmail(identifier: string) {
+  const clean = normalizeIdentifier(identifier);
+
+  if (clean.includes('@')) {
+    return clean;
+  }
+
+  return `${clean}@carsu.edu.ph`;
+}
+
 export const resolvers = {
   Query: {
     hello: () => "Backend is working with Router 🚀",
 
     me: async (_: any, __: any, context: Context) => {
       const auth = requireAuth(context);
+
       const res = await pool.query<UserRow>(
-        'SELECT id, username, "StudentId", role FROM users WHERE id = $1',
+        `
+        SELECT
+  id,
+  first_name,
+  middle_name,
+  last_name,
+  email,
+  "StudentId",
+  course,
+  school_id_image,
+  role,
+  suffix,
+  suffix_locked,
+  phone_number,
+  birthdate,
+age,
+gender,
+nationality,
+user_classification,
+student_type,
+college_department,
+program,
+year_level,
+profile_picture
+FROM users
+WHERE id = $1
+        `,
         [auth.userId]
       );
+
       const user = res.rows[0];
+
       assertUser(user);
+
       return user;
     },
 
@@ -82,125 +158,406 @@ export const resolvers = {
   },
 
   Mutation: {
-    login: async (_: any, { username, password }: any) => {
-      const res = await pool.query<UserRow>(
-        'SELECT * FROM users WHERE username = $1',
-        [username]
+    login: async (_: any, { identifier, password }: any) => {
+
+  console.log("RAW IDENTIFIER:", identifier);
+
+  const cleanIdentifier = normalizeIdentifier(identifier);
+
+  console.log("CLEAN IDENTIFIER:", cleanIdentifier);
+
+  console.log("IS STUDENT ID:", isStudentId(cleanIdentifier));
+
+  let query = '';
+  let value = '';
+
+  if (isStudentId(cleanIdentifier)) {
+
+    query = `
+      SELECT * FROM users
+      WHERE TRIM("StudentId") = TRIM($1)
+    `;
+
+    value = cleanIdentifier;
+
+  } else {
+
+    query = `
+      SELECT * FROM users
+      WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))
+    `;
+
+    value = buildEmail(cleanIdentifier);
+  }
+
+  console.log("LOGIN VALUE:", value);
+
+  const res = await pool.query<UserRow>(query, [value]);
+
+  console.log("LOGIN RESULT:", res.rows);
+
+  const user = res.rows[0];
+
+  assertUser(user);
+
+      const isValid = await bcrypt.compare(
+        password,
+        user.password
       );
 
-      const user = res.rows[0];
-      assertUser(user);
-
-      const isValid = await bcrypt.compare(password, user.password);
-      if (!isValid) throw new Error('Invalid credentials');
-
-      const token = jwt.sign(
-        { userId: user.id, role: user.role },
-        SECRET,
-        { expiresIn: '1d' }
-      );
-
-      return {
-        token,
-        user: {
-          id: user.id,
-          username: user.username,
-          StudentId: user.StudentId,
-          role: user.role,
-        }
-      };
-    },
-
-    signup: async (_: any, { username, password, StudentId }: any) => {
-      const existing = await pool.query(
-        'SELECT * FROM users WHERE username = $1 OR "StudentId" = $2',
-        [username, StudentId]
-      );
-
-      if (existing.rows.length > 0) {
-        throw new Error('Already exists');
+      if (!isValid) {
+        throw new Error('Invalid credentials');
       }
 
-      const hashedPassword = await bcrypt.hash(password, 10);
-
-      const result = await pool.query<UserRow>(
-        'INSERT INTO users (username, password, "StudentId") VALUES ($1, $2, $3) RETURNING *',
-        [username, hashedPassword, StudentId]
-      );
-
-      const user = result.rows[0];
-      assertUser(user);
-
       const token = jwt.sign(
-        { userId: user.id, role: user.role },
+        {
+          userId: user.id,
+          role: user.role,
+        },
         SECRET,
-        { expiresIn: '1d' }
+        {
+          expiresIn: '1d',
+        }
       );
 
-      return {
-        token,
-        user: {
-          id: user.id,
-          username: user.username,
-          StudentId: user.StudentId,
-          role: user.role,
-        }
-      };
+     return {
+  token,
+  user: {
+    id: user.id,
+    first_name: user.first_name,
+    middle_name: user.middle_name,
+    last_name: user.last_name,
+    email: user.email,
+    StudentId: user.StudentId,
+    course: user.course,
+    school_id_image: user.school_id_image,
+    role: user.role,
+  }
+};
     },
 
-    renameDevice: async (_: any, { mac, name }: any, context: Context) => {
+    signup: async (
+  _: any,
+  {
+    first_name,
+    middle_name,
+    last_name,
+    email,
+    password,
+    StudentId,
+    course,
+    school_id_image
+  }: any
+) => {
+  if (!/^\d{3}-\d{5}$/.test(StudentId)) {
+  throw new Error("Invalid Student ID format");
+}
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const existing = await pool.query(
+    `
+    SELECT * FROM users
+    WHERE LOWER(email) = LOWER($1)
+OR "StudentId" = $2
+    `,
+    [normalizedEmail, StudentId]
+  );
+
+  if (existing.rows.length > 0) {
+    throw new Error("Account already exists");
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  const result = await pool.query<UserRow>(
+    `
+    INSERT INTO users (
+      first_name,
+      middle_name,
+      last_name,
+      email,
+      password,
+      "StudentId",
+      course,
+      school_id_image,
+      role
+    )
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    RETURNING *
+    `,
+    [
+      first_name,
+      middle_name,
+      last_name,
+      normalizedEmail,
+      hashedPassword,
+      StudentId,
+      course,
+      school_id_image,
+      "student"
+    ]
+  );
+
+  const user = result.rows[0];
+
+  const token = jwt.sign(
+    {
+      userId: user.id,
+      role: user.role,
+    },
+    SECRET,
+    {
+      expiresIn: "1d",
+    }
+  );
+
+  return {
+    token,
+    user
+  };
+},
+
+updateProfilePicture: async (
+  _: any,
+  { profile_picture }: { profile_picture: string },
+  context: Context
+) => {
+
+  const auth = requireAuth(context);
+
+  const updated = await pool.query<UserRow>(
+    `
+    UPDATE users
+    SET profile_picture = $1
+    WHERE id = $2
+    RETURNING
+      id,
+      first_name,
+      middle_name,
+      last_name,
+      email,
+      "StudentId",
+      course,
+      school_id_image,
+      profile_picture,
+      role
+    `,
+    [profile_picture, auth.userId]
+  );
+
+  return updated.rows[0];
+},
+
+updateUserInformation: async (
+  _: any,
+  {
+    phone_number,
+    suffix,
+    birthdate,
+    age,
+    gender,
+    nationality,
+    user_classification,
+    student_type,
+    college_department,
+    program,
+    year_level
+  }: {
+    phone_number: string;
+    suffix?: string;
+    birthdate?: string;
+    age?: number;
+    gender?: string;
+    nationality?: string;
+    user_classification?: string;
+    student_type?: string;
+    college_department?: string;
+    program?: string;
+    year_level?: string;
+  },
+  context: Context
+) => {
+
+  const auth = requireAuth(context);
+
+  // get current user
+  const existingUser = await pool.query<UserRow>(
+    `
+    SELECT *
+    FROM users
+    WHERE id = $1
+    `,
+    [auth.userId]
+  );
+
+  const user = existingUser.rows[0];
+
+  assertUser(user);
+
+  // prevent editing suffix again
+  let finalSuffix = user.suffix;
+  let finalLocked = user.suffix_locked;
+
+  if (!user.suffix_locked && suffix) {
+    finalSuffix = suffix;
+    finalLocked = true;
+  }
+
+  const updated = await pool.query<UserRow>(
+    `
+    UPDATE users
+SET
+  phone_number = $1,
+  suffix = $2,
+  suffix_locked = $3,
+
+  birthdate = $4,
+  age = $5,
+  gender = $6,
+  nationality = $7,
+  user_classification = $8,
+  student_type = $9,
+  college_department = $10,
+  program = $11,
+  year_level = $12
+
+WHERE id = $13
+    RETURNING
+      id,
+      first_name,
+      middle_name,
+      last_name,
+      email,
+      "StudentId",
+      course,
+      school_id_image,
+      role,
+      suffix,
+      suffix_locked,
+      phone_number,
+      birthdate,
+      age,
+      gender,
+      nationality,
+      user_classification,
+      student_type,
+      college_department,
+      program,
+      year_level
+    `,
+    [
+  phone_number,
+  finalSuffix,
+  finalLocked,
+
+  birthdate,
+  age,
+  gender,
+  nationality,
+  user_classification,
+  student_type,
+  college_department,
+  program,
+  year_level,
+
+  auth.userId
+]
+  );
+
+  return updated.rows[0];
+},
+
+    renameDevice: async (
+      _: any,
+      { mac, name }: any,
+      context: Context
+    ) => {
+
       requireAuth(context);
-      
+
       const normalizedMac = normalizeMac(mac);
 
       await pool.query(
-        `INSERT INTO devices (device_id, custom_name)
-         VALUES ($1, $2)
-         ON CONFLICT (device_id)
-         DO UPDATE SET custom_name = EXCLUDED.custom_name`,
+        `
+        INSERT INTO devices (
+          device_id,
+          custom_name
+        )
+        VALUES ($1, $2)
+
+        ON CONFLICT (device_id)
+
+        DO UPDATE SET
+        custom_name = EXCLUDED.custom_name
+        `,
         [normalizedMac, name]
       );
 
-      return { success: true };
+      return {
+        success: true
+      };
     },
 
-    blockDevice: async (_: any, { mac }: { mac: string }, context: Context) => {
+    blockDevice: async (
+      _: any,
+      { mac }: { mac: string },
+      context: Context
+    ) => {
+
       requireAdmin(context);
 
       const normalizedMac = normalizeMac(mac);
 
       if (!isValidMac(normalizedMac)) {
-        throw new Error("Invalid MAC address");
+        throw new Error('Invalid MAC address');
       }
 
-      // Insert command into commands table for agent to process
       await pool.query(
-        `INSERT INTO commands (type, mac, created_at)
-         VALUES ($1, $2, NOW())
-         ON CONFLICT (mac, type) 
-         DO NOTHING`,
-        ["block", normalizedMac]
+        `
+        INSERT INTO commands (
+          type,
+          mac,
+          created_at
+        )
+        VALUES ($1, $2, NOW())
+
+        ON CONFLICT (mac, type)
+        DO NOTHING
+        `,
+        ['block', normalizedMac]
       );
 
       return true;
     },
 
-    unblockDevice: async (_: any, { mac }: { mac: string }, context: Context) => {
+    unblockDevice: async (
+      _: any,
+      { mac }: { mac: string },
+      context: Context
+    ) => {
+
       requireAdmin(context);
 
       const normalizedMac = normalizeMac(mac);
 
       if (!isValidMac(normalizedMac)) {
-        throw new Error("Invalid MAC address");
+        throw new Error('Invalid MAC address');
       }
 
-      // Insert command into commands table for agent to process
       await pool.query(
-        `INSERT INTO commands (type, mac, created_at)
-         VALUES ($1, $2, NOW())
-         ON CONFLICT (mac, type) 
-         DO NOTHING`,
-        ["unblock", normalizedMac]
+        `
+        INSERT INTO commands (
+          type,
+          mac,
+          created_at
+        )
+        VALUES ($1, $2, NOW())
+
+        ON CONFLICT (mac, type)
+        DO NOTHING
+        `,
+        ['unblock', normalizedMac]
       );
 
       return true;

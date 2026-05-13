@@ -1,0 +1,32 @@
+.auth-input {
+  color: #ffffff !important;
+}
+
+.auth-input::placeholder {
+  color: rgba(255,255,255,0.55) !important;
+  opacity: 1 !important;
+}
+
+.auth-input::-webkit-input-placeholder {
+  color: rgba(255,255,255,0.55) !important;
+}
+
+.auth-input:-ms-input-placeholder {
+  color: rgba(255,255,255,0.55) !important;
+}
+
+.auth-input::-ms-input-placeholder {
+  color: rgba(255,255,255,0.55) !important;
+}
+
+.auth-select option {
+  background: #0b1120;
+  color: white;
+}
+
+.auth-select option:hover,
+.auth-select option:checked,
+.auth-select option:focus {
+  background: #93c5fd;
+  color: #000;
+}

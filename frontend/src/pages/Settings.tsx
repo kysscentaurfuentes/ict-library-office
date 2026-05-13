@@ -1,8 +1,78 @@
 // frontend/src/pages/Settings.tsx
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
+import { gql } from '@apollo/client';
+import { useQuery, useMutation } from '@apollo/client/react';
 
-// Types
+const GET_ME = gql`
+query GetMe {
+  me {
+    first_name
+    middle_name
+    last_name
+    email
+    StudentId
+    role
+
+    suffix
+    suffix_locked
+    phone_number
+
+    birthdate
+    age
+    gender
+    nationality
+
+    user_classification
+    student_type
+    college_department
+
+    course
+    program
+    year_level
+  }
+}
+`;
+
+const UPDATE_USER_INFORMATION = gql`
+mutation UpdateUserInformation(
+  $phone_number: String!
+  $suffix: String
+
+  $birthdate: String
+  $age: Int
+  $gender: String
+  $nationality: String
+  $user_classification: String
+  $student_type: String
+  $college_department: String
+  $course: String
+  $program: String
+  $year_level: String
+) {
+  updateUserInformation(
+    phone_number: $phone_number
+    suffix: $suffix
+
+    birthdate: $birthdate
+    age: $age
+    gender: $gender
+    nationality: $nationality
+    user_classification: $user_classification
+    student_type: $student_type
+    college_department: $college_department
+    course: $course
+    program: $program
+    year_level: $year_level
+  ) {
+    id
+    phone_number
+    suffix
+    gender
+  }
+}
+`;
+
 interface LinkedAccount {
   id: string;
   provider: string;
@@ -10,146 +80,357 @@ interface LinkedAccount {
   linkedAt: string;
 }
 
+interface UserInfo {
+  firstName: string;
+  middleName: string;
+  lastName: string;
+
+  email: string;
+  phoneNumber: string;
+
+  suffix: string;
+  suffixLocked: boolean;
+
+  nationality: string;
+
+  birthdate: string;
+  age: number;
+  gender: string;
+
+  studentType: string;
+  collegeDepartment: string;
+
+  course: string;
+  program: string;
+  yearLevel: string;
+
+  userClassification: string;
+}
+
+const suffixOptions = [
+  '',
+  'Jr.',
+  'Sr.',
+  'II',
+  'III',
+  'IV',
+  'V',
+  'VI',
+  'PhD',
+  'MD',
+  'DDS',
+  'DVM',
+  'CPA',
+  'RN',
+  'Esq.',
+];
+
 const Settings: React.FC = () => {
-  // State variables
+interface GetMeData {
+  me: {
+    first_name: string;
+    middle_name: string;
+    last_name: string;
+    email: string;
+    StudentId: string;
+    role: string;
+
+    suffix?: string;
+    suffix_locked?: boolean;
+    phone_number?: string;
+
+    birthdate?: string;
+    gender?: string;
+    nationality?: string;
+
+    student_type?: string;
+    college_department?: string;
+
+    course?: string;
+    program?: string;
+    year_level?: string;
+
+    user_classification?: string;
+  };
+}
+
+const { data } = useQuery<GetMeData>(GET_ME);
+
+  // =========================
+  // Main Settings State
+  // =========================
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean>(false);
   const [selectedFontSize, setSelectedFontSize] = useState<string>('medium');
-  const [notificationSoundVolume, setNotificationSoundVolume] = useState<number>(50);
+  const [notificationSoundVolume, setNotificationSoundVolume] =
+    useState<number>(50);
   const [successMessage, setSuccessMessage] = useState<string>('');
-  
-  // Change Password Modal
-  const [showChangePasswordModal, setShowChangePasswordModal] = useState<boolean>(false);
+
+  // =========================
+  // Password Modal State
+  // =========================
+  const [showChangePasswordModal, setShowChangePasswordModal] =
+    useState<boolean>(false);
+
   const [currentPassword, setCurrentPassword] = useState<string>('');
   const [newPassword, setNewPassword] = useState<string>('');
-  const [confirmNewPassword, setConfirmNewPassword] = useState<string>('');
-  
-  // Change Information states
+  const [confirmNewPassword, setConfirmNewPassword] =
+    useState<string>('');
+
+  // =========================
+  // Student Information State
+  // =========================
   const [selectedCourse, setSelectedCourse] = useState<string>('');
-  const [selectedYearLevel, setSelectedYearLevel] = useState<string>('1');
-  const [profilePicture, setProfilePicture] = useState<File | null>(null);
-  const [profilePicturePreview, setProfilePicturePreview] = useState<string>('');
-  
-  // Editable user info
-  const [userInfo, setUserInfo] = useState<{ 
-    firstName: string; 
-    lastName: string; 
-    email: string;
-    phoneNumber: string;
-  }>({
-    firstName: 'Juan',
-    lastName: 'Dela Cruz',
-    email: 'juandelacruz@carsu.edu.ph',
-    phoneNumber: ''
-  });
-  
-  // Phone number validation helper
-  const validatePhoneNumber = (value: string): string => {
-    // Remove all non-digit characters
-    const digitsOnly = value.replace(/\D/g, '');
-    // Limit to 10 digits
-    const limitedDigits = digitsOnly.slice(0, 10);
-    return limitedDigits;
-  };
+  const [selectedYearLevel, setSelectedYearLevel] =
+    useState<string>('1');
 
-  const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    const rawValue = e.target.value;
-    // Remove the +63 prefix if user tries to type it manually
-    let cleanedValue = rawValue.replace(/^\+63/, '');
-    const validatedDigits = validatePhoneNumber(cleanedValue);
-    setUserInfo(prev => ({ ...prev, phoneNumber: validatedDigits }));
-  };
+  // =========================
+  // Profile Picture State
+  // =========================
 
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    setUserInfo(prev => ({ ...prev, email: e.target.value }));
-  };
+  const [profilePicturePreview, setProfilePicturePreview] =
+    useState<string>('');
 
-  const handleFirstNameChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    setUserInfo(prev => ({ ...prev, firstName: e.target.value }));
-  };
+  // =========================
+  // User Information State
+  // =========================
+const [userInfo, setUserInfo] = useState<UserInfo>({
+  firstName: '',
+  middleName: '',
+  lastName: '',
 
-  const handleLastNameChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    setUserInfo(prev => ({ ...prev, lastName: e.target.value }));
-  };
+  email: '',
+  phoneNumber: '',
 
-  // Save user info changes
-  const saveUserInfo = async (): Promise<void> => {
-    await updateSetting('user information', userInfo);
-  };
-  
-  // Linked Accounts
+  suffix: '',
+  suffixLocked: false,
+
+  nationality: '',
+
+  birthdate: '',
+  age: 0,
+  gender: '',
+
+  studentType: '',
+  collegeDepartment: '',
+
+  course: '',
+  program: '',
+  yearLevel: '',
+
+  userClassification: '',
+});
+
+  // =========================
+  // Linked Accounts State
+  // =========================
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([
-    { id: '1', provider: 'Google', email: 'user@gmail.com', linkedAt: '2024-01-15' },
-    { id: '2', provider: 'Facebook', email: 'juan.fb@facebook.com', linkedAt: '2024-02-20' },
-    { id: '3', provider: 'Caraga State University', email: 'juandelacruz@carsu.edu.ph', linkedAt: '2024-03-10' },
+    {
+      id: '1',
+      provider: 'Google',
+      email: 'user@gmail.com',
+      linkedAt: '2024-01-15',
+    },
+    {
+      id: '2',
+      provider: 'Facebook',
+      email: 'juan.fb@facebook.com',
+      linkedAt: '2024-02-20',
+    },
+    {
+      id: '3',
+      provider: 'Caraga State University',
+      email: 'juandelacruz@carsu.edu.ph',
+      linkedAt: '2024-03-10',
+    },
   ]);
-  const [showLinkModal, setShowLinkModal] = useState<boolean>(false);
-  const [newAccountProvider, setNewAccountProvider] = useState<string>('Google');
-  const [newAccountEmail, setNewAccountEmail] = useState<string>('');
 
-  // Load saved settings from localStorage on mount
+  const [showLinkModal, setShowLinkModal] =
+    useState<boolean>(false);
+
+  const [newAccountProvider, setNewAccountProvider] =
+    useState<string>('Google');
+
+  const [newAccountEmail, setNewAccountEmail] =
+    useState<string>('');
+
+  // =========================
+  // Load Saved Settings
+  // =========================
   useEffect(() => {
     const savedDarkMode = localStorage.getItem('darkMode');
+    const savedFontSize = localStorage.getItem('fontSize');
+    const savedVolume = localStorage.getItem('notificationVolume');
+    const savedTwoFactor = localStorage.getItem('twoFactorEnabled');
+    const savedUserInfo = localStorage.getItem('userInfo');
+    const savedProfilePicture = localStorage.getItem('profilePicture');
+
+    // Dark Mode
     if (savedDarkMode === 'true') {
       setIsDarkMode(true);
       document.documentElement.classList.add('dark-mode');
       document.body.classList.add('dark-mode');
     }
-    
-    const savedFontSize = localStorage.getItem('fontSize');
+
+    // Font Size
     if (savedFontSize) {
       setSelectedFontSize(savedFontSize);
-      applyFontSizeToAll(savedFontSize);
+      applyFontSize(savedFontSize);
     }
-    
-    const savedVolume = localStorage.getItem('notificationVolume');
+
+    // Volume
     if (savedVolume) {
       setNotificationSoundVolume(parseInt(savedVolume));
     }
-    
-    const savedTwoFactor = localStorage.getItem('twoFactorEnabled');
+
+    // Two Factor
     if (savedTwoFactor === 'true') {
       setTwoFactorEnabled(true);
     }
 
-    // Load saved user info
-    const savedUserInfo = localStorage.getItem('userInfo');
+    // User Information
     if (savedUserInfo) {
       try {
-        const parsed = JSON.parse(savedUserInfo);
-        setUserInfo(prev => ({ ...prev, ...parsed }));
-      } catch (e) {
+        const parsedUserInfo = JSON.parse(savedUserInfo);
+
+        setUserInfo((prev) => ({
+          ...prev,
+          ...parsedUserInfo,
+        }));
+      } catch (error) {
         console.error('Failed to parse saved user info');
+      }
+    }
+
+    // Profile Picture
+    if (savedProfilePicture) {
+      setProfilePicturePreview(savedProfilePicture);
+    }
+
+    // Logged In User
+    const loggedInUser = localStorage.getItem('user');
+
+    if (loggedInUser) {
+      try {
+        const parsedUser = JSON.parse(loggedInUser);
+
+        setUserInfo((prev) => ({
+          ...prev,
+          firstName: parsedUser.first_name || '',
+          middleName: parsedUser.middle_name || '',
+          lastName: parsedUser.last_name || '',
+          email: parsedUser.email || '',
+        }));
+      } catch (error) {
+        console.error('Failed to load logged in user');
       }
     }
   }, []);
 
-  // Save user info to localStorage when it changes
+   const calculateAge = (birthdate: string): number => {
+  if (!birthdate) return 0;
+
+  const today = new Date();
+  const birth = new Date(birthdate);
+
+  let age = today.getFullYear() - birth.getFullYear();
+
+  const monthDifference =
+    today.getMonth() - birth.getMonth();
+
+  if (
+    monthDifference < 0 ||
+    (monthDifference === 0 &&
+      today.getDate() < birth.getDate())
+  ) {
+    age--;
+  }
+
+  return age;
+};
+
+  // =========================
+  // Sync GraphQL User Data
+  // =========================
+useEffect(() => {
+  if (data?.me) {
+
+    const computedAge = calculateAge(
+      data.me.birthdate || ''
+    );
+
+    setUserInfo((prev) => ({
+      ...prev,
+
+      firstName: data.me.first_name || '',
+      middleName: data.me.middle_name || '',
+      lastName: data.me.last_name || '',
+
+      email: data.me.email || '',
+      phoneNumber: data.me.phone_number || '',
+
+      suffix: data.me.suffix || '',
+      suffixLocked: data.me.suffix_locked || false,
+
+      nationality: data.me.nationality || '',
+
+      birthdate: data.me.birthdate || '',
+      age: computedAge,
+      gender: data.me.gender || '',
+
+      studentType: data.me.student_type || '',
+      collegeDepartment:
+        data.me.college_department || '',
+
+      course: data.me.course || '',
+      program: data.me.program || '',
+      yearLevel: data.me.year_level || '',
+
+      userClassification:
+        data.me.user_classification || '',
+    }));
+  }
+}, [data]);
+
+  // =========================
+  // Save User Info
+  // =========================
   useEffect(() => {
     localStorage.setItem('userInfo', JSON.stringify(userInfo));
   }, [userInfo]);
 
-  // Apply font size to entire document including sidebar
-  const applyFontSizeToAll = (size: string): void => {
+  // =========================
+  // Helpers
+  // =========================
+  const applyFontSize = (size: string): void => {
     let fontSizeValue = '14px';
+
     switch (size) {
-      case 'small': fontSizeValue = '12px'; break;
-      case 'large': fontSizeValue = '18px'; break;
-      default: fontSizeValue = '14px'; break;
+      case 'small':
+        fontSizeValue = '12px';
+        break;
+
+      case 'large':
+        fontSizeValue = '18px';
+        break;
+
+      default:
+        fontSizeValue = '14px';
+        break;
     }
+
     document.documentElement.style.fontSize = fontSizeValue;
     document.body.style.fontSize = fontSizeValue;
   };
 
-  const getFontSizeValue = (size: string): string => {
-    switch (size) {
-      case 'small': return '12px';
-      case 'large': return '18px';
-      default: return '14px';
-    }
+  const validatePhoneNumber = (value: string): string => {
+    const digitsOnly = value.replace(/\D/g, '');
+    return digitsOnly.slice(0, 10);
   };
 
-  // Mock API call simulation
+  // =========================
+  // Mock API
+  // =========================
   const mockApiCall = async (data: any): Promise<void> => {
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -159,15 +440,32 @@ const Settings: React.FC = () => {
     });
   };
 
-  const updateSetting = async (key: string, value: any): Promise<void> => {
+  const updateSetting = async (
+    key: string,
+    value: any
+  ): Promise<void> => {
     await mockApiCall({ [key]: value });
+
     setSuccessMessage(`Updated ${key} successfully!`);
-    setTimeout(() => setSuccessMessage(''), 3000);
+
+    setTimeout(() => {
+      setSuccessMessage('');
+    }, 3000);
   };
 
-  const updateThemeSetting = (key: string, value: boolean): void => {
+  // =========================
+  // Theme Settings
+  // =========================
+  const updateThemeSetting = (
+    key: string,
+    value: boolean
+  ): void => {
+    setIsDarkMode(value);
+
     updateSetting(key, value);
+
     localStorage.setItem('darkMode', value.toString());
+
     if (value) {
       document.documentElement.classList.add('dark-mode');
       document.body.classList.add('dark-mode');
@@ -177,85 +475,377 @@ const Settings: React.FC = () => {
     }
   };
 
+  // =========================
+  // Font Size Handler
+  // =========================
   const handleFontSizeChange = (size: string): void => {
     setSelectedFontSize(size);
-    applyFontSizeToAll(size);
+
+    applyFontSize(size);
+
     localStorage.setItem('fontSize', size);
+
     updateSetting('fontSize', size);
   };
 
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+  // =========================
+  // Volume Handler
+  // =========================
+  const handleVolumeChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ): void => {
     const volume = parseInt(e.target.value);
+
     setNotificationSoundVolume(volume);
-    localStorage.setItem('notificationVolume', volume.toString());
+
+    localStorage.setItem(
+      'notificationVolume',
+      volume.toString()
+    );
+
     updateSetting('volume', volume);
   };
 
+  // =========================
+  // Phone Number Handler
+  // =========================
+  const handlePhoneNumberChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ): void => {
+    const rawValue = e.target.value;
+
+    const cleanedValue = rawValue.replace(/^\+63/, '');
+
+    const validatedDigits =
+      validatePhoneNumber(cleanedValue);
+
+    setUserInfo((prev) => ({
+      ...prev,
+      phoneNumber: validatedDigits,
+    }));
+  };
+
+  const handleSuffixChange = (
+  e: React.ChangeEvent<HTMLSelectElement>
+): void => {
+  if (userInfo.suffixLocked) return;
+
+  setUserInfo((prev) => ({
+    ...prev,
+    suffix: e.target.value,
+  }));
+};
+
+  // =========================
+  // Save User Information
+  // =========================
+const [updateUserInformationMutation] =
+  useMutation(UPDATE_USER_INFORMATION);
+
+const saveUserInfo = async (): Promise<void> => {
+  try {
+
+    await updateUserInformationMutation({
+      variables: {
+        phone_number: userInfo.phoneNumber,
+        suffix: userInfo.suffix || null,
+        birthdate: userInfo.birthdate || null,
+        age: userInfo.age || null,
+        gender: userInfo.gender || null,
+        nationality: userInfo.nationality || null,
+        user_classification: userInfo.userClassification || null,
+        student_type: userInfo.studentType || null,
+        college_department: userInfo.collegeDepartment || null,
+        course: userInfo.course || null,
+        program: userInfo.program || null,
+        year_level: userInfo.yearLevel || null,
+      },
+    });
+
+    setSuccessMessage(
+      'User information updated successfully!'
+    );
+
+    setTimeout(() => {
+      setSuccessMessage('');
+    }, 3000);
+
+  } catch (error) {
+
+    console.error(error);
+
+    alert('Failed to update user information');
+  }
+};
+
+  // =========================
+  // Update Password
+  // =========================
   const updatePassword = async (): Promise<void> => {
     if (newPassword !== confirmNewPassword) {
       alert('Passwords do not match!');
       return;
     }
+
     if (newPassword.length < 6) {
       alert('Password must be at least 6 characters');
       return;
     }
-    await mockApiCall({});
+
+    await mockApiCall({
+      currentPassword,
+      newPassword,
+    });
+
     setSuccessMessage('Password updated successfully!');
+
     setShowChangePasswordModal(false);
+
     setCurrentPassword('');
     setNewPassword('');
     setConfirmNewPassword('');
   };
 
-  const handleProfilePictureUpload = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setProfilePicture(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfilePicturePreview(reader.result as string);
-        localStorage.setItem('profilePicture', reader.result as string);
-      };
-      reader.readAsDataURL(file);
-      updateSetting('profilePicture', file.name);
-      setSuccessMessage('Profile picture updated!');
-      setTimeout(() => setSuccessMessage(''), 3000);
+  // =========================
+  // Profile Picture Upload
+  // =========================
+  const handleProfilePictureUpload = async (
+  e: React.ChangeEvent<HTMLInputElement>
+): Promise<void> => {
+
+  try {
+
+    // =========================
+    // 📸 GET FILE
+    // =========================
+    const file =
+      e.target.files?.[0];
+
+    if (!file) {
+      return;
     }
-  };
 
-  const handleUnlinkAccount = async (accountId: string): Promise<void> => {
-    setLinkedAccounts(prev => prev.filter(acc => acc.id !== accountId));
-    await mockApiCall({ unlinkedAccount: accountId });
+    // =========================
+    // 👤 CURRENT USER
+    // =========================
+    const currentUser =
+      JSON.parse(
+        localStorage.getItem("user") || "{}"
+      );
+
+    // =========================
+    // 🎓 GET STUDENT ID
+    // =========================
+    const studentId =
+      currentUser.StudentId;
+
+    if (!studentId) {
+
+      alert(
+        "Student ID not found"
+      );
+
+      return;
+    }
+
+    // =========================
+    // 📦 CREATE FORM DATA
+    // =========================
+    const formData =
+      new FormData();
+
+formData.append(
+  "studentId",
+  studentId
+);
+
+formData.append(
+  "uploadType",
+  "profile-picture"
+);
+
+formData.append(
+  "image",
+  file
+);
+
+    // =========================
+    // 🌐 API URL
+    // =========================
+    const API_BASE_URL =
+      import.meta.env.VITE_API_URL ||
+      "http://localhost:4000";
+
+    // =========================
+    // 🚀 UPLOAD REQUEST
+    // =========================
+    const response =
+      await fetch(
+        `${API_BASE_URL}/api/upload-profile-picture`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+    // =========================
+    // ❌ FAILED
+    // =========================
+    if (!response.ok) {
+
+      const errorData =
+        await response.json();
+
+      throw new Error(
+        errorData.message ||
+        "Upload failed"
+      );
+    }
+
+    // =========================
+    // ✅ SUCCESS RESPONSE
+    // =========================
+    const data =
+      await response.json();
+console.log("UPLOAD RESPONSE:", data);
+    const imageUrl =
+      data.imageUrl;
+
+    // =========================
+    // 🖼 UPDATE UI PREVIEW
+    // =========================
+setProfilePicturePreview(
+  imageUrl
+);
+
+    // =========================
+    // 💾 UPDATE USER OBJECT
+    // =========================
+    const updatedUser = {
+
+      ...currentUser,
+
+      profile_picture:
+        imageUrl,
+    };
+
+    // =========================
+    // 💾 SAVE UPDATED USER
+    // =========================
+    localStorage.setItem(
+      "user",
+      JSON.stringify(updatedUser)
+    );
+
+    window.dispatchEvent(
+  new Event("profilePictureUpdated")
+);
+
+    // =========================
+    // 💾 OPTIONAL LEGACY SAVE
+    // =========================
+    localStorage.setItem(
+      "profilePicture",
+      imageUrl
+    );
+
+    // =========================
+    // ✅ SUCCESS MESSAGE
+    // =========================
+    setSuccessMessage(
+      "Profile picture updated!"
+    );
+
+    setTimeout(() => {
+
+      setSuccessMessage("");
+
+    }, 3000);
+
+  } catch (error: any) {
+
+    console.error(error);
+
+    alert(
+      error.message ||
+      "Failed to upload profile picture"
+    );
+  }
+};
+
+  // =========================
+  // Unlink Account
+  // =========================
+  const handleUnlinkAccount = async (
+    accountId: string
+  ): Promise<void> => {
+    setLinkedAccounts((prev) =>
+      prev.filter((account) => account.id !== accountId)
+    );
+
+    await mockApiCall({
+      unlinkedAccount: accountId,
+    });
+
     setSuccessMessage('Account unlinked successfully!');
-    setTimeout(() => setSuccessMessage(''), 3000);
+
+    setTimeout(() => {
+      setSuccessMessage('');
+    }, 3000);
   };
 
+  // =========================
+  // Link Account
+  // =========================
   const handleLinkAccount = async (): Promise<void> => {
     if (!newAccountEmail) {
       alert('Please enter an email address');
       return;
     }
-    
-    // For CARSU account, validate email ends with @carsu.edu.ph
-    if (newAccountProvider === 'Caraga State University' && !newAccountEmail.endsWith('@carsu.edu.ph')) {
-      alert('CARSU account email must end with @carsu.edu.ph');
+
+    if (
+      newAccountProvider ===
+        'Caraga State University' &&
+      !newAccountEmail.endsWith('@carsu.edu.ph')
+    ) {
+      alert(
+        'CARSU account email must end with @carsu.edu.ph'
+      );
       return;
     }
-    
+
     const newAccount: LinkedAccount = {
       id: Date.now().toString(),
       provider: newAccountProvider,
       email: newAccountEmail,
-      linkedAt: new Date().toISOString().split('T')[0],
+      linkedAt: new Date()
+        .toISOString()
+        .split('T')[0],
     };
-    setLinkedAccounts(prev => [...prev, newAccount]);
-    await mockApiCall({ linkedAccount: newAccount });
-    setSuccessMessage(`${newAccountProvider} account linked successfully!`);
+
+    setLinkedAccounts((prev) => [
+      ...prev,
+      newAccount,
+    ]);
+
+    await mockApiCall({
+      linkedAccount: newAccount,
+    });
+
+    setSuccessMessage(
+      `${newAccountProvider} account linked successfully!`
+    );
+
     setShowLinkModal(false);
+
     setNewAccountEmail('');
-    setTimeout(() => setSuccessMessage(''), 3000);
+
+    setTimeout(() => {
+      setSuccessMessage('');
+    }, 3000);
   };
+
+ 
 
   return (
     <div className={`settings-wrapper ${isDarkMode ? 'dark-mode' : ''}`}>
@@ -274,33 +864,140 @@ const Settings: React.FC = () => {
           <div className="section-card">
             <h3>User Information</h3>
             <div className="form-stack">
-              <div className="form-field">
-                <label>First Name</label>
-                <input 
-                  type="text" 
-                  value={userInfo.firstName} 
-                  onChange={handleFirstNameChange}
-                  placeholder="Enter first name"
-                />
-              </div>
-              <div className="form-field">
-                <label>Last Name</label>
-                <input 
-                  type="text" 
-                  value={userInfo.lastName} 
-                  onChange={handleLastNameChange}
-                  placeholder="Enter last name"
-                />
-              </div>
-              <div className="form-field">
-                <label>Email Address</label>
-                <input 
-                  type="email" 
-                  value={userInfo.email} 
-                  onChange={handleEmailChange}
-                  placeholder="Enter email address"
-                />
-              </div>
+              <div className="name-row">
+  <div className="form-field name-field">
+    <label>First Name</label>
+    <input
+      type="text"
+      value={userInfo.firstName}
+      readOnly
+      disabled
+      className="readonly-input"
+    />
+  </div>
+
+  <div className="form-field name-field">
+    <label>Middle Name</label>
+    <input
+      type="text"
+      value={userInfo.middleName}
+      readOnly
+      disabled
+      className="readonly-input"
+    />
+  </div>
+
+  <div className="form-field name-field">
+    <label>Last Name</label>
+    <input
+      type="text"
+      value={userInfo.lastName}
+      readOnly
+      disabled
+      className="readonly-input"
+    />
+  </div>
+</div>
+
+<div className="form-field">
+  <label>Email Address</label>
+  <input
+    type="email"
+    value={userInfo.email}
+    readOnly
+    disabled
+    className="readonly-input"
+  />
+</div>
+
+<div className="form-field suffix-field">
+  <label>Suffix</label>
+
+  <select
+    value={userInfo.suffix}
+    onChange={handleSuffixChange}
+    disabled={userInfo.suffixLocked}
+    className={
+      userInfo.suffixLocked
+        ? 'readonly-input'
+        : ''
+    }
+  >
+    {suffixOptions.map((suffix) => (
+      <option key={suffix} value={suffix}>
+        {suffix || 'Select suffix'}
+      </option>
+    ))}
+  </select>
+
+  <small className="field-hint">
+    {userInfo.suffixLocked
+      ? 'Suffix can no longer be edited.'
+      : 'Suffix is only editable once.'}
+  </small>
+</div>
+<div className="form-field">
+  <label>Birthdate</label>
+
+  <input
+    type="date"
+    value={userInfo.birthdate}
+    onChange={(e) =>
+      setUserInfo((prev) => ({
+        ...prev,
+        birthdate: e.target.value,
+        age: calculateAge(e.target.value),
+      }))
+    }
+  />
+</div>
+
+<div className="form-field">
+  <label>Age</label>
+
+  <input
+    type="text"
+    value={userInfo.age}
+    readOnly
+    disabled
+    className="readonly-input"
+  />
+</div>
+
+<div className="form-field">
+  <label>Gender</label>
+
+  <select
+    value={userInfo.gender}
+    onChange={(e) =>
+      setUserInfo((prev) => ({
+        ...prev,
+        gender: e.target.value,
+      }))
+    }
+  >
+    <option value="">Select Gender</option>
+    <option value="Male">Male</option>
+    <option value="Female">Female</option>
+    <option value="Other">Other</option>
+  </select>
+</div>
+
+<div className="form-field">
+  <label>Nationality</label>
+
+  <input
+    type="text"
+    value={userInfo.nationality}
+    onChange={(e) =>
+      setUserInfo((prev) => ({
+        ...prev,
+        nationality: e.target.value,
+      }))
+    }
+    placeholder="Filipino"
+  />
+</div>
               <div className="form-field">
                 <label>Phone Number</label>
                 <div className="phone-input-wrapper">
@@ -325,6 +1022,152 @@ const Settings: React.FC = () => {
               </button>
             </div>
           </div>
+
+{/* Academic Information */}
+<div className="section-card">
+  <h3>Academic Information</h3>
+
+  <div className="form-stack">
+
+    <div className="form-field">
+      <label>User Classification</label>
+
+      <select
+        value={userInfo.userClassification}
+        onChange={(e) =>
+          setUserInfo((prev) => ({
+            ...prev,
+            userClassification: e.target.value,
+          }))
+        }
+      >
+        <option value="">
+          Select Classification
+        </option>
+
+        <option value="Student">
+          Student
+        </option>
+
+        <option value="Faculty">
+          Faculty
+        </option>
+
+        <option value="Staff">
+          Staff
+        </option>
+      </select>
+    </div>
+
+    <div className="form-field">
+      <label>Student Type</label>
+
+      <select
+        value={userInfo.studentType}
+        onChange={(e) =>
+          setUserInfo((prev) => ({
+            ...prev,
+            studentType: e.target.value,
+          }))
+        }
+      >
+        <option value="">
+          Select Student Type
+        </option>
+
+        <option value="Regular">
+          Regular
+        </option>
+
+        <option value="Irregular">
+          Irregular
+        </option>
+      </select>
+    </div>
+
+    <div className="form-field">
+      <label>College Department</label>
+
+      <select
+        value={userInfo.collegeDepartment}
+        onChange={(e) =>
+          setUserInfo((prev) => ({
+            ...prev,
+            collegeDepartment: e.target.value,
+          }))
+        }
+      >
+        <option value="">Select Department</option>
+
+        <option value="CAA">CAA</option>
+        <option value="CED">CED</option>
+        <option value="CMNS">CMNS</option>
+        <option value="CHASS">CHASS</option>
+        <option value="CCIS">CCIS</option>
+        <option value="CEGS">CEGS</option>
+        <option value="COFES">COFES</option>
+        <option value="CM">CM</option>
+      </select>
+    </div>
+
+    <div className="form-field">
+      <label>Course</label>
+
+      <input
+        type="text"
+        value={userInfo.course}
+        onChange={(e) =>
+          setUserInfo((prev) => ({
+            ...prev,
+            course: e.target.value,
+          }))
+        }
+        placeholder="Bachelor of Science in Information System"
+      />
+    </div>
+
+    <div className="form-field">
+      <label>Program</label>
+
+      <input
+        type="text"
+        value={userInfo.program}
+        onChange={(e) =>
+          setUserInfo((prev) => ({
+            ...prev,
+            program: e.target.value,
+          }))
+        }
+        placeholder="BSIS"
+      />
+    </div>
+
+    <div className="form-field">
+      <label>Year Level</label>
+
+      <select
+        value={userInfo.yearLevel}
+        onChange={(e) =>
+          setUserInfo((prev) => ({
+            ...prev,
+            yearLevel: e.target.value,
+          }))
+        }
+      >
+        <option value="">
+          Select Year Level
+        </option>
+
+        <option value="1">1st Year</option>
+        <option value="2">2nd Year</option>
+        <option value="3">3rd Year</option>
+        <option value="4">4th Year</option>
+        <option value="5">5th Year and above</option>
+      </select>
+    </div>
+
+  </div>
+</div>
 
           {/* Theme Section */}
           <div className="section-card">
@@ -435,8 +1278,13 @@ const Settings: React.FC = () => {
             <div className="form-stack">
               <label>Edit Course:</label>
               <select 
-                value={selectedCourse} 
-                onChange={(e) => setSelectedCourse(e.target.value)}
+                value={userInfo.course}
+                onChange={(e) =>
+  setUserInfo((prev) => ({
+    ...prev,
+    course: e.target.value,
+  }))
+}
                 className="course-select"
               >
                 <optgroup label="---UNDERGRADUATE OFFERED PROGRAMS---">
@@ -515,7 +1363,7 @@ const Settings: React.FC = () => {
               
               <label>Edit Year Level:</label>
               <select 
-                value={selectedYearLevel} 
+                value={userInfo.yearLevel} 
                 onChange={(e) => setSelectedYearLevel(e.target.value)}
                 className="year-select"
               >
@@ -708,6 +1556,10 @@ const Settings: React.FC = () => {
         .settings-container::-webkit-scrollbar-thumb:hover {
           background: #64748b;
         }
+
+        .suffix-field select {
+  width: 220px;
+}
 
         .dark-mode .settings-container::-webkit-scrollbar-track {
           background: #1e293b;
@@ -1101,6 +1953,47 @@ const Settings: React.FC = () => {
             border-bottom: 1px solid var(--border);
           }
         }
+
+        /* NAME ROW */
+.name-row {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.name-field {
+  flex: 1;
+}
+
+/* READONLY / DISABLED INPUT STYLE */
+.readonly-input {
+  background: #e2e8f0 !important;
+  color: #475569 !important;
+  cursor: not-allowed;
+  opacity: 1 !important;
+}
+
+.readonly-input:disabled {
+  background: #e2e8f0 !important;
+  color: #475569 !important;
+  border: 1px solid #cbd5e1 !important;
+  opacity: 1 !important;
+}
+
+/* DARK MODE readonly */
+.dark-mode .readonly-input,
+.dark-mode .readonly-input:disabled {
+  background: #334155 !important;
+  color: #94a3b8 !important;
+  border: 1px solid #475569 !important;
+}
+
+/* MOBILE RESPONSIVE */
+@media (max-width: 768px) {
+  .name-row {
+    flex-direction: column;
+  }
+}
       `}</style>
     </div>
   );

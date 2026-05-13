@@ -1,11 +1,31 @@
-// backend/src/schema.ts
 export const typeDefs = `#graphql
-  type User {
-    id: ID
-    username: String
-    StudentId: String
-    role: String
-  }
+
+type User {
+  id: ID
+  first_name: String
+  middle_name: String
+  last_name: String
+  email: String
+  StudentId: String
+  course: String
+  school_id_image: String
+  role: String
+
+  suffix: String
+  suffix_locked: Boolean
+  phone_number: String
+
+  birthdate: String
+  age: Int
+  gender: String
+  nationality: String
+  user_classification: String
+  student_type: String
+  college_department: String
+  program: String
+  year_level: String
+  profile_picture: String
+}
 
   type AuthPayload {
     token: String
@@ -32,12 +52,54 @@ export const typeDefs = `#graphql
   }
 
   type Mutation {
-    login(username: String!, password: String!): AuthPayload
-    signup(username: String!, password: String!, StudentId: String!): AuthPayload
-    blockDevice(mac: String!): Boolean
-    unblockDevice(mac: String!): Boolean
-    # 🔥 NEW
-    renameDevice(mac: String!, name: String!): RenameResponse
+  
+    login(
+      identifier: String!,
+      password: String!
+    ): AuthPayload
+
+    signup(
+  first_name: String!,
+  middle_name: String,
+  last_name: String!,
+  email: String!,
+  password: String!,
+  StudentId: String!,
+  course: String!,
+  school_id_image: String
+): AuthPayload
+
+updateProfilePicture(
+  profile_picture: String!
+): User
+
+updateUserInformation(
+  phone_number: String!
+  suffix: String
+
+  birthdate: String
+  age: Int
+  gender: String
+  nationality: String
+  user_classification: String
+  student_type: String
+  college_department: String
+  program: String
+  year_level: String
+): User
+
+    blockDevice(
+      mac: String!
+    ): Boolean
+
+    unblockDevice(
+      mac: String!
+    ): Boolean
+
+    renameDevice(
+      mac: String!,
+      name: String!
+    ): RenameResponse
   }
 `;
 //# sourceMappingURL=schema.js.map

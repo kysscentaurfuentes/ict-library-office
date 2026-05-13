@@ -1,26 +1,46 @@
-// frontend/src/auth/SignUp.tsx
+// frontend/src/pages/SignUp.tsx
+
 import { gql } from '@apollo/client/core';
 import { useMutation } from '@apollo/client/react';
 import AuthForm from '../components/AuthForm';
+import { useDynamicBackground } from '../hooks/useDynamicBackground';
 
 const SIGNUP = gql`
-  mutation Signup($username: String!, $password: String!, $StudentId: String!) {
-    signup(username: $username, password: $password, StudentId: $StudentId) {
-      token
-      user {
-        username
-        StudentId
-        role
-      }
+mutation Signup(
+  $first_name: String!
+  $middle_name: String
+  $last_name: String!
+  $email: String!
+  $password: String!
+  $course: String!
+  $StudentId: String!
+  $school_id_image: String!
+) {
+  signup(
+    first_name: $first_name
+    middle_name: $middle_name
+    last_name: $last_name
+    email: $email
+    password: $password
+    course: $course
+    StudentId: $StudentId
+    school_id_image: $school_id_image
+  ) {
+    token
+    user {
+      first_name
+      StudentId
+      role
     }
   }
+}
 `;
 
 type SignupResponse = {
   signup: {
     token: string;
     user: {
-      username: string;
+      first_name: string;
       StudentId: string;
       role: string;
     };
@@ -28,52 +48,202 @@ type SignupResponse = {
 };
 
 type SignupVariables = {
-  username: string;
+  first_name: string;
+  middle_name: string;
+  last_name: string;
+  email: string;
   password: string;
+  course: string;
   StudentId: string;
+  school_id_image: string;
 };
 
 export default function SignUp() {
-  const [signup, { loading, error }] = useMutation<SignupResponse, SignupVariables>(SIGNUP);
+  const [signup, { loading, error }] =
+    useMutation<
+      SignupResponse,
+      SignupVariables
+    >(SIGNUP);
 
-  const handleSignup = async (username: string, password: string, studentId?: string) => {
-    if (!studentId || studentId.length !== 9) return;
+  const currentBackground =
+    useDynamicBackground();
 
-    try {
-      const res = await signup({
-        variables: { username, password, StudentId: studentId },
-      });
+const handleSignup = async (
+  firstName: string,
+  middleName: string,
+  lastName: string,
+  email: string,
+  password: string,
+  course: string,
+  studentId: string,
+  schoolIdImage: File
+) => {
 
-      if (res.data?.signup.token) {
-        localStorage.setItem('token', res.data.signup.token);
-        localStorage.setItem('studentId', res.data.signup.user.StudentId);
-        window.location.hash = '#/homescreen';
+  if (!studentId || studentId.length !== 9) {
+    return;
+  }
+
+  try {
+
+    // =========================
+    // API BASE
+    // =========================
+    const API_BASE =
+      window.location.hostname === 'localhost'
+        ? import.meta.env.VITE_LOCAL_API
+        : import.meta.env.VITE_NGROK_API;
+
+    // =========================
+    // CREATE FORMDATA
+    // =========================
+    const formData = new FormData();
+
+formData.append(
+  "studentId",
+  studentId
+);
+
+formData.append(
+  "image",
+  schoolIdImage
+);
+
+    // =========================
+    // UPLOAD IMAGE FIRST
+    // =========================
+    const uploadRes = await fetch(
+      `${API_BASE}/api/upload-school-id`,
+      {
+        method: "POST",
+        body: formData,
       }
-    } catch (err) {
-      console.error("Signup failed:", err);
+    );
+    
+    if (!uploadRes.ok) {
+  throw new Error("Upload failed");
+}
+
+    const uploadData =
+      await uploadRes.json();
+
+    const imageUrl =
+      uploadData.imageUrl;
+
+    // =========================
+    // NOW CREATE ACCOUNT
+    // =========================
+    const res = await signup({
+      variables: {
+        first_name: firstName,
+        middle_name: middleName,
+        last_name: lastName,
+        email,
+        password,
+        course,
+        StudentId: studentId,
+        school_id_image: imageUrl,
+      },
+    });
+
+    if (res.data?.signup.token) {
+
+      localStorage.setItem(
+        'token',
+        res.data.signup.token
+      );
+
+      localStorage.setItem(
+        'studentId',
+        res.data.signup.user.StudentId
+      );
+
+      localStorage.setItem(
+        'role',
+        res.data.signup.user.role
+      );
+
+      localStorage.setItem(
+        'userName',
+        res.data.signup.user.first_name
+);
+
+      window.location.hash =
+        '#/homescreen';
     }
-  };
+
+  } catch (err) {
+
+    console.error(
+      'Signup failed:',
+      err
+    );
+
+    localStorage.removeItem(
+      'token'
+    );
+
+    alert("Signup failed");
+  }
+};
 
   return (
-    <div style={{ 
-      height: '100vh', 
-      width: '100vw', 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      background: '#0f172a', // Solid background color
-      position: 'fixed',
-      top: 0,
-      left: 0
-    }}>
-      <AuthForm
-        title="Sign Up"
-        buttonText="Create Account"
-        onSubmit={handleSignup}
-        loading={loading}
-        error={error?.message}
-        mode="signup"
+    <div
+      style={{
+        minHeight: '100vh',
+        width: '100%',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: '40px 20px',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      {/* BACKGROUND */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          backgroundImage:
+            currentBackground
+              ? `url(${currentBackground})`
+              : 'none',
+          backgroundSize: 'cover',
+          backgroundPosition:
+            'center',
+        }}
       />
+
+      {/* DARK OVERLAY */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background:
+            'rgba(0,0,0,0.45)',
+        }}
+      />
+
+      {/* CONTENT */}
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 10,
+          width: '100%',
+          display: 'flex',
+          justifyContent:
+            'center',
+        }}
+      >
+        <AuthForm
+          title="SIGN UP"
+          buttonText="Create Account"
+          onSubmit={handleSignup}
+          loading={loading}
+          error={error?.message}
+          mode="signup"
+        />
+      </div>
     </div>
   );
 }

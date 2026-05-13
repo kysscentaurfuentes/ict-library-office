@@ -16,14 +16,40 @@ import helmet from 'helmet';
 import os from 'os';
 import rateLimit from "express-rate-limit";
 import { fileURLToPath } from "url";
+import forgotAccountRoute from './routes/forgotAccount.js';
+import { upload } from "./upload.js";
 // Setup require for ESM
 const require = createRequire(import.meta.url);
 // ✅ Gagamitin natin ang 'expressMiddleware' na variable name dito
-import { expressMiddleware } from "@apollo/server/express4";
+import { expressMiddleware } from "@as-integrations/express5";
 dotenv.config();
 const app = express();
+app.use(cors({
+    origin: (origin, callback) => {
+        if (!origin)
+            return callback(null, true);
+        const allowedOrigins = process.env.CORS_ORIGIN
+            ?.split(',')
+            .map(o => o.trim())
+            .filter(Boolean) || [];
+        const isAllowed = allowedOrigins.includes(origin) ||
+            new URL(origin).hostname === "localhost" || // dev safety
+            new URL(origin).hostname.endsWith(".ngrok-free.app"); // dev safety
+        if (isAllowed) {
+            return callback(null, true);
+        }
+        console.log("❌ BLOCKED ORIGIN:", origin);
+        return callback(null, false); // SAFE BLOCK
+    },
+    credentials: true,
+}));
+app.options("/{*splat}", cors());
 app.set('trust proxy', 1);
-app.use(helmet());
+app.use(helmet({
+    crossOriginResourcePolicy: {
+        policy: "cross-origin",
+    },
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 const limiter = rateLimit({
@@ -31,6 +57,59 @@ const limiter = rateLimit({
     max: 30, // max 30 requests per minute
 });
 app.use(limiter);
+// ==========================
+// 📁 STATIC UPLOADS (for profile pics, school IDs, etc.)
+// ==========================
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const ROOT_DIR = path.resolve(__dirname, "..");
+const UPLOADS_DIR = path.join(ROOT_DIR, "uploads");
+console.log("UPLOADS_DIR:", UPLOADS_DIR);
+console.log("__dirname:", __dirname);
+console.log("ROOT_DIR:", ROOT_DIR);
+app.use("/uploads", (req, res, next) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Methods", "GET, OPTIONS");
+    res.header("Access-Control-Allow-Headers", "*");
+    res.header("Cross-Origin-Resource-Policy", "cross-origin");
+    next();
+});
+app.use("/uploads", express.static(UPLOADS_DIR));
+app.post("/api/upload-school-id", (req, res) => {
+    upload.single("image")(req, res, (err) => {
+        if (err) {
+            return res.status(400).json({
+                message: err.message || "Upload failed",
+            });
+        }
+        const fileReq = req;
+        if (!fileReq.file) {
+            return res.status(400).json({
+                message: "No file uploaded",
+            });
+        }
+        const BASE_URL = process.env.PUBLIC_URL ||
+            `http://${LOCAL_IP}:${PORT}`;
+        console.log("BASE_URL:", BASE_URL);
+        return res.json({
+            imageUrl: `${BASE_URL}/uploads/school-ids/${fileReq.file.filename}`,
+        });
+    });
+});
+app.post("/api/upload-profile-picture", upload.single("image"), (req, res) => {
+    const fileReq = req;
+    if (!fileReq.file) {
+        return res.status(400).json({
+            message: "No file uploaded",
+        });
+    }
+    const BASE_URL = process.env.PUBLIC_URL ||
+        `http://${LOCAL_IP}:${PORT}`;
+    console.log("BASE_URL:", BASE_URL);
+    return res.json({
+        imageUrl: `${BASE_URL}/uploads/profile-pictures/${fileReq.file.filename}`,
+    });
+});
 // ==========================
 // 🎨 LOG COLORS
 // ==========================
@@ -80,9 +159,6 @@ const formatID = (id) => {
 // ==========================
 // 📁 PATH (COMMONJS SAFE)
 // ==========================
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const ROOT_DIR = path.resolve(__dirname, "..");
 const HLS_DIR = path.join(ROOT_DIR, "public", "hls");
 // ==========================
 // ⏱️ DEVICE RATE LIMIT
@@ -117,18 +193,8 @@ async function startServer() {
     // CORS - allow all devices on network
     const allowedOrigins = process.env.CORS_ORIGIN
         ?.split(',')
-        .map(o => o.trim()) || [];
-    app.use(cors({
-        origin: (origin, callback) => {
-            if (!origin || allowedOrigins.includes(origin)) {
-                callback(null, true);
-            }
-            else {
-                callback(new Error("CORS blocked: " + origin));
-            }
-        },
-        credentials: true,
-    }));
+        .map(o => o.trim())
+        .filter(Boolean) || [];
     app.use("/api", shareRoutes);
     app.use("/api/scan", rateLimit({
         windowMs: 60 * 1000,
@@ -150,8 +216,13 @@ async function startServer() {
         const displayID = rawID;
         console.log(`${LOG.cyan}[${time}] SCAN:${LOG.reset} ${displayID}`);
         try {
-            const result = await pool.query(`SELECT username, "StudentId" 
-         FROM users 
+            const result = await pool.query(`SELECT
+first_name,
+middle_name,
+last_name,
+course,
+"StudentId"
+FROM users
          WHERE "StudentId" = $1`, [displayID]);
             if (result.rows.length === 0) {
                 await pool.query(`INSERT INTO scan_logs (student_id, device_id, status, flag, risk_score)
@@ -197,7 +268,7 @@ async function startServer() {
                     return res.status(429).json({ status: "blocked" });
                 }
             }
-            console.log(`${LOG.green}[${time}] SUCCESS:${LOG.reset} ${displayID} - ${user.username}`);
+            console.log(`${LOG.green}[${time}] SUCCESS:${LOG.reset} ${displayID} - ${user.first_name} ${user.last_name}`);
             const nowPH = new Date();
             const hour = new Intl.DateTimeFormat("en-US", {
                 timeZone: "Asia/Manila",
@@ -237,7 +308,7 @@ async function startServer() {
             return res.json({
                 status: finalStatus,
                 student_id: displayID,
-                name: user.username,
+                name: `${user.first_name} ${user.last_name}`,
                 course: user.course || "N/A",
                 time: new Date().toLocaleTimeString(),
                 date: new Date().toLocaleDateString(),
@@ -375,11 +446,12 @@ async function startServer() {
             return { authUser: user };
         },
     }));
+    app.use(forgotAccountRoute);
     // ==========================
     // ▶ START SERVER (listen on all interfaces)
     // ==========================
     await new Promise((resolve) => httpServer.listen({ port: PORT, host: '0.0.0.0' }, resolve));
-    const BASE_URL = process.env.PUBLIC_URL || `http://${LOCAL_IP}:${PORT}`;
+    const BASE_URL = process.env.PUBLIC_URL;
     console.log("=".repeat(60));
     console.log(`${LOG.green}🚀 Node.js Backend Running${LOG.reset}`);
     console.log("=".repeat(60));
