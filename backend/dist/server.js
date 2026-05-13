@@ -21,7 +21,7 @@ import { upload } from "./upload.js";
 // Setup require for ESM
 const require = createRequire(import.meta.url);
 // ✅ Gagamitin natin ang 'expressMiddleware' na variable name dito
-import { expressMiddleware } from "@as-integrations/express5";
+import { expressMiddleware } from "@as-integrations/express4";
 dotenv.config();
 const app = express();
 app.use(cors({
