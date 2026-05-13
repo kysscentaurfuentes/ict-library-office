@@ -5,12 +5,11 @@
     "main": "dist/server.js",
     "type": "module",
     "scripts": {
-        "hash": "tsx scripts/hash-password.ts",
-        "build": "rimraf dist && tsc",
-        "start": "node dist/server.js",
-        "dev": "tsc --watch",
-        "postinstall": "npm run build"
-    },
+  "hash": "tsx scripts/hash-password.ts",
+  "build": "rimraf dist && tsc",
+  "start": "node dist/server.js",
+  "dev": "tsx watch src/server.ts"
+},
     "engines": {
         "node": "20.x"
     },
