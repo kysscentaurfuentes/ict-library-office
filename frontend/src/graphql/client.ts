@@ -3,7 +3,7 @@ import { ApolloClient, InMemoryCache, HttpLink } from '@apollo/client';
 
 const client = new ApolloClient({
   link: new HttpLink({
-  uri: 'https://dioxide-gibberish-enforcer.ngrok-free.dev/graphql',
+  uri: 'https://ict-library-office-backend.onrender.com/graphql',
   headers: {
     'ngrok-skip-browser-warning': 'true',
   },

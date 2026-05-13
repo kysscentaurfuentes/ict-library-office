@@ -12,7 +12,7 @@ export default defineConfig({
     host: true,
     proxy: {
       '/api': {
-        target: 'https://dioxide-gibberish-enforcer.ngrok-free.dev',
+        target: 'https://ict-library-office-backend.onrender.com/graphql',
         changeOrigin: true,
         secure: true,
       }

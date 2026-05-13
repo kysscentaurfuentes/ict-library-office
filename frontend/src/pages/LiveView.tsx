@@ -10,8 +10,8 @@ export default function LiveView() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
 
-  const STREAM_URL = 'https://dioxide-gibberish-enforcer.ngrok-free.dev/hls/stream.m3u8';
-  const FACES_API = 'https://dioxide-gibberish-enforcer.ngrok-free.dev/faces';
+  const STREAM_URL = 'https://ict-library-office-backend.onrender.com/hls/stream.m3u8';
+  const FACES_API = 'https://ict-library-office-backend.onrender.com/faces';
 
   // Load dark mode preference
   useEffect(() => {

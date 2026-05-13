@@ -21,7 +21,7 @@ export default function FaceDetect() {
     formData.append("file", file);
 
     try {
-      const res = await fetch("https://dioxide-gibberish-enforcer.ngrok-free.dev/detect", {
+      const res = await fetch("https://ict-library-office-backend.onrender.com/detect", {
         method: "POST",
         body: formData,
       });

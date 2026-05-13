@@ -47,8 +47,8 @@ app.use(cors({
     const isAllowed =
       allowedOrigins.includes(origin) ||
       new URL(origin).hostname === "localhost" || // dev safety
-      new URL(origin).hostname.endsWith(".ngrok-free.app")       // dev safety
-
+      new URL(origin).hostname.startsWith("192.168."); // local network safety
+      
     if (isAllowed) {
       return callback(null, true);
     }

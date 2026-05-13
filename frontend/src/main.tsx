@@ -10,7 +10,7 @@ import { setContext } from '@apollo/client/link/context'
 
 // 🔗 HTTP connection
 const httpLink = new HttpLink({
-  uri: 'https://dioxide-gibberish-enforcer.ngrok-free.dev/graphql',
+  uri: 'https://ict-library-office-backend.onrender.com/graphql',
   headers: {
     'ngrok-skip-browser-warning': 'true',
   },
