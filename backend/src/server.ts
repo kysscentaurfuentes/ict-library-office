@@ -60,7 +60,13 @@ app.use(cors({
   credentials: true,
 }));
 
-app.options("/{*splat}", cors());
+app.options(
+  "*",
+  cors({
+    origin: true,
+    credentials: true,
+  })
+);
 app.set('trust proxy', 1);
 app.use(
   helmet({
