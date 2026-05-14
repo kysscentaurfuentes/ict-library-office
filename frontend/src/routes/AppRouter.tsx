@@ -23,7 +23,7 @@ export default function AppRouter() {
       <Routes>
 
         {/* Default route */}
-        <Route path="/" element={<Navigate to="/homescreen" />} />
+        <Route path="/" element={<Navigate to="/signin" />} />
 
         {/* Pages */}
         <Route path="/router" element={<Router />} />
