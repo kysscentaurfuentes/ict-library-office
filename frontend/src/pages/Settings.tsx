@@ -154,7 +154,9 @@ interface GetMeData {
   };
 }
 
-const { data } = useQuery<GetMeData>(GET_ME);
+const { data } = useQuery<GetMeData>(GET_ME, {
+  fetchPolicy: 'no-cache',
+});
 
   // =========================
   // Main Settings State
@@ -262,7 +264,6 @@ const [userInfo, setUserInfo] = useState<UserInfo>({
     const savedFontSize = localStorage.getItem('fontSize');
     const savedVolume = localStorage.getItem('notificationVolume');
     const savedTwoFactor = localStorage.getItem('twoFactorEnabled');
-    const savedUserInfo = localStorage.getItem('userInfo');
     const savedProfilePicture = localStorage.getItem('profilePicture');
 
     // Dark Mode
@@ -286,20 +287,6 @@ const [userInfo, setUserInfo] = useState<UserInfo>({
     // Two Factor
     if (savedTwoFactor === 'true') {
       setTwoFactorEnabled(true);
-    }
-
-    // User Information
-    if (savedUserInfo) {
-      try {
-        const parsedUserInfo = JSON.parse(savedUserInfo);
-
-        setUserInfo((prev) => ({
-          ...prev,
-          ...parsedUserInfo,
-        }));
-      } catch (error) {
-        console.error('Failed to parse saved user info');
-      }
     }
 
     // Profile Picture
@@ -354,11 +341,9 @@ const [userInfo, setUserInfo] = useState<UserInfo>({
   // =========================
 useEffect(() => {
   if (data?.me) {
-
     const computedAge = calculateAge(
       data.me.birthdate || ''
     );
-
     setUserInfo((prev) => ({
       ...prev,
 
@@ -393,13 +378,6 @@ useEffect(() => {
 }, [data]);
 
   // =========================
-  // Save User Info
-  // =========================
-  useEffect(() => {
-    localStorage.setItem('userInfo', JSON.stringify(userInfo));
-  }, [userInfo]);
-
-  // =========================
   // Helpers
   // =========================
   const applyFontSize = (size: string): void => {
@@ -427,6 +405,138 @@ useEffect(() => {
     const digitsOnly = value.replace(/\D/g, '');
     return digitsOnly.slice(0, 10);
   };
+
+  const getCollegeDepartment = (
+  course: string
+): string => {
+
+  const normalizedCourse =
+    course.toUpperCase();
+
+  // =========================
+  // CAA
+  // =========================
+  if (
+    normalizedCourse.includes("AGRICULTURE") ||
+    normalizedCourse.includes("FOOD TECHNOLOGY")
+  ) {
+    return "College of Agriculture and Agri-Industries";
+  }
+
+  // =========================
+  // CED
+  // =========================
+  if (
+    normalizedCourse.includes("EDUCATION") ||
+    normalizedCourse.includes("GUIDANCE") ||
+    normalizedCourse.includes("COUNSELING") ||
+    normalizedCourse.includes("TEACHING")
+  ) {
+    return "College of Education";
+  }
+
+  // =========================
+  // CMNS
+  // =========================
+  if (
+    normalizedCourse.includes("BIOLOGY") ||
+    normalizedCourse.includes("CHEMISTRY") ||
+    normalizedCourse.includes("PHYSICS") ||
+    normalizedCourse.includes("MATHEMATICS") ||
+    normalizedCourse.includes("MARINE BIOLOGY")
+  ) {
+    return "College of Mathematics and Natural Sciences";
+  }
+
+  // =========================
+  // CHASS
+  // =========================
+  if (
+    normalizedCourse.includes("SOCIOLOGY") ||
+    normalizedCourse.includes("PSYCHOLOGY") ||
+    normalizedCourse.includes("SOCIAL WORK")
+  ) {
+    return "College of Humanities and Social Sciences";
+  }
+
+  // =========================
+  // CCIS
+  // =========================
+  if (
+    normalizedCourse.includes("COMPUTER SCIENCE") ||
+    normalizedCourse.includes("INFORMATION SYSTEM") ||
+    normalizedCourse.includes("INFORMATION TECHNOLOGY")
+  ) {
+    return "College of Computing and Information Sciences";
+  }
+
+  // =========================
+  // CEGS
+  // =========================
+  if (
+    normalizedCourse.includes("ENGINEERING") ||
+    normalizedCourse.includes("ARCHITECTURE") ||
+    normalizedCourse.includes("GEOLOGY")
+  ) {
+    return "College of Engineering and Geo-Sciences";
+  }
+
+  // =========================
+  // COFES
+  // =========================
+  if (
+    normalizedCourse.includes("FORESTRY") ||
+    normalizedCourse.includes("ENVIRONMENTAL")
+  ) {
+    return "College of Forestry and Environmental Science";
+  }
+
+  // =========================
+  // CM
+  // =========================
+  if (
+    normalizedCourse.includes("MEDICINE")
+  ) {
+    return "College of Medicine";
+  }
+
+  return "";
+};
+
+const getCollegeAcronym = (
+  department: string
+): string => {
+
+  switch (department) {
+
+    case "College of Agriculture and Agri-Industries":
+      return "CAA";
+
+    case "College of Education":
+      return "CED";
+
+    case "College of Mathematics and Natural Sciences":
+      return "CMNS";
+
+    case "College of Humanities and Social Sciences":
+      return "CHASS";
+
+    case "College of Computing and Information Sciences":
+      return "CCIS";
+
+    case "College of Engineering and Geo-Sciences":
+      return "CEGS";
+
+    case "College of Forestry and Environmental Science":
+      return "COFES";
+
+    case "College of Medicine":
+      return "CM";
+
+    default:
+      return "";
+  }
+};
 
   // =========================
   // Mock API
@@ -979,7 +1089,6 @@ setProfilePicturePreview(
     <option value="">Select Gender</option>
     <option value="Male">Male</option>
     <option value="Female">Female</option>
-    <option value="Other">Other</option>
   </select>
 </div>
 
@@ -1029,17 +1138,30 @@ setProfilePicturePreview(
 
   <div className="form-stack">
 
+    {/* USER CLASSIFICATION */}
     <div className="form-field">
       <label>User Classification</label>
 
       <select
         value={userInfo.userClassification}
-        onChange={(e) =>
+        onChange={(e) => {
+
+          const classification =
+            e.target.value;
+
           setUserInfo((prev) => ({
             ...prev,
-            userClassification: e.target.value,
-          }))
-        }
+
+            userClassification:
+              classification,
+
+            // auto clear kapag hindi student
+            studentType:
+              classification === "Student"
+                ? prev.studentType
+                : "",
+          }));
+        }}
       >
         <option value="">
           Select Classification
@@ -1049,30 +1171,45 @@ setProfilePicturePreview(
           Student
         </option>
 
-        <option value="Faculty">
-          Faculty
-        </option>
-
         <option value="Staff">
           Staff
+        </option>
+
+        <option value="Visitor">
+          Visitor
         </option>
       </select>
     </div>
 
+    {/* STUDENT TYPE */}
     <div className="form-field">
       <label>Student Type</label>
 
       <select
         value={userInfo.studentType}
+        disabled={
+          userInfo.userClassification !==
+          "Student"
+        }
         onChange={(e) =>
           setUserInfo((prev) => ({
             ...prev,
-            studentType: e.target.value,
+            studentType:
+              e.target.value,
           }))
+        }
+        className={
+          userInfo.userClassification !==
+          "Student"
+            ? "readonly-input"
+            : ""
         }
       >
         <option value="">
-          Select Student Type
+          {userInfo.userClassification !==
+          "Student"
+            ? "Locked for non-students"
+            : "Select Student Type"}
         </option>
 
         <option value="Regular">
@@ -1085,86 +1222,380 @@ setProfilePicturePreview(
       </select>
     </div>
 
-    <div className="form-field">
-      <label>College Department</label>
+    {/* COLLEGE + ACRONYM */}
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns:
+          "1fr 180px",
+        gap: "1rem",
+      }}
+    >
 
-      <select
-        value={userInfo.collegeDepartment}
-        onChange={(e) =>
-          setUserInfo((prev) => ({
-            ...prev,
-            collegeDepartment: e.target.value,
-          }))
-        }
-      >
-        <option value="">Select Department</option>
+      {/* FULL COLLEGE NAME */}
+      <div className="form-field">
+        <label>
+          College Department
+        </label>
 
-        <option value="CAA">CAA</option>
-        <option value="CED">CED</option>
-        <option value="CMNS">CMNS</option>
-        <option value="CHASS">CHASS</option>
-        <option value="CCIS">CCIS</option>
-        <option value="CEGS">CEGS</option>
-        <option value="COFES">COFES</option>
-        <option value="CM">CM</option>
-      </select>
+     <input
+  type="text"
+  readOnly
+  disabled
+  className="readonly-input"
+  value={getCollegeDepartment(userInfo.course)}
+/>
+         
+      </div>
+
+      {/* AUTO GENERATED ACRONYM */}
+      <div className="form-field">
+        <label>Acronym</label>
+
+        <input
+  type="text"
+  readOnly
+  disabled
+  className="readonly-input"
+  value={getCollegeAcronym(
+    getCollegeDepartment(userInfo.course)
+  )}
+/>
+          
+      </div>
     </div>
 
-    <div className="form-field">
-      <label>Course</label>
+    {/* COURSE + ACRONYM */}
+<div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "1fr 180px",
+    gap: "1rem",
+  }}
+>
 
-      <input
-        type="text"
-        value={userInfo.course}
-        onChange={(e) =>
-          setUserInfo((prev) => ({
-            ...prev,
-            course: e.target.value,
-          }))
-        }
-        placeholder="Bachelor of Science in Information System"
-      />
-    </div>
+  {/* CURRENT COURSE */}
+  <div className="form-field">
+    <label>Current Course</label>
 
-    <div className="form-field">
-      <label>Program</label>
+    <input
+      type="text"
+      value={userInfo.course}
+      readOnly
+      disabled
+      className="readonly-input"
+    />
 
-      <input
-        type="text"
-        value={userInfo.program}
-        onChange={(e) =>
-          setUserInfo((prev) => ({
-            ...prev,
-            program: e.target.value,
-          }))
-        }
-        placeholder="BSIS"
-      />
-    </div>
+    <small
+      className="field-hint"
+      style={{
+        marginTop: "0.5rem",
+        display: "block",
+      }}
+    >
+      To request a course change, please submit your concern through
+      the Feedback section located in the sidebar. Course updates are
+      managed by the administrator to avoid data inconsistencies.
+    </small>
+  </div>
 
-    <div className="form-field">
-      <label>Year Level</label>
+  {/* AUTO GENERATED COURSE ACRONYM */}
+  <div className="form-field">
+    <label>Acronym</label>
 
-      <select
-        value={userInfo.yearLevel}
-        onChange={(e) =>
-          setUserInfo((prev) => ({
-            ...prev,
-            yearLevel: e.target.value,
-          }))
-        }
-      >
-        <option value="">
-          Select Year Level
-        </option>
+    <input
+      type="text"
+      readOnly
+      disabled
+      className="readonly-input"
+      value={
+        userInfo.course ===
+        "BACHELOR OF SCIENCE IN SOCIAL WORK"
+          ? "BSSW"
 
-        <option value="1">1st Year</option>
-        <option value="2">2nd Year</option>
-        <option value="3">3rd Year</option>
-        <option value="4">4th Year</option>
-        <option value="5">5th Year and above</option>
-      </select>
-    </div>
+        : userInfo.course ===
+          "BACHELOR OF SCIENCE IN PSYCHOLOGY"
+          ? "BS PSYCH"
+
+        : userInfo.course ===
+          "BACHELOR OF ARTS IN SOCIOLOGY"
+          ? "AB-SOCIO"
+
+        : userInfo.course ===
+          "BACHELOR OF SCIENCE IN BIOLOGY"
+          ? "BSBIO"
+
+        : userInfo.course ===
+          "BACHELOR OF SCIENCE IN CHEMISTRY"
+          ? "BSCHEM"
+
+        : userInfo.course ===
+          "BACHELOR OF SCIENCE IN PHYSICS"
+          ? "BS-PHYS"
+
+        : userInfo.course ===
+          "BACHELOR OF SCIENCE IN MATHEMATICS"
+          ? "BSMATH"
+
+        : userInfo.course ===
+          "BACHELOR OF SCIENCE IN APPLIED MATHEMATICS"
+          ? "BSAM"
+
+        : userInfo.course ===
+          "BACHELOR OF SCIENCE IN COMPUTER SCIENCE"
+          ? "BSCS"
+
+        : userInfo.course ===
+          "BACHELOR OF SCIENCE IN INFORMATION SYSTEM"
+          ? "BSIS"
+
+        : userInfo.course ===
+          "BACHELOR OF SCIENCE IN INFORMATION TECHNOLOGY"
+          ? "BSIT"
+
+        : userInfo.course ===
+          "BACHELOR OF SCIENCE IN ENVIRONMENTAL SCIENCE"
+          ? "BSES"
+
+        : userInfo.course ===
+          "BACHELOR OF SCIENCE IN AGROFORESTRY"
+          ? "BSAF"
+
+        : userInfo.course ===
+          "BACHELOR OF SCIENCE IN FORESTRY"
+          ? "BSF"
+
+        : userInfo.course ===
+          "BACHELOR OF ELEMENTARY EDUCATION"
+          ? "BEED"
+
+        : userInfo.course ===
+          "BACHELOR OF SECONDARY EDUCATION MAJOR IN ENGLISH"
+          ? "BSED ENG"
+
+        : userInfo.course ===
+          "BACHELOR OF SECONDARY EDUCATION MAJOR IN FILIPINO"
+          ? "BSED FIL"
+
+        : userInfo.course ===
+          "BACHELOR OF SECONDARY EDUCATION MAJOR IN SCIENCE"
+          ? "BSED SCI"
+
+        : userInfo.course ===
+          "BACHELOR OF SECONDARY EDUCATION MAJOR IN MATHEMATICS"
+          ? "BSED-MATH"
+
+        : userInfo.course ===
+          "BACHELOR OF AGRICULTURAL TECHNOLOGY"
+          ? "BAT"
+
+        : userInfo.course ===
+          "BACHELOR OF SCIENCE IN AGRICULTURE"
+          ? "BSA"
+
+        : userInfo.course ===
+          "BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN AGRICULTURAL ECONOMICS"
+          ? "BSA-AGECON"
+
+        : userInfo.course ===
+          "BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN AGRONOMY"
+          ? "BSA-AGRON"
+
+        : userInfo.course ===
+          "BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN CROP PROTECTION"
+          ? "BSA-CROPPROT"
+
+        : userInfo.course ===
+          "BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN SOIL SCIENCE"
+          ? "BSA-SOILSCI"
+
+        : userInfo.course ===
+          "BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN AGRIBUSINESS MANAGEMENT"
+          ? "BSA-ABM"
+
+        : userInfo.course ===
+          "BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN ANIMAL SCIENCE"
+          ? "BSA-ANSCI"
+
+        : userInfo.course ===
+          "BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN HORTICULTURE"
+          ? "BSA-HORTI"
+
+        : userInfo.course ===
+          "BACHELOR OF SCIENCE IN AGRICULTURAL AND BIOSYSTEMS ENGINEERING"
+          ? "BSABE"
+
+        : userInfo.course ===
+          "BACHELOR OF SCIENCE IN CIVIL ENGINEERING"
+          ? "BSCE"
+
+        : userInfo.course ===
+          "BACHELOR OF SCIENCE IN ELECTRONICS ENGINEERING"
+          ? "BSEcE"
+
+        : userInfo.course ===
+          "BACHELOR OF SCIENCE IN GEODETIC ENGINEERING"
+          ? "BSGE"
+
+        : userInfo.course ===
+          "BACHELOR OF SCIENCE IN MINING ENGINEERING"
+          ? "BSEM"
+
+        : userInfo.course ===
+          "BACHELOR OF SCIENCE IN GEOLOGY"
+          ? "BSGeo"
+
+        : userInfo.course ===
+          "MASTER OF ARTS IN EDUCATION (MAED)"
+          ? "MAED"
+
+        : userInfo.course ===
+          "MAED - ENGLISH LANGUAGE TEACHING (ELT)"
+          ? "MAED-ELT"
+
+        : userInfo.course ===
+          "MAED - EDUCATIONAL MANAGEMENT (EM)"
+          ? "MAED-EM"
+
+        : userInfo.course ===
+          "MAED - GUIDANCE & COUNSELING (GC)"
+          ? "MAED-GC"
+
+        : userInfo.course ===
+          "MAED - TEACHING, READING AND LITERATURE (TRL)"
+          ? "MAED-TRL"
+
+        : userInfo.course ===
+          "MAED - HEALTH EDUCATION (HE)"
+          ? "MAED-HE"
+
+        : userInfo.course ===
+          "MASTER OF ARTS IN GUIDANCE AND COUNSELING (MA GC)"
+          ? "MAGC"
+
+        : userInfo.course ===
+          "MASTER OF SCIENCE IN ENVIRONMENTAL MANAGEMENT (MEM)"
+          ? "MEM"
+
+        : userInfo.course ===
+          "MASTER OF SCIENCE IN BIOLOGY (MSBio)"
+          ? "MS Biology"
+
+        : userInfo.course ===
+          "MSBio - MORPHOLOGY"
+          ? "MSBio MORPH"
+
+        : userInfo.course ===
+          "MSBio - ECOLOGY"
+          ? "MSBio ECO"
+
+        : userInfo.course ===
+          "MSBio - TAXONOMY"
+          ? "MSBio TAX"
+
+        : userInfo.course ===
+          "MSBio - GENETICS"
+          ? "MSBio GEN"
+
+        : userInfo.course ===
+          "MSBio - PHYSIOLOGY"
+          ? "MSBio PHYS"
+
+        : userInfo.course ===
+          "MASTER OF SCIENCE EDUCATION (MSciED)"
+          ? "MSciED"
+
+        : userInfo.course ===
+          "MSciED - BIOLOGICAL SCIENCES"
+          ? "MSciEd-BIO"
+
+        : userInfo.course ===
+          "MSciED - PHYSICAL SCIENCES"
+          ? "MSciEd-PHYS"
+
+        : userInfo.course ===
+          "MSciED - ELEMENTARY SCIENCES"
+          ? "MSciEd-ELEM"
+
+        : userInfo.course ===
+          "MASTER OF SCIENCE IN CROP SCIENCE (MSCS)"
+          ? "MSCS"
+
+        : userInfo.course ===
+          "MSCS - HORTICULTURE"
+          ? "MSCS-HORT"
+
+        : userInfo.course ===
+          "MSCS - AGRONOMY"
+          ? "MSCS-AGRON"
+
+        : userInfo.course ===
+          "MASTER OF SCIENCE IN INFORMATION TECHNOLOGY (MSIT)"
+          ? "MSIT"
+
+        : userInfo.course ===
+          "MASTER OF SCIENCE IN MATHEMATICS (MSMATH)"
+          ? "MSMATH"
+
+        : userInfo.course ===
+          "MASTER OF SCIENCE IN MATHEMATICS EDUCATION (MSMathEd)"
+          ? "MSMathEd"
+
+        : userInfo.course ===
+          "MASTER IN PUBLIC ADMINISTRATION (MPA)"
+          ? "MPA"
+
+        : userInfo.course ===
+          "DOCTOR OF EDUCATION IN EDUCATIONAL MANAGEMENT (Ed.D)"
+          ? "Ed.D"
+
+        : userInfo.course ===
+          "DOCTOR OF PHILOSOPHY IN MATHEMATICS (Ph.D.-Math)"
+          ? "PHD-MATH"
+
+        : userInfo.course ===
+          "DOCTOR OF PHILOSOPHY IN MATHEMATICS EDUCATION (Ph.D.-MathEd)"
+          ? "PHD-MATHED"
+
+        : userInfo.course ===
+          "DOCTOR OF PHILOSOPHY IN SCIENCE EDUCATION (Ph.D.-SciEd)"
+          ? "PHD-SCIED"
+
+        : userInfo.course ===
+          "Ph.D.-SciEd (Biology)"
+          ? "PHD SCIED BIO"
+
+        : userInfo.course ===
+          "Ph.D.-SciEd (Physics)"
+          ? "PHD SCIED PHYS"
+
+        : ""
+      }
+    />
+  </div>
+</div>
+
+{/* YEAR LEVEL */}
+<div className="form-field">
+  <label>Edit Year Level</label>
+
+  <select
+    value={userInfo.yearLevel}
+    onChange={(e) =>
+      setUserInfo((prev) => ({
+        ...prev,
+        yearLevel: e.target.value,
+      }))
+    }
+    className="year-select"
+  >
+    <option value="1">First Year</option>
+    <option value="2">Second Year</option>
+    <option value="3">Third Year</option>
+    <option value="4">Fourth Year</option>
+    <option value="5+">Fifth Year and Above</option>
+  </select>
+</div>
 
   </div>
 </div>
@@ -1272,137 +1703,6 @@ setProfilePicturePreview(
             )}
           </div>
 
-          {/* Change Information Section */}
-          <div className="section-card">
-            <h3>Change Information</h3>
-            <div className="form-stack">
-              <label>Edit Course:</label>
-              <select 
-                value={userInfo.course}
-                onChange={(e) =>
-  setUserInfo((prev) => ({
-    ...prev,
-    course: e.target.value,
-  }))
-}
-                className="course-select"
-              >
-                <optgroup label="---UNDERGRADUATE OFFERED PROGRAMS---">
-                  <option value="">Select a course...</option>
-                  <option value="BACHELOR OF SCIENCE IN SOCIAL WORK">BACHELOR OF SCIENCE IN SOCIAL WORK</option>
-                  <option value="BACHELOR OF SCIENCE IN PSYCHOLOGY">BACHELOR OF SCIENCE IN PSYCHOLOGY</option>
-                  <option value="BACHELOR OF ARTS IN SOCIOLOGY">BACHELOR OF ARTS IN SOCIOLOGY</option>
-                  <option value="BACHELOR OF SCIENCE IN BIOLOGY">BACHELOR OF SCIENCE IN BIOLOGY</option>
-                  <option value="BACHELOR OF SCIENCE IN CHEMISTRY">BACHELOR OF SCIENCE IN CHEMISTRY</option>
-                  <option value="BACHELOR OF SCIENCE IN PHYSICS">BACHELOR OF SCIENCE IN PHYSICS</option>
-                  <option value="BACHELOR OF SCIENCE IN MATHEMATICS">BACHELOR OF SCIENCE IN MATHEMATICS</option>
-                  <option value="BACHELOR OF SCIENCE IN APPLIED MATHEMATICS">BACHELOR OF SCIENCE IN APPLIED MATHEMATICS</option>
-                  <option value="BACHELOR OF SCIENCE IN COMPUTER SCIENCE">BACHELOR OF SCIENCE IN COMPUTER SCIENCE</option>
-                  <option value="BACHELOR OF SCIENCE IN INFORMATION SYSTEM">BACHELOR OF SCIENCE IN INFORMATION SYSTEM</option>
-                  <option value="BACHELOR OF SCIENCE IN INFORMATION TECHNOLOGY">BACHELOR OF SCIENCE IN INFORMATION TECHNOLOGY</option>
-                  <option value="BACHELOR OF SCIENCE IN ENVIRONMENTAL SCIENCE">BACHELOR OF SCIENCE IN ENVIRONMENTAL SCIENCE</option>
-                  <option value="BACHELOR OF SCIENCE IN AGROFORESTRY">BACHELOR OF SCIENCE IN AGROFORESTRY</option>
-                  <option value="BACHELOR OF SCIENCE IN FORESTRY">BACHELOR OF SCIENCE IN FORESTRY</option>
-                  <option value="BACHELOR OF ELEMENTARY EDUCATION">BACHELOR OF ELEMENTARY EDUCATION</option>
-                  <option value="BACHELOR OF SECONDARY EDUCATION MAJOR IN ENGLISH">BACHELOR OF SECONDARY EDUCATION MAJOR IN ENGLISH</option>
-                  <option value="BACHELOR OF SECONDARY EDUCATION MAJOR IN FILIPINO">BACHELOR OF SECONDARY EDUCATION MAJOR IN FILIPINO</option>
-                  <option value="BACHELOR OF SECONDARY EDUCATION MAJOR IN SCIENCE">BACHELOR OF SECONDARY EDUCATION MAJOR IN SCIENCE</option>
-                  <option value="BACHELOR OF SECONDARY EDUCATION MAJOR IN MATHEMATICS">BACHELOR OF SECONDARY EDUCATION MAJOR IN MATHEMATICS</option>
-                  <option value="BACHELOR OF AGRICULTURAL TECHNOLOGY">BACHELOR OF AGRICULTURAL TECHNOLOGY</option>
-                  <option value="BACHELOR OF SCIENCE IN AGRICULTURE">BACHELOR OF SCIENCE IN AGRICULTURE</option>
-                  <option value="BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN AGRICULTURAL ECONOMICS">BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN AGRICULTURAL ECONOMICS</option>
-                  <option value="BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN AGRONOMY">BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN AGRONOMY</option>
-                  <option value="BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN CROP PROTECTION">BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN CROP PROTECTION</option>
-                  <option value="BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN SOIL SCIENCE">BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN SOIL SCIENCE</option>
-                  <option value="BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN AGRIBUSINESS MANAGEMENT">BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN AGRIBUSINESS MANAGEMENT</option>
-                  <option value="BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN ANIMAL SCIENCE">BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN ANIMAL SCIENCE</option>
-                  <option value="BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN HORTICULTURE">BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN HORTICULTURE</option>
-                  <option value="BACHELOR OF SCIENCE IN AGRICULTURAL AND BIOSYSTEMS ENGINEERING">BACHELOR OF SCIENCE IN AGRICULTURAL AND BIOSYSTEMS ENGINEERING</option>
-                  <option value="BACHELOR OF SCIENCE IN CIVIL ENGINEERING">BACHELOR OF SCIENCE IN CIVIL ENGINEERING</option>
-                  <option value="BACHELOR OF SCIENCE IN ELECTRONICS ENGINEERING">BACHELOR OF SCIENCE IN ELECTRONICS ENGINEERING</option>
-                  <option value="BACHELOR OF SCIENCE IN GEODETIC ENGINEERING">BACHELOR OF SCIENCE IN GEODETIC ENGINEERING</option>
-                  <option value="BACHELOR OF SCIENCE IN MINING ENGINEERING">BACHELOR OF SCIENCE IN MINING ENGINEERING</option>
-                  <option value="BACHELOR OF SCIENCE IN GEOLOGY">BACHELOR OF SCIENCE IN GEOLOGY</option>
-                </optgroup>
-                <optgroup label="---MASTER'S DEGREE PROGRAMS---">
-                  <option value="MASTER OF ARTS IN EDUCATION (MAED)">MASTER OF ARTS IN EDUCATION (MAED)</option>
-                  <option value="MAED - ENGLISH LANGUAGE TEACHING (ELT)">MAED - ENGLISH LANGUAGE TEACHING (ELT)</option>
-                  <option value="MAED - EDUCATIONAL MANAGEMENT (EM)">MAED - EDUCATIONAL MANAGEMENT (EM)</option>
-                  <option value="MAED - GUIDANCE & COUNSELING (GC)">MAED - GUIDANCE & COUNSELING (GC)</option>
-                  <option value="MAED - TEACHING, READING AND LITERATURE (TRL)">MAED - TEACHING, READING AND LITERATURE (TRL)</option>
-                  <option value="MAED - HEALTH EDUCATION (HE)">MAED - HEALTH EDUCATION (HE)</option>
-                  <option value="MASTER OF ARTS IN GUIDANCE AND COUNSELING (MA GC)">MASTER OF ARTS IN GUIDANCE AND COUNSELING (MA GC)</option>
-                  <option value="MASTER OF SCIENCE IN ENVIRONMENTAL MANAGEMENT (MEM)">MASTER OF SCIENCE IN ENVIRONMENTAL MANAGEMENT (MEM)</option>
-                  <option value="MASTER OF SCIENCE IN BIOLOGY (MSBio)">MASTER OF SCIENCE IN BIOLOGY (MSBio)</option>
-                  <option value="MSBio - MORPHOLOGY">MSBio - MORPHOLOGY</option>
-                  <option value="MSBio - ECOLOGY">MSBio - ECOLOGY</option>
-                  <option value="MSBio - TAXONOMY">MSBio - TAXONOMY</option>
-                  <option value="MSBio - GENETICS">MSBio - GENETICS</option>
-                  <option value="MSBio - PHYSIOLOGY">MSBio - PHYSIOLOGY</option>
-                  <option value="MASTER OF SCIENCE EDUCATION (MSciED)">MASTER OF SCIENCE EDUCATION (MSciED)</option>
-                  <option value="MSciED - BIOLOGICAL SCIENCES">MSciED - BIOLOGICAL SCIENCES</option>
-                  <option value="MSciED - PHYSICAL SCIENCES">MSciED - PHYSICAL SCIENCES</option>
-                  <option value="MSciED - ELEMENTARY SCIENCES">MSciED - ELEMENTARY SCIENCES</option>
-                  <option value="MASTER OF SCIENCE IN CROP SCIENCE (MSCS)">MASTER OF SCIENCE IN CROP SCIENCE (MSCS)</option>
-                  <option value="MSCS - HORTICULTURE">MSCS - HORTICULTURE</option>
-                  <option value="MSCS - AGRONOMY">MSCS - AGRONOMY</option>
-                  <option value="MASTER OF SCIENCE IN INFORMATION TECHNOLOGY (MSIT)">MASTER OF SCIENCE IN INFORMATION TECHNOLOGY (MSIT)</option>
-                  <option value="MASTER OF SCIENCE IN MATHEMATICS (MSMATH)">MASTER OF SCIENCE IN MATHEMATICS (MSMATH)</option>
-                  <option value="MASTER OF SCIENCE IN MATHEMATICS EDUCATION (MSMathEd)">MASTER OF SCIENCE IN MATHEMATICS EDUCATION (MSMathEd)</option>
-                  <option value="MASTER IN PUBLIC ADMINISTRATION (MPA)">MASTER IN PUBLIC ADMINISTRATION (MPA)</option>
-                </optgroup>
-                <optgroup label="---DOCTORAL DEGREE PROGRAMS---">
-                  <option value="DOCTOR OF EDUCATION IN EDUCATIONAL MANAGEMENT (Ed.D)">DOCTOR OF EDUCATION IN EDUCATIONAL MANAGEMENT (Ed.D)</option>
-                  <option value="DOCTOR OF PHILOSOPHY IN MATHEMATICS (Ph.D.-Math)">DOCTOR OF PHILOSOPHY IN MATHEMATICS (Ph.D.-Math)</option>
-                  <option value="DOCTOR OF PHILOSOPHY IN MATHEMATICS EDUCATION (Ph.D.-MathEd)">DOCTOR OF PHILOSOPHY IN MATHEMATICS EDUCATION (Ph.D.-MathEd)</option>
-                  <option value="DOCTOR OF PHILOSOPHY IN SCIENCE EDUCATION (Ph.D.-SciEd)">DOCTOR OF PHILOSOPHY IN SCIENCE EDUCATION (Ph.D.-SciEd)</option>
-                  <option value="Ph.D.-SciEd (Biology)">Ph.D.-SciEd (Biology)</option>
-                  <option value="Ph.D.-SciEd (Physics)">Ph.D.-SciEd (Physics)</option>
-                </optgroup>
-              </select>
-              
-              <label>Edit Year Level:</label>
-              <select 
-                value={userInfo.yearLevel} 
-                onChange={(e) => setSelectedYearLevel(e.target.value)}
-                className="year-select"
-              >
-                <option value="1">First Year</option>
-                <option value="2">Second Year</option>
-                <option value="3">Third Year</option>
-                <option value="4">Fourth Year</option>
-                <option value="5+">Fifth Year and Above</option>
-              </select>
-              
-              <button className="btn-primary" onClick={() => updateSetting('course and year', { course: selectedCourse, yearLevel: selectedYearLevel })}>
-                Save Changes
-              </button>
-            </div>
-          </div>
-
-          {/* Manage Linked Accounts */}
-          <div className="section-card">
-            <h3>Manage Linked Accounts</h3>
-            {linkedAccounts.map((account) => (
-              <div key={account.id} className="linked-account-item">
-                <div className="account-info">
-                  <span className="account-provider">{account.provider}</span>
-                  <span className="account-email">{account.email}</span>
-                  <span className="account-date">Linked: {account.linkedAt}</span>
-                </div>
-                <button 
-                  className="btn-unlink" 
-                  onClick={() => handleUnlinkAccount(account.id)}
-                >
-                  Unlink
-                </button>
-              </div>
-            ))}
-            <button className="btn-link-new" onClick={() => setShowLinkModal(true)}>
-              + Link New Account
-            </button>
-          </div>
-
           {/* About Section */}
           <div className="about-section">
             <p>User ID: 211-01850</p>
@@ -1479,482 +1779,293 @@ setProfilePicturePreview(
         </main>
       </div>
 
-      <style>{`
-        /* RESET & BASE */
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
-
-        html, body, #root {
-          width: 100%;
-          height: 100%;
-          margin: 0;
-          padding: 0;
-        }
-
-        :root {
-          font-size: 14px;
-          --bg: #ffffff;
-          --card-bg: #ffffff;
-          --text-primary: #1e293b;
-          --text-secondary: #334155;
-          --border: #e2e8f0;
-        }
-
-        body {
-          background: var(--bg);
-          transition: background-color 0.3s ease;
-        }
-
-        body.dark-mode {
-          --bg: #0f172a;
-          --card-bg: #1e293b;
-          --text-primary: #f1f5f9;
-          --text-secondary: #cbd5e1;
-          --border: #334155;
-          background: var(--bg);
-        }
-
-        /* WRAPPER - full viewport coverage */
-        .settings-wrapper {
-          display: flex;
-          width: 100%;
-          min-height: 100vh;
-          background: var(--bg);
-        }
-
-        /* SCROLLABLE CONTAINER - scrollbar on extreme right */
-        .settings-container {
-          flex: 1;
-          padding: 2rem 2.5rem;
-          overflow-y: auto;
-          overflow-x: hidden;
-          height: 100vh;
-          scrollbar-width: thin;
-          scrollbar-gutter: stable;
-        }
-
-        /* Webkit scrollbar - positioned at the very right edge */
-        .settings-container::-webkit-scrollbar {
-          width: 10px;
-          background: transparent;
-        }
-
-        .settings-container::-webkit-scrollbar-track {
-          background: #e2e8f0;
-          border-radius: 0px;
-          margin-block: 0;
-        }
-
-        .settings-container::-webkit-scrollbar-thumb {
-          background: #94a3b8;
-          border-radius: 0px;
-        }
-
-        .settings-container::-webkit-scrollbar-thumb:hover {
-          background: #64748b;
-        }
-
-        .suffix-field select {
-  width: 220px;
+    <style>{`
+/* =========================================================
+   RESET + ROOT
+========================================================= */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-        .dark-mode .settings-container::-webkit-scrollbar-track {
-          background: #1e293b;
-        }
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+}
 
-        .dark-mode .settings-container::-webkit-scrollbar-thumb {
-          background: #475569;
-        }
+:root {
+  font-size: 14px;
 
-        /* MAIN CONTENT - takes full width, no overflow */
-        .main-content {
-          width: 100%;
-          max-width: 900px;
-          margin: 0 auto;
-          overflow: visible;
-        }
+  --bg: #f8fafc;
+  --card-bg: #ffffff;
 
-        .settings-title {
-          font-size: 2rem;
-          font-weight: 600;
-          color: var(--text-primary);
-          margin-bottom: 1.5rem;
-        }
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
 
-        /* Section Cards */
-        .section-card {
-          background: var(--card-bg);
-          border-radius: 16px;
-          padding: 1.5rem 1.75rem;
-          margin-bottom: 1.5rem;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-          border: 1px solid var(--border);
-          transition: all 0.3s ease;
-        }
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
 
-        .section-card h3 {
-          font-size: 1.2rem;
-          margin-bottom: 1rem;
-          color: var(--text-primary);
-          border-bottom: 2px solid var(--border);
-          padding-bottom: 0.5rem;
-        }
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
 
-        .dark-mode .section-card h3 {
-          color: #38bdf8;
-        }
+  --success: #22c55e;
+  --success-hover: #16a34a;
 
-        /* Form Groups */
-        .form-group {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 1rem;
-          flex-wrap: wrap;
-          gap: 0.75rem;
-        }
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
 
-        .form-group label {
-          font-weight: 500;
-          color: var(--text-secondary);
-        }
+  --shadow:
+    0 1px 2px rgba(15, 23, 42, 0.06),
+    0 4px 12px rgba(15, 23, 42, 0.04);
 
-        .form-stack {
-          display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
-        }
+  --transition: all 0.25s ease;
+}
 
-        .form-stack input,
-        .form-stack select {
-          padding: 0.75rem;
-          border: 1px solid var(--border);
-          border-radius: 8px;
-          font-size: 1rem;
-          background: var(--card-bg);
-          color: var(--text-primary);
-          transition: all 0.2s;
-        }
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
 
-        .form-stack select option {
-          background: var(--card-bg);
-          color: var(--text-primary);
-        }
+  transition: var(--transition);
+}
 
-        /* Form Field */
-        .form-field {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-        }
+/* =========================================================
+   DARK MODE
+========================================================= */
+body.dark-mode {
+  --bg: #0f172a;
+  --card-bg: #1e293b;
 
-        .form-field label {
-          font-size: 0.85rem;
-          font-weight: 600;
-          color: #64748b;
-        }
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
 
-        .form-field input {
-          padding: 0.75rem;
-          border: 1px solid var(--border);
-          border-radius: 8px;
-          font-size: 1rem;
-          background: var(--card-bg);
-          color: var(--text-primary);
-        }
+  --border: #334155;
+  --border-strong: #475569;
 
-        .field-hint {
-          font-size: 0.7rem;
-          color: #64748b;
-          margin-top: 0.25rem;
-        }
+  background: var(--bg);
+}
 
-        .dark-mode .field-hint {
-          color: #94a3b8;
-        }
+/* =========================================================
+   WRAPPER
+========================================================= */
+.settings-wrapper {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+  background: var(--bg);
+}
 
-        /* Phone Input Wrapper */
-        .phone-input-wrapper {
-          display: flex;
-          align-items: center;
-          border: 1px solid var(--border);
-          border-radius: 8px;
-          overflow: hidden;
-          background: var(--card-bg);
-        }
+/* =========================================================
+   SETTINGS CONTAINER
+========================================================= */
+.settings-container {
+  flex: 1;
+  height: 100vh;
 
-        .phone-prefix {
-          background: var(--border);
-          padding: 0.75rem 1rem;
-          font-weight: 600;
-          color: var(--text-primary);
-          border-right: 1px solid var(--border);
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          white-space: nowrap;
-        }
+  overflow-y: auto;
+  overflow-x: hidden;
 
-        .flag-icon {
-          font-size: 1.1rem;
-        }
+  padding: 2rem 2.5rem;
 
-        .phone-number-input {
-          flex: 1;
-          border: none !important;
-          border-radius: 0 !important;
-          padding: 0.75rem !important;
-          background: var(--card-bg);
-          color: var(--text-primary);
-        }
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
 
-        .phone-number-input:focus {
-          outline: none;
-        }
+  background: var(--bg);
+}
 
-        /* Range Slider */
-        .range-container {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          flex: 1;
-        }
+/* SCROLLBAR */
+.settings-container::-webkit-scrollbar {
+  width: 10px;
+}
 
-        .range-container input {
-          flex: 1;
-          height: 6px;
-          border-radius: 5px;
-          background: var(--border);
-        }
+.settings-container::-webkit-scrollbar-track {
+  background: #e2e8f0;
+}
 
-        .range-container span {
-          min-width: 45px;
-          font-weight: 600;
-          color: var(--text-secondary);
-        }
+.settings-container::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+}
 
-        .max-label {
-          font-size: 0.75rem;
-          color: #64748b;
-        }
+.settings-container::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
 
-        /* Buttons */
-        .btn-primary {
-          background: #3b82f6;
-          color: white;
-          border: none;
-          padding: 0.6rem 1.2rem;
-          border-radius: 8px;
-          cursor: pointer;
-          font-weight: 600;
-          transition: background 0.2s;
-        }
+.dark-mode .settings-container::-webkit-scrollbar-track {
+  background: #1e293b;
+}
 
-        .btn-primary:hover {
-          background: #2563eb;
-        }
+.dark-mode .settings-container::-webkit-scrollbar-thumb {
+  background: #475569;
+}
 
-        .btn-unlink {
-          background: #ef4444;
-          color: white;
-          border: none;
-          padding: 0.4rem 1rem;
-          border-radius: 6px;
-          cursor: pointer;
-          font-size: 0.8rem;
-        }
+/* =========================================================
+   MAIN CONTENT
+========================================================= */
+.main-content {
+  width: 100%;
+  max-width: 950px;
+  margin: 0 auto;
+}
 
-        .btn-unlink:hover {
-          background: #dc2626;
-        }
+.settings-title {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
 
-        .btn-link-new {
-          background: #22c55e;
-          color: white;
-          border: none;
-          padding: 0.6rem 1.2rem;
-          border-radius: 8px;
-          cursor: pointer;
-          font-weight: 500;
-          margin-top: 1rem;
-          width: 100%;
-        }
+  margin-bottom: 1.5rem;
 
-        .btn-link-new:hover {
-          background: #16a34a;
-        }
+  color: var(--text-primary);
+}
 
-        /* Success Message */
-        .success-message {
-          background: #dcfce7;
-          color: #166534;
-          padding: 0.75rem 1.25rem;
-          border-radius: 10px;
-          margin-bottom: 1.25rem;
-          border-left: 4px solid #22c55e;
-        }
+/* =========================================================
+   SECTION CARD
+========================================================= */
+.section-card {
+  background: var(--card-bg);
 
-        .dark-mode .success-message {
-          background: #14532d;
-          color: #bbf7d0;
-        }
+  border: 1px solid var(--border);
+  border-radius: 18px;
 
-        /* Linked Accounts */
-        .linked-account-item {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 0.75rem 0;
-          border-bottom: 1px solid var(--border);
-        }
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 1.5rem;
 
-        .account-info {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-        }
+  box-shadow: var(--shadow);
 
-        .account-provider {
-          font-weight: 700;
-          font-size: 1rem;
-          color: var(--text-primary);
-        }
+  transition: var(--transition);
+}
 
-        .account-email {
-          font-size: 0.85rem;
-          color: #64748b;
-        }
+.section-card:hover {
+  transform: translateY(-1px);
+}
 
-        .dark-mode .account-email {
-          color: #94a3b8;
-        }
+.section-card h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
 
-        .account-date {
-          font-size: 0.7rem;
-          color: #94a3b8;
-        }
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
 
-        /* Profile Preview */
-        .profile-preview {
-          margin-top: 1rem;
-          text-align: center;
-        }
+  border-bottom: 1px solid var(--border);
 
-        .profile-img {
-          width: 80px;
-          height: 80px;
-          border-radius: 50%;
-          object-fit: cover;
-          border: 3px solid #3b82f6;
-        }
+  color: var(--text-primary);
+}
 
-        /* About Section */
-        .about-section {
-          text-align: center;
-          padding: 1.5rem;
-          color: #64748b;
-          font-size: 0.85rem;
-        }
+.dark-mode .section-card h3 {
+  color: #38bdf8;
+}
 
-        /* Modal */
-        .modal-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.7);
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          z-index: 1000;
-        }
+/* =========================================================
+   FORM STACK
+========================================================= */
+.form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
 
-        .modal-content {
-          background: white;
-          border-radius: 16px;
-          padding: 1.75rem;
-          width: 450px;
-          max-width: 90%;
-        }
+/* =========================================================
+   FORM GROUP
+========================================================= */
+.form-group {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 
-        .dark-mode .modal-content {
-          background: #1e293b;
-          color: #f1f5f9;
-        }
+  gap: 1rem;
+  flex-wrap: wrap;
+}
 
-        .modal-content h3 {
-          margin-bottom: 1.25rem;
-        }
+.form-group label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
 
-        .modal-actions {
-          display: flex;
-          justify-content: flex-end;
-          gap: 0.75rem;
-          margin-top: 1.5rem;
-        }
+/* =========================================================
+   FORM FIELD
+========================================================= */
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+}
 
-        .btn-save {
-          background: #22c55e;
-          color: white;
-          border: none;
-          padding: 0.5rem 1.2rem;
-          border-radius: 6px;
-          cursor: pointer;
-        }
+.form-field label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--text-muted);
+}
 
-        .btn-cancel {
-          background: #64748b;
-          color: white;
-          border: none;
-          padding: 0.5rem 1.2rem;
-          border-radius: 6px;
-          cursor: pointer;
-        }
+/* =========================================================
+   INPUTS + SELECTS
+========================================================= */
+.form-stack input,
+.form-stack select,
+.form-field input,
+.form-field select,
+.modal-content input,
+.modal-content select {
+  width: 100%;
 
-        input[type="checkbox"] {
-          width: 1.2rem;
-          height: 1.2rem;
-          cursor: pointer;
-          accent-color: #3b82f6;
-        }
+  padding: 0.78rem 0.9rem;
 
-        .email-hint {
-          font-size: 0.75rem;
-          color: #64748b;
-        }
+  border: 1px solid var(--border);
+  border-radius: 10px;
 
-        /* Responsive */
-        @media (max-width: 768px) {
-          .settings-container {
-            padding: 1rem;
-          }
-          .section-card {
-            padding: 1rem;
-          }
-          .form-group {
-            flex-direction: column;
-            align-items: flex-start;
-          }
-          .linked-account-item {
-            flex-direction: column;
-            gap: 0.5rem;
-            align-items: flex-start;
-          }
-          .phone-input-wrapper {
-            flex-wrap: wrap;
-          }
-          .phone-prefix {
-            width: 100%;
-            border-right: none;
-            border-bottom: 1px solid var(--border);
-          }
-        }
+  background: var(--card-bg);
+  color: var(--text-primary);
 
-        /* NAME ROW */
+  font-size: 0.95rem;
+  font-weight: 500;
+
+  outline: none;
+
+  transition: var(--transition);
+}
+
+.form-stack select option,
+.form-field select option {
+  background: var(--card-bg);
+  color: var(--text-primary);
+}
+
+.form-stack input:focus,
+.form-stack select:focus,
+.form-field input:focus,
+.form-field select:focus,
+.modal-content input:focus,
+.modal-content select:focus {
+  border-color: var(--primary);
+  box-shadow:
+    0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+/* =========================================================
+   FIELD HINT
+========================================================= */
+.field-hint,
+.email-hint {
+  font-size: 0.74rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+/* =========================================================
+   NAME ROW
+========================================================= */
 .name-row {
   display: flex;
   gap: 0.75rem;
@@ -1965,36 +2076,437 @@ setProfilePicturePreview(
   flex: 1;
 }
 
-/* READONLY / DISABLED INPUT STYLE */
+/* =========================================================
+   PHONE INPUT
+========================================================= */
+.phone-input-wrapper {
+  display: flex;
+  align-items: center;
+
+  overflow: hidden;
+
+  border: 1px solid var(--border);
+  border-radius: 10px;
+
+  background: var(--card-bg);
+}
+
+.phone-prefix {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  padding: 0.78rem 1rem;
+
+  border-right: 1px solid var(--border);
+
+  background: var(--border);
+
+  font-weight: 700;
+  color: var(--text-primary);
+
+  white-space: nowrap;
+}
+
+.flag-icon {
+  font-size: 1.05rem;
+}
+
+.phone-number-input {
+  flex: 1 !important;
+
+  border: none !important;
+  border-radius: 0 !important;
+
+  background: transparent !important;
+
+  box-shadow: none !important;
+}
+
+.phone-number-input:focus {
+  outline: none;
+}
+
+/* =========================================================
+   READONLY
+========================================================= */
 .readonly-input {
   background: #e2e8f0 !important;
+  border: 1px solid #cbd5e1 !important;
+
   color: #475569 !important;
+
   cursor: not-allowed;
   opacity: 1 !important;
 }
 
 .readonly-input:disabled {
-  background: #e2e8f0 !important;
-  color: #475569 !important;
-  border: 1px solid #cbd5e1 !important;
   opacity: 1 !important;
 }
 
-/* DARK MODE readonly */
 .dark-mode .readonly-input,
 .dark-mode .readonly-input:disabled {
   background: #334155 !important;
-  color: #94a3b8 !important;
   border: 1px solid #475569 !important;
+
+  color: #94a3b8 !important;
 }
 
-/* MOBILE RESPONSIVE */
+/* =========================================================
+   SUFFIX
+========================================================= */
+.suffix-field select {
+  width: 220px;
+}
+
+/* =========================================================
+   RANGE
+========================================================= */
+.range-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  flex: 1;
+}
+
+.range-container input[type="range"] {
+  flex: 1;
+  height: 6px;
+
+  border: none;
+  border-radius: 999px;
+
+  background: var(--border);
+}
+
+.range-container span {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.max-label {
+  font-size: 0.74rem !important;
+  color: var(--text-muted) !important;
+}
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+.btn-primary,
+.btn-save,
+.btn-cancel,
+.btn-unlink,
+.btn-link-new {
+  border: none;
+  outline: none;
+
+  cursor: pointer;
+
+  transition: var(--transition);
+
+  font-weight: 700;
+}
+
+/* PRIMARY */
+.btn-primary {
+  background: var(--primary);
+  color: white;
+
+  padding: 0.7rem 1.2rem;
+
+  border-radius: 10px;
+}
+
+.btn-primary:hover {
+  background: var(--primary-hover);
+}
+
+/* SAVE */
+.btn-save {
+  background: var(--success);
+  color: white;
+
+  padding: 0.6rem 1.2rem;
+
+  border-radius: 8px;
+}
+
+.btn-save:hover {
+  background: var(--success-hover);
+}
+
+/* CANCEL */
+.btn-cancel {
+  background: #64748b;
+  color: white;
+
+  padding: 0.6rem 1.2rem;
+
+  border-radius: 8px;
+}
+
+.btn-cancel:hover {
+  background: #475569;
+}
+
+/* UNLINK */
+.btn-unlink {
+  background: var(--danger);
+  color: white;
+
+  padding: 0.45rem 1rem;
+
+  border-radius: 8px;
+
+  font-size: 0.82rem;
+}
+
+.btn-unlink:hover {
+  background: var(--danger-hover);
+}
+
+/* LINK NEW */
+.btn-link-new {
+  width: 100%;
+
+  margin-top: 1rem;
+
+  background: var(--success);
+  color: white;
+
+  padding: 0.8rem 1rem;
+
+  border-radius: 10px;
+}
+
+.btn-link-new:hover {
+  background: var(--success-hover);
+}
+
+/* =========================================================
+   SUCCESS MESSAGE
+========================================================= */
+.success-message {
+  display: flex;
+  align-items: center;
+
+  margin-bottom: 1.25rem;
+
+  padding: 0.9rem 1.1rem;
+
+  border-left: 4px solid #22c55e;
+  border-radius: 10px;
+
+  background: #dcfce7;
+  color: #166534;
+
+  font-weight: 600;
+}
+
+.dark-mode .success-message {
+  background: #14532d;
+  color: #bbf7d0;
+}
+
+/* =========================================================
+   LINKED ACCOUNTS
+========================================================= */
+.linked-account-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  gap: 1rem;
+
+  padding: 1rem 0;
+
+  border-bottom: 1px solid var(--border);
+}
+
+.account-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.account-provider {
+  font-size: 1rem;
+  font-weight: 700;
+
+  color: var(--text-primary);
+}
+
+.account-email {
+  font-size: 0.84rem;
+  color: var(--text-muted);
+}
+
+.account-date {
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+/* =========================================================
+   PROFILE PREVIEW
+========================================================= */
+.profile-preview {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.profile-img {
+  width: 90px;
+  height: 90px;
+
+  border-radius: 50%;
+
+  object-fit: cover;
+
+  border: 3px solid var(--primary);
+
+  box-shadow:
+    0 4px 12px rgba(59, 130, 246, 0.25);
+}
+
+/* =========================================================
+   ABOUT SECTION
+========================================================= */
+.about-section {
+  padding: 1.5rem;
+
+  text-align: center;
+
+  font-size: 0.82rem;
+  line-height: 1.8;
+
+  color: var(--text-muted);
+}
+
+/* =========================================================
+   MODAL
+========================================================= */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  padding: 1rem;
+
+  background: rgba(15, 23, 42, 0.75);
+
+  z-index: 1000;
+
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  width: 450px;
+  max-width: 100%;
+
+  padding: 1.75rem;
+
+  border-radius: 18px;
+
+  background: var(--card-bg);
+
+  border: 1px solid var(--border);
+
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.25);
+}
+
+.modal-content h3 {
+  margin-bottom: 1.25rem;
+  color: var(--text-primary);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+
+  margin-top: 1.5rem;
+}
+
+/* =========================================================
+   CHECKBOX
+========================================================= */
+input[type="checkbox"] {
+  width: 1.15rem;
+  height: 1.15rem;
+
+  cursor: pointer;
+
+  accent-color: var(--primary);
+}
+
+/* =========================================================
+   YEAR SELECT
+========================================================= */
+.year-select {
+  max-width: 260px;
+}
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
 @media (max-width: 768px) {
+  .settings-container {
+    padding: 1rem;
+  }
+
+  .section-card {
+    padding: 1rem;
+  }
+
+  .settings-title {
+    font-size: 1.6rem;
+  }
+
+  .form-group {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .linked-account-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .name-row {
     flex-direction: column;
   }
+
+  .phone-input-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .phone-prefix {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    width: 100%;
+  }
+
+  .suffix-field select {
+    width: 100%;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .btn-save,
+  .btn-cancel {
+    width: 100%;
+  }
 }
-      `}</style>
+`}</style>
     </div>
   );
 };

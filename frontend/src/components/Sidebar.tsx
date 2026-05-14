@@ -253,19 +253,16 @@ export default function Sidebar({
       {/* HEADER */}
       {/* ==================================== */}
 
-      <div
-        onClick={() =>
-          navigate('/homescreen')
-        }
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          marginBottom: '30px',
-          cursor: 'pointer',
-          padding: '10px',
-        }}
-      >
+      
+<div
+  style={{
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    marginBottom: '30px',
+    padding: '10px',
+  }}
+>
 
         {/* PROFILE IMAGE */}
 
@@ -326,14 +323,14 @@ export default function Sidebar({
         <div>
 
           <h2
-            style={{
-              fontSize: '1rem',
-              margin: 0,
-              color: '#fff',
-            }}
-          >
-            Home
-          </h2>
+  style={{
+    fontSize: '1rem',
+    margin: 0,
+    color: '#fff',
+  }}
+>
+  {user?.first_name} {user?.last_name || 'Student'}
+</h2>
 
           <span
             style={{
@@ -341,7 +338,7 @@ export default function Sidebar({
               color: '#94a3b8',
             }}
           >
-            Student Portal
+            {user?.role || 'Student'} Portal
           </span>
 
         </div>

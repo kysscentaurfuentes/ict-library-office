@@ -84,6 +84,11 @@ const handleSignin = async (
       );
 
       localStorage.setItem(
+  'userName',
+  res.data.login.user.first_name
+);
+
+      localStorage.setItem(
        'user',
       JSON.stringify(res.data.login.user)
       );

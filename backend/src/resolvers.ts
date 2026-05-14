@@ -295,7 +295,7 @@ OR "StudentId" = $2
       StudentId,
       course,
       school_id_image,
-      "student"
+      "Student"
     ]
   );
 
