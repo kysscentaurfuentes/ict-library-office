@@ -258,7 +258,8 @@ WHERE id = $1
     course: user.course,
     school_id_image: user.school_id_image,
     role: user.role,
-    profile_picture: user.profile_picture
+    profile_picture: user.profile_picture,
+    vibration_enabled: user.vibration_enabled
   }
 };
     },
@@ -520,7 +521,7 @@ WHERE id = $17
       student_type,
       college_department,
       program,
-      year_level
+      year_level,
       vibration_enabled
     `,
     [
