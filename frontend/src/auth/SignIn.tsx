@@ -16,6 +16,7 @@ const SIGNIN = gql`
       email
       StudentId
       role
+      profile_picture
     }
   }
 }
@@ -31,6 +32,7 @@ type LoginResponse = {
       email: string;
       StudentId: string;
       role: string;
+      profile_picture: string;
     };
   };
 };

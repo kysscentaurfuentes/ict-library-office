@@ -166,29 +166,68 @@ console.log("BASE_URL:", BASE_URL);
 app.post(
   "/api/upload-profile-picture",
   upload.single("image"),
-  (req, res) => {
+  async (req, res) => {
 
-    const fileReq = req as Request & {
-      file?: Express.Multer.File;
-    };
+    try {
 
-    if (!fileReq.file) {
-      return res.status(400).json({
-        message: "No file uploaded",
+      const fileReq = req as Request & {
+        file?: Express.Multer.File;
+      };
+
+      if (!fileReq.file) {
+        return res.status(400).json({
+          message: "No file uploaded",
+        });
+      }
+
+      const studentId = req.body.studentId;
+
+      if (!studentId) {
+        return res.status(400).json({
+          message: "Student ID required",
+        });
+      }
+
+      const BASE_URL =
+        process.env.PUBLIC_URL ||
+        `http://${LOCAL_IP}:${PORT}`;
+
+      const imageUrl =
+        `${BASE_URL}/uploads/profile-pictures/${fileReq.file.filename}`;
+
+      // ==========================
+      // 💾 SAVE TO DATABASE
+      // ==========================
+      await pool.query(
+        `
+        UPDATE users
+        SET profile_picture = $1
+        WHERE "StudentId" = $2
+        `,
+        [imageUrl, studentId]
+      );
+
+      console.log(
+        "✅ PROFILE PICTURE SAVED:",
+        imageUrl
+      );
+
+      return res.json({
+        success: true,
+        imageUrl,
+      });
+
+    } catch (err) {
+
+      console.error(err);
+
+      return res.status(500).json({
+        message:
+          "Failed to upload profile picture",
       });
     }
-
-    const BASE_URL =
-      process.env.PUBLIC_URL ||
-      `http://${LOCAL_IP}:${PORT}`;
-console.log("BASE_URL:", BASE_URL);
-    return res.json({
-  imageUrl:
-    `${BASE_URL}/uploads/profile-pictures/${fileReq.file.filename}`,
-});
   }
 );
-
 
 // ==========================
 // 🎨 LOG COLORS

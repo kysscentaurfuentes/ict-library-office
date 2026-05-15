@@ -25,8 +25,29 @@ interface UserRow {
   role: string;
 
   suffix?: string;
-suffix_locked?: boolean;
-phone_number?: string;
+  suffix_locked?: boolean;
+  phone_number?: string;
+
+  birthdate?: string;
+  birthdate_locked?: boolean;
+
+  age?: number;
+
+  gender?: string;
+  gender_locked?: boolean;
+
+  nationality?: string;
+  nationality_locked?: boolean;
+
+  user_classification?: string;
+
+  student_type?: string;
+  college_department?: string;
+
+  program?: string;
+  year_level?: string;
+
+  profile_picture?: string;
 }
 
 type Context = {
@@ -117,9 +138,12 @@ export const resolvers = {
   suffix_locked,
   phone_number,
   birthdate,
+  birthdate_locked,
 age,
 gender,
+gender_locked,
 nationality,
+nationality_locked,
 user_classification,
 student_type,
 college_department,
@@ -232,6 +256,7 @@ WHERE id = $1
     course: user.course,
     school_id_image: user.school_id_image,
     role: user.role,
+    profile_picture: user.profile_picture
   }
 };
     },
@@ -395,7 +420,9 @@ updateUserInformation: async (
 
   assertUser(user);
 
-  // prevent editing suffix again
+// =========================
+// LOCKED FIELDS
+// =========================
   let finalSuffix = user.suffix;
   let finalLocked = user.suffix_locked;
 
@@ -404,6 +431,44 @@ updateUserInformation: async (
     finalLocked = true;
   }
 
+let finalBirthdate = user.birthdate;
+let finalBirthdateLocked =
+  user.birthdate_locked;
+
+if (
+  !user.birthdate_locked &&
+  birthdate
+) {
+  finalBirthdate = birthdate;
+  finalBirthdateLocked = true;
+}
+
+let finalGender = user.gender;
+let finalGenderLocked =
+  user.gender_locked;
+
+if (
+  !user.gender_locked &&
+  gender
+) {
+  finalGender = gender;
+  finalGenderLocked = true;
+}
+
+let finalNationality =
+  user.nationality;
+
+let finalNationalityLocked =
+  user.nationality_locked;
+
+if (
+  !user.nationality_locked &&
+  nationality
+) {
+  finalNationality = nationality;
+  finalNationalityLocked = true;
+}
+
   const updated = await pool.query<UserRow>(
     `
     UPDATE users
@@ -411,18 +476,20 @@ SET
   phone_number = $1,
   suffix = $2,
   suffix_locked = $3,
-
   birthdate = $4,
-  age = $5,
-  gender = $6,
-  nationality = $7,
-  user_classification = $8,
-  student_type = $9,
-  college_department = $10,
-  program = $11,
-  year_level = $12
+  birthdate_locked = $5,
+  age = $6,
+  gender = $7,
+  gender_locked = $8,
+  nationality = $9,
+  nationality_locked = $10,
+  user_classification = $11,
+  student_type = $12,
+  college_department = $13,
+  program = $14,
+  year_level = $15
 
-WHERE id = $13
+WHERE id = $16
     RETURNING
       id,
       first_name,
@@ -437,9 +504,12 @@ WHERE id = $13
       suffix_locked,
       phone_number,
       birthdate,
+      birthdate_locked,
       age,
       gender,
+      gender_locked,
       nationality,
+      nationality_locked,
       user_classification,
       student_type,
       college_department,
@@ -451,10 +521,17 @@ WHERE id = $13
   finalSuffix,
   finalLocked,
 
-  birthdate,
+  finalBirthdate,
+  finalBirthdateLocked,
+
   age,
-  gender,
-  nationality,
+
+  finalGender,
+  finalGenderLocked,
+
+  finalNationality,
+  finalNationalityLocked,
+
   user_classification,
   student_type,
   college_department,

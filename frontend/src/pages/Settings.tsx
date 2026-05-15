@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import { gql } from '@apollo/client';
 import { useQuery, useMutation } from '@apollo/client/react';
+import { COURSE_ACRONYMS } from '../utils/courseAcronyms';
 
 const GET_ME = gql`
 query GetMe {
@@ -38,7 +39,6 @@ const UPDATE_USER_INFORMATION = gql`
 mutation UpdateUserInformation(
   $phone_number: String!
   $suffix: String
-
   $birthdate: String
   $age: Int
   $gender: String
@@ -92,10 +92,15 @@ interface UserInfo {
   suffixLocked: boolean;
 
   nationality: string;
+  nationalityLocked: boolean;
 
   birthdate: string;
+  birthdateLocked: boolean;
+
   age: number;
+  
   gender: string;
+  genderLocked: boolean;
 
   studentType: string;
   collegeDepartment: string;
@@ -140,8 +145,13 @@ interface GetMeData {
     phone_number?: string;
 
     birthdate?: string;
+    birthdate_locked?: boolean;
+
     gender?: string;
+    gender_locked?: boolean;
+
     nationality?: string;
+    nationality_locked?: boolean;
 
     student_type?: string;
     college_department?: string;
@@ -182,7 +192,6 @@ const { data } = useQuery<GetMeData>(GET_ME, {
   // =========================
   // Student Information State
   // =========================
-  const [selectedCourse, setSelectedCourse] = useState<string>('');
   const [selectedYearLevel, setSelectedYearLevel] =
     useState<string>('1');
 
@@ -208,10 +217,15 @@ const [userInfo, setUserInfo] = useState<UserInfo>({
   suffixLocked: false,
 
   nationality: '',
+  nationalityLocked: false,
 
   birthdate: '',
+  birthdateLocked: false,
+  
   age: 0,
+
   gender: '',
+  genderLocked: false,
 
   studentType: '',
   collegeDepartment: '',
@@ -358,14 +372,18 @@ useEffect(() => {
       suffixLocked: data.me.suffix_locked || false,
 
       nationality: data.me.nationality || '',
+      nationalityLocked: data.me.nationality_locked || false,
 
       birthdate: data.me.birthdate || '',
+      birthdateLocked: data.me.birthdate_locked || false,
+
       age: computedAge,
+
       gender: data.me.gender || '',
+      genderLocked: data.me.gender_locked || false,
 
       studentType: data.me.student_type || '',
-      collegeDepartment:
-        data.me.college_department || '',
+      collegeDepartment: data.me.college_department || '',
 
       course: data.me.course || '',
       program: data.me.program || '',
@@ -956,102 +974,137 @@ setProfilePicturePreview(
   };
 
  
+return (
+  <div className={`settings-wrapper ${isDarkMode ? 'dark-mode' : ''}`}>
+    <Sidebar />
 
-  return (
-    <div className={`settings-wrapper ${isDarkMode ? 'dark-mode' : ''}`}>
-      <Sidebar />
-      <div className="settings-container">
-        <main className="main-content">
-          <h1 className="settings-title">Settings</h1>
-          
-          {successMessage && (
-            <div className="success-message">
-              <span>✓ {successMessage}</span>
+    <div className="settings-container">
+      <main className="main-content">
+        <h1 className="settings-title">Settings</h1>
+
+        {successMessage && (
+          <div className="success-message">
+            <span>✓ {successMessage}</span>
+          </div>
+        )}
+
+        {/* Editable User Information */}
+        <div className="section-card">
+          <h3>User Information</h3>
+
+          <div className="form-stack">
+
+            {/* NAME ROW */}
+            <div
+              className="name-row"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr 1fr',
+                gap: '1rem',
+              }}
+            >
+              <div className="form-field name-field">
+                <label>First Name</label>
+
+                <input
+                  type="text"
+                  value={userInfo.firstName}
+                  readOnly
+                  disabled
+                  className="readonly-input"
+                />
+              </div>
+
+              <div className="form-field name-field">
+                <label>Middle Name</label>
+
+                <input
+                  type="text"
+                  value={userInfo.middleName}
+                  readOnly
+                  disabled
+                  className="readonly-input"
+                />
+              </div>
+
+              <div className="form-field name-field">
+                <label>Last Name</label>
+
+                <input
+                  type="text"
+                  value={userInfo.lastName}
+                  readOnly
+                  disabled
+                  className="readonly-input"
+                />
+              </div>
             </div>
-          )}
 
-          {/* Editable User Information */}
-          <div className="section-card">
-            <h3>User Information</h3>
-            <div className="form-stack">
-              <div className="name-row">
-  <div className="form-field name-field">
-    <label>First Name</label>
-    <input
-      type="text"
-      value={userInfo.firstName}
-      readOnly
-      disabled
-      className="readonly-input"
-    />
-  </div>
+            {/* EMAIL */}
+            <div className="form-field">
+              <label>Email Address</label>
 
-  <div className="form-field name-field">
-    <label>Middle Name</label>
-    <input
-      type="text"
-      value={userInfo.middleName}
-      readOnly
-      disabled
-      className="readonly-input"
-    />
-  </div>
+              <input
+                type="email"
+                value={userInfo.email}
+                readOnly
+                disabled
+                className="readonly-input"
+              />
+            </div>
 
-  <div className="form-field name-field">
-    <label>Last Name</label>
-    <input
-      type="text"
-      value={userInfo.lastName}
-      readOnly
-      disabled
-      className="readonly-input"
-    />
-  </div>
-</div>
+            {/* PERSONAL INFO COMPACT ROW */}
+            <div
+              className="compact-info-row"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 0.7fr 0.7fr 1fr 1fr',
+                gap: '1rem',
+                alignItems: 'start',
+              }}
+            >
+              
 
-<div className="form-field">
-  <label>Email Address</label>
-  <input
-    type="email"
-    value={userInfo.email}
-    readOnly
-    disabled
-    className="readonly-input"
-  />
-</div>
+              {/* SUFFIX */}
+              <div className="form-field suffix-field">
+                <label>Suffix</label>
 
-<div className="form-field suffix-field">
-  <label>Suffix</label>
+                <select
+                  value={userInfo.suffix}
+                  onChange={handleSuffixChange}
+                  disabled={userInfo.suffixLocked}
+                  className={
+                    userInfo.suffixLocked
+                      ? 'readonly-input'
+                      : ''
+                  }
+                >
+                  {suffixOptions.map((suffix) => (
+                    <option key={suffix} value={suffix}>
+                      {suffix || 'Select suffix'}
+                    </option>
+                  ))}
+                </select>
 
-  <select
-    value={userInfo.suffix}
-    onChange={handleSuffixChange}
-    disabled={userInfo.suffixLocked}
-    className={
-      userInfo.suffixLocked
-        ? 'readonly-input'
-        : ''
-    }
-  >
-    {suffixOptions.map((suffix) => (
-      <option key={suffix} value={suffix}>
-        {suffix || 'Select suffix'}
-      </option>
-    ))}
-  </select>
+                <small className="field-hint">
+                  {userInfo.suffixLocked
+                    ? 'Locked'
+                    : 'Editable once'}
+                </small>
+              </div>
 
-  <small className="field-hint">
-    {userInfo.suffixLocked
-      ? 'Suffix can no longer be edited.'
-      : 'Suffix is only editable once.'}
-  </small>
-</div>
-<div className="form-field">
+              <div className="form-field">
   <label>Birthdate</label>
 
   <input
     type="date"
     value={userInfo.birthdate}
+    disabled={userInfo.birthdateLocked}
+    className={
+      userInfo.birthdateLocked
+        ? 'readonly-input'
+        : ''
+    }
     onChange={(e) =>
       setUserInfo((prev) => ({
         ...prev,
@@ -1060,25 +1113,39 @@ setProfilePicturePreview(
       }))
     }
   />
+
+  <small className="field-hint">
+    {userInfo.birthdateLocked
+      ? 'Locked'
+      : 'Editable once'}
+  </small>
 </div>
 
-<div className="form-field">
-  <label>Age</label>
+              {/* AGE */}
+              <div className="form-field">
+                <label>Age</label>
 
-  <input
-    type="text"
-    value={userInfo.age}
-    readOnly
-    disabled
-    className="readonly-input"
-  />
-</div>
+                <input
+                  type="text"
+                  value={userInfo.age}
+                  readOnly
+                  disabled
+                  className="readonly-input"
+                />
+              </div>
 
+            {/* GENDER */}
 <div className="form-field">
   <label>Gender</label>
 
   <select
     value={userInfo.gender}
+    disabled={userInfo.genderLocked}
+    className={
+      userInfo.genderLocked
+        ? 'readonly-input'
+        : ''
+    }
     onChange={(e) =>
       setUserInfo((prev) => ({
         ...prev,
@@ -1086,51 +1153,131 @@ setProfilePicturePreview(
       }))
     }
   >
-    <option value="">Select Gender</option>
+    <option value="">Select</option>
     <option value="Male">Male</option>
     <option value="Female">Female</option>
   </select>
+
+  <small className="field-hint">
+    {userInfo.genderLocked
+      ? 'Locked'
+      : 'Editable once'}
+  </small>
 </div>
 
+{/* NATIONALITY */}
 <div className="form-field">
   <label>Nationality</label>
 
-  <input
-    type="text"
+  <select
     value={userInfo.nationality}
+    disabled={userInfo.nationalityLocked}
+    className={
+      userInfo.nationalityLocked
+        ? 'readonly-input'
+        : ''
+    }
     onChange={(e) =>
       setUserInfo((prev) => ({
         ...prev,
         nationality: e.target.value,
       }))
     }
-    placeholder="Filipino"
-  />
+  >
+    <option value="">
+      Select Nationality
+    </option>
+
+    <option value="Filipino">
+      Filipino
+    </option>
+
+    <option value="American">
+      American
+    </option>
+
+    <option value="Japanese">
+      Japanese
+    </option>
+
+    <option value="Korean">
+      Korean
+    </option>
+
+    <option value="Chinese">
+      Chinese
+    </option>
+
+    <option value="Lithuanian">
+      Lithuanian
+    </option>
+
+    <option value="Pakistani">
+      Pakistani
+    </option>
+
+    <option value="Other">
+      Other
+    </option>
+  </select>
+
+  <small className="field-hint">
+    {userInfo.nationalityLocked
+      ? 'Locked'
+      : 'Editable once'}
+  </small>
+
+  <small
+    className="field-hint"
+    style={{
+      marginTop: '0.35rem',
+      display: 'block',
+    }}
+  >
+    If your nationality is not listed, please submit a request through the
+    Feedback section for assistance.
+  </small>
 </div>
-              <div className="form-field">
-                <label>Phone Number</label>
-                <div className="phone-input-wrapper">
-                  <span className="phone-prefix">
-                    <span className="flag-icon">🇵🇭</span> +63
-                  </span>
-                  <input
-                    type="tel"
-                    value={userInfo.phoneNumber}
-                    onChange={handlePhoneNumberChange}
-                    placeholder="9123456789"
-                    maxLength={10}
-                    pattern="\d*"
-                    inputMode="numeric"
-                    className="phone-number-input"
-                  />
-                </div>
-                <small className="field-hint">Enter 10 digits after +63 (e.g., 9123456789)</small>
+
+
+            {/* PHONE */}
+            <div className="form-field">
+              <label>Phone Number</label>
+
+              <div className="phone-input-wrapper">
+                <span className="phone-prefix">
+                  <span className="flag-icon">🇵🇭</span> +63
+                </span>
+
+                <input
+                  type="tel"
+                  value={userInfo.phoneNumber}
+                  onChange={handlePhoneNumberChange}
+                  placeholder="9123456789"
+                  maxLength={10}
+                  pattern="\d*"
+                  inputMode="numeric"
+                  className="phone-number-input"
+                />
               </div>
-              <button className="btn-primary" onClick={saveUserInfo} style={{ marginTop: '0.5rem' }}>
-                Save User Information
-              </button>
+
+              <small className="field-hint">
+                Enter 10 digits after +63
+              </small>
             </div>
+            </div>
+
+            {/* BUTTON */}
+            <button
+              className="btn-primary"
+              onClick={saveUserInfo}
+              style={{ marginTop: '0.5rem' }}
+            >
+              Save User Information
+            </button>
+
           </div>
+        </div>
 
 {/* Academic Information */}
 <div className="section-card">
@@ -1309,267 +1456,7 @@ setProfilePicturePreview(
       disabled
       className="readonly-input"
       value={
-        userInfo.course ===
-        "BACHELOR OF SCIENCE IN SOCIAL WORK"
-          ? "BSSW"
-
-        : userInfo.course ===
-          "BACHELOR OF SCIENCE IN PSYCHOLOGY"
-          ? "BS PSYCH"
-
-        : userInfo.course ===
-          "BACHELOR OF ARTS IN SOCIOLOGY"
-          ? "AB-SOCIO"
-
-        : userInfo.course ===
-          "BACHELOR OF SCIENCE IN BIOLOGY"
-          ? "BSBIO"
-
-        : userInfo.course ===
-          "BACHELOR OF SCIENCE IN CHEMISTRY"
-          ? "BSCHEM"
-
-        : userInfo.course ===
-          "BACHELOR OF SCIENCE IN PHYSICS"
-          ? "BS-PHYS"
-
-        : userInfo.course ===
-          "BACHELOR OF SCIENCE IN MATHEMATICS"
-          ? "BSMATH"
-
-        : userInfo.course ===
-          "BACHELOR OF SCIENCE IN APPLIED MATHEMATICS"
-          ? "BSAM"
-
-        : userInfo.course ===
-          "BACHELOR OF SCIENCE IN COMPUTER SCIENCE"
-          ? "BSCS"
-
-        : userInfo.course ===
-          "BACHELOR OF SCIENCE IN INFORMATION SYSTEM"
-          ? "BSIS"
-
-        : userInfo.course ===
-          "BACHELOR OF SCIENCE IN INFORMATION TECHNOLOGY"
-          ? "BSIT"
-
-        : userInfo.course ===
-          "BACHELOR OF SCIENCE IN ENVIRONMENTAL SCIENCE"
-          ? "BSES"
-
-        : userInfo.course ===
-          "BACHELOR OF SCIENCE IN AGROFORESTRY"
-          ? "BSAF"
-
-        : userInfo.course ===
-          "BACHELOR OF SCIENCE IN FORESTRY"
-          ? "BSF"
-
-        : userInfo.course ===
-          "BACHELOR OF ELEMENTARY EDUCATION"
-          ? "BEED"
-
-        : userInfo.course ===
-          "BACHELOR OF SECONDARY EDUCATION MAJOR IN ENGLISH"
-          ? "BSED ENG"
-
-        : userInfo.course ===
-          "BACHELOR OF SECONDARY EDUCATION MAJOR IN FILIPINO"
-          ? "BSED FIL"
-
-        : userInfo.course ===
-          "BACHELOR OF SECONDARY EDUCATION MAJOR IN SCIENCE"
-          ? "BSED SCI"
-
-        : userInfo.course ===
-          "BACHELOR OF SECONDARY EDUCATION MAJOR IN MATHEMATICS"
-          ? "BSED-MATH"
-
-        : userInfo.course ===
-          "BACHELOR OF AGRICULTURAL TECHNOLOGY"
-          ? "BAT"
-
-        : userInfo.course ===
-          "BACHELOR OF SCIENCE IN AGRICULTURE"
-          ? "BSA"
-
-        : userInfo.course ===
-          "BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN AGRICULTURAL ECONOMICS"
-          ? "BSA-AGECON"
-
-        : userInfo.course ===
-          "BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN AGRONOMY"
-          ? "BSA-AGRON"
-
-        : userInfo.course ===
-          "BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN CROP PROTECTION"
-          ? "BSA-CROPPROT"
-
-        : userInfo.course ===
-          "BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN SOIL SCIENCE"
-          ? "BSA-SOILSCI"
-
-        : userInfo.course ===
-          "BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN AGRIBUSINESS MANAGEMENT"
-          ? "BSA-ABM"
-
-        : userInfo.course ===
-          "BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN ANIMAL SCIENCE"
-          ? "BSA-ANSCI"
-
-        : userInfo.course ===
-          "BACHELOR OF SCIENCE IN AGRICULTURE, MAJOR IN HORTICULTURE"
-          ? "BSA-HORTI"
-
-        : userInfo.course ===
-          "BACHELOR OF SCIENCE IN AGRICULTURAL AND BIOSYSTEMS ENGINEERING"
-          ? "BSABE"
-
-        : userInfo.course ===
-          "BACHELOR OF SCIENCE IN CIVIL ENGINEERING"
-          ? "BSCE"
-
-        : userInfo.course ===
-          "BACHELOR OF SCIENCE IN ELECTRONICS ENGINEERING"
-          ? "BSEcE"
-
-        : userInfo.course ===
-          "BACHELOR OF SCIENCE IN GEODETIC ENGINEERING"
-          ? "BSGE"
-
-        : userInfo.course ===
-          "BACHELOR OF SCIENCE IN MINING ENGINEERING"
-          ? "BSEM"
-
-        : userInfo.course ===
-          "BACHELOR OF SCIENCE IN GEOLOGY"
-          ? "BSGeo"
-
-        : userInfo.course ===
-          "MASTER OF ARTS IN EDUCATION (MAED)"
-          ? "MAED"
-
-        : userInfo.course ===
-          "MAED - ENGLISH LANGUAGE TEACHING (ELT)"
-          ? "MAED-ELT"
-
-        : userInfo.course ===
-          "MAED - EDUCATIONAL MANAGEMENT (EM)"
-          ? "MAED-EM"
-
-        : userInfo.course ===
-          "MAED - GUIDANCE & COUNSELING (GC)"
-          ? "MAED-GC"
-
-        : userInfo.course ===
-          "MAED - TEACHING, READING AND LITERATURE (TRL)"
-          ? "MAED-TRL"
-
-        : userInfo.course ===
-          "MAED - HEALTH EDUCATION (HE)"
-          ? "MAED-HE"
-
-        : userInfo.course ===
-          "MASTER OF ARTS IN GUIDANCE AND COUNSELING (MA GC)"
-          ? "MAGC"
-
-        : userInfo.course ===
-          "MASTER OF SCIENCE IN ENVIRONMENTAL MANAGEMENT (MEM)"
-          ? "MEM"
-
-        : userInfo.course ===
-          "MASTER OF SCIENCE IN BIOLOGY (MSBio)"
-          ? "MS Biology"
-
-        : userInfo.course ===
-          "MSBio - MORPHOLOGY"
-          ? "MSBio MORPH"
-
-        : userInfo.course ===
-          "MSBio - ECOLOGY"
-          ? "MSBio ECO"
-
-        : userInfo.course ===
-          "MSBio - TAXONOMY"
-          ? "MSBio TAX"
-
-        : userInfo.course ===
-          "MSBio - GENETICS"
-          ? "MSBio GEN"
-
-        : userInfo.course ===
-          "MSBio - PHYSIOLOGY"
-          ? "MSBio PHYS"
-
-        : userInfo.course ===
-          "MASTER OF SCIENCE EDUCATION (MSciED)"
-          ? "MSciED"
-
-        : userInfo.course ===
-          "MSciED - BIOLOGICAL SCIENCES"
-          ? "MSciEd-BIO"
-
-        : userInfo.course ===
-          "MSciED - PHYSICAL SCIENCES"
-          ? "MSciEd-PHYS"
-
-        : userInfo.course ===
-          "MSciED - ELEMENTARY SCIENCES"
-          ? "MSciEd-ELEM"
-
-        : userInfo.course ===
-          "MASTER OF SCIENCE IN CROP SCIENCE (MSCS)"
-          ? "MSCS"
-
-        : userInfo.course ===
-          "MSCS - HORTICULTURE"
-          ? "MSCS-HORT"
-
-        : userInfo.course ===
-          "MSCS - AGRONOMY"
-          ? "MSCS-AGRON"
-
-        : userInfo.course ===
-          "MASTER OF SCIENCE IN INFORMATION TECHNOLOGY (MSIT)"
-          ? "MSIT"
-
-        : userInfo.course ===
-          "MASTER OF SCIENCE IN MATHEMATICS (MSMATH)"
-          ? "MSMATH"
-
-        : userInfo.course ===
-          "MASTER OF SCIENCE IN MATHEMATICS EDUCATION (MSMathEd)"
-          ? "MSMathEd"
-
-        : userInfo.course ===
-          "MASTER IN PUBLIC ADMINISTRATION (MPA)"
-          ? "MPA"
-
-        : userInfo.course ===
-          "DOCTOR OF EDUCATION IN EDUCATIONAL MANAGEMENT (Ed.D)"
-          ? "Ed.D"
-
-        : userInfo.course ===
-          "DOCTOR OF PHILOSOPHY IN MATHEMATICS (Ph.D.-Math)"
-          ? "PHD-MATH"
-
-        : userInfo.course ===
-          "DOCTOR OF PHILOSOPHY IN MATHEMATICS EDUCATION (Ph.D.-MathEd)"
-          ? "PHD-MATHED"
-
-        : userInfo.course ===
-          "DOCTOR OF PHILOSOPHY IN SCIENCE EDUCATION (Ph.D.-SciEd)"
-          ? "PHD-SCIED"
-
-        : userInfo.course ===
-          "Ph.D.-SciEd (Biology)"
-          ? "PHD SCIED BIO"
-
-        : userInfo.course ===
-          "Ph.D.-SciEd (Physics)"
-          ? "PHD SCIED PHYS"
-
-        : ""
+        COURSE_ACRONYMS[userInfo.course] || ""
       }
     />
   </div>

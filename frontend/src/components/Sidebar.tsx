@@ -140,8 +140,8 @@ export default function Sidebar({
  cleaned = cleaned.trim();
 
   // CACHE BUST
-  const finalUrl =
-    `${cleaned}?v=${user?.updatedAt || Date.now()}`
+const finalUrl =
+  `${cleaned}?v=${user?.profile_picture || ''}`
 
   console.log(
     'FINAL IMAGE URL:',

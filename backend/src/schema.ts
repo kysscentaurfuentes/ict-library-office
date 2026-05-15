@@ -76,7 +76,7 @@ updateProfilePicture(
 updateUserInformation(
   phone_number: String!
   suffix: String
-
+  
   birthdate: String
   age: Int
   gender: String
@@ -84,6 +84,7 @@ updateUserInformation(
   user_classification: String
   student_type: String
   college_department: String
+  course: String
   program: String
   year_level: String
 ): User
