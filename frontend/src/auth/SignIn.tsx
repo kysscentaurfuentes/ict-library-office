@@ -17,6 +17,7 @@ const SIGNIN = gql`
       StudentId
       role
       profile_picture
+      vibration_enabled
     }
   }
 }
@@ -33,6 +34,7 @@ type LoginResponse = {
       StudentId: string;
       role: string;
       profile_picture: string;
+      vibration_enabled: boolean;
     };
   };
 };
@@ -86,14 +88,21 @@ const handleSignin = async (
       );
 
       localStorage.setItem(
-  'userName',
-  res.data.login.user.first_name
+       'userName',
+      res.data.login.user.first_name
 );
 
       localStorage.setItem(
        'user',
       JSON.stringify(res.data.login.user)
       );
+
+      localStorage.setItem(
+  'vibrationEnabled',
+  JSON.stringify(
+    res.data.login.user.vibration_enabled
+  )
+  );
 
       console.log(
         'Login successful! Student ID saved:',

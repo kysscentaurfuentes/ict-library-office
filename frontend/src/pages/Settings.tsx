@@ -31,6 +31,7 @@ query GetMe {
     course
     program
     year_level
+    vibration_enabled
   }
 }
 `;
@@ -49,6 +50,7 @@ mutation UpdateUserInformation(
   $course: String
   $program: String
   $year_level: String
+  $vibration_enabled: Boolean
 ) {
   updateUserInformation(
     phone_number: $phone_number
@@ -64,6 +66,7 @@ mutation UpdateUserInformation(
     course: $course
     program: $program
     year_level: $year_level
+    vibration_enabled: $vibration_enabled
   ) {
     id
     phone_number
@@ -110,6 +113,7 @@ interface UserInfo {
   yearLevel: string;
 
   userClassification: string;
+  vibration_enabled: boolean;
 }
 
 const suffixOptions = [
@@ -161,6 +165,7 @@ interface GetMeData {
     year_level?: string;
 
     user_classification?: string;
+    vibration_enabled?: boolean;
   };
 }
 
@@ -174,9 +179,10 @@ const { data } = useQuery<GetMeData>(GET_ME, {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean>(false);
   const [selectedFontSize, setSelectedFontSize] = useState<string>('medium');
-  const [notificationSoundVolume, setNotificationSoundVolume] =
-    useState<number>(50);
+  const [notificationSoundVolume, setNotificationSoundVolume] = useState<number>(50);
   const [successMessage, setSuccessMessage] = useState<string>('');
+  const [vibrationEnabled, setVibrationEnabled] =
+  useState<boolean>(true);
 
   // =========================
   // Password Modal State
@@ -235,6 +241,7 @@ const [userInfo, setUserInfo] = useState<UserInfo>({
   yearLevel: '',
 
   userClassification: '',
+  vibration_enabled: true,
 });
 
   // =========================
@@ -355,9 +362,11 @@ const [userInfo, setUserInfo] = useState<UserInfo>({
   // =========================
 useEffect(() => {
   if (data?.me) {
+
     const computedAge = calculateAge(
       data.me.birthdate || ''
     );
+
     setUserInfo((prev) => ({
       ...prev,
 
@@ -392,6 +401,10 @@ useEffect(() => {
       userClassification:
         data.me.user_classification || '',
     }));
+
+    setVibrationEnabled(
+      data.me.vibration_enabled ?? true
+    );
   }
 }, [data]);
 
@@ -687,6 +700,7 @@ const saveUserInfo = async (): Promise<void> => {
         course: userInfo.course || null,
         program: userInfo.program || null,
         year_level: userInfo.yearLevel || null,
+        vibration_enabled: vibrationEnabled || false,
       },
     });
 
@@ -1156,6 +1170,7 @@ return (
     <option value="">Select</option>
     <option value="Male">Male</option>
     <option value="Female">Female</option>
+    <option value="Prefer not to say">Prefer not to say</option>
   </select>
 
   <small className="field-hint">
@@ -1564,10 +1579,13 @@ return (
             <div className="form-group">
               <label>Enable Vibration (for scanned QR codes)</label>
               <input
-                type="checkbox"
-                id="enableVibration"
-                onChange={(e) => updateSetting('vibration', e.target.checked)}
-              />
+  type="checkbox"
+  id="enableVibration"
+  checked={vibrationEnabled}
+  onChange={(e) =>
+    setVibrationEnabled(e.target.checked)
+  }
+/>
             </div>
           </div>
 

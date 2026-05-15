@@ -25,6 +25,7 @@ type User {
   program: String
   year_level: String
   profile_picture: String
+  vibration_enabled: Boolean
 }
 
   type AuthPayload {
@@ -87,6 +88,7 @@ updateUserInformation(
   course: String
   program: String
   year_level: String
+  vibration_enabled: Boolean
 ): User
 
     blockDevice(

@@ -1,317 +1,458 @@
 // frontend/src/pages/QrCodeScanner.tsx
-import { useState, useEffect } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
-import Sidebar from '../components/Sidebar';
+
+import { useState, useEffect } from "react";
+import { QRCodeSVG } from "qrcode.react";
+import Sidebar from "../components/Sidebar";
 
 export default function QrCodeScanner() {
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
-  const [showTooltip, setShowTooltip] = useState<boolean>(false);
-  const [isHovered, setIsHovered] = useState<boolean>(false);
-  
-  const studentId = localStorage.getItem('studentId') || "N/A";
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
-  // Load dark mode preference
-  useEffect(() => {
-    const savedDarkMode = localStorage.getItem('darkMode');
-    if (savedDarkMode === 'true') {
-      setIsDarkMode(true);
-      document.documentElement.classList.add('dark-mode');
-      document.body.classList.add('dark-mode');
-    } else {
-      document.documentElement.classList.remove('dark-mode');
-      document.body.classList.remove('dark-mode');
-    }
-  }, []);
+  const studentId = localStorage.getItem("studentId") || "N/A";
 
-  // Listen for changes in localStorage from Settings page
   useEffect(() => {
-    const handleStorageChange = () => {
-      const savedDarkMode = localStorage.getItem('darkMode');
-      if (savedDarkMode === 'true') {
+    const applyTheme = () => {
+      const savedDarkMode = localStorage.getItem("darkMode");
+
+      if (savedDarkMode === "true") {
         setIsDarkMode(true);
-        document.documentElement.classList.add('dark-mode');
-        document.body.classList.add('dark-mode');
+        document.documentElement.classList.add("dark-mode");
+        document.body.classList.add("dark-mode");
       } else {
         setIsDarkMode(false);
-        document.documentElement.classList.remove('dark-mode');
-        document.body.classList.remove('dark-mode');
+        document.documentElement.classList.remove("dark-mode");
+        document.body.classList.remove("dark-mode");
       }
     };
 
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    applyTheme();
+
+    window.addEventListener("storage", applyTheme);
+
+    return () => {
+      window.removeEventListener("storage", applyTheme);
+    };
   }, []);
 
-  // Copy to clipboard function
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(studentId);
+const copyToClipboard = async () => {
+  try {
+    // Modern clipboard API
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(studentId);
+    } else {
+      // Fallback for HTTP / LAN IP
+      const textArea = document.createElement("textarea");
+      textArea.value = studentId;
+
+      textArea.style.position = "fixed";
+      textArea.style.left = "-999999px";
+      textArea.style.top = "-999999px";
+
+      document.body.appendChild(textArea);
+
+      textArea.focus();
+      textArea.select();
+
+      document.execCommand("copy");
+
+      textArea.remove();
+    }
+
     setShowTooltip(true);
-    setTimeout(() => setShowTooltip(false), 2000);
-  };
+
+    setTimeout(() => {
+      setShowTooltip(false);
+    }, 2000);
+
+  } catch (error) {
+    console.error("Copy failed:", error);
+  }
+};
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      background: isDarkMode ? '#0f172a' : '#f8fafc', 
-      height: '100vh', 
-      width: '100vw', 
-      overflow: 'hidden' 
-    }}>
+    <div
+      style={{
+        display: "flex",
+        width: "100vw",
+        height: "100vh",
+        overflow: "hidden",
+        background: isDarkMode
+          ? "linear-gradient(135deg, #020617 0%, #08132c 50%, #0f172a 100%)"
+          : "#f8fafc",
+      }}
+    >
       <Sidebar />
-      
-      <div style={{ 
-        flex: 1, 
-        display: 'flex', 
-        flexDirection: 'column', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        color: isDarkMode ? 'white' : '#1e293b',
-        position: 'relative'
-      }}>
-        {/* Decorative background elements */}
-        <div style={{
-          position: 'absolute',
-          top: '10%',
-          left: '5%',
-          width: '200px',
-          height: '200px',
-          background: 'radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%)',
-          borderRadius: '50%',
-          pointerEvents: 'none'
-        }} />
-        <div style={{
-          position: 'absolute',
-          bottom: '10%',
-          right: '5%',
-          width: '250px',
-          height: '250px',
-          background: 'radial-gradient(circle, rgba(139,92,246,0.1) 0%, transparent 70%)',
-          borderRadius: '50%',
-          pointerEvents: 'none'
-        }} />
-        
-        {/* Animated border decoration */}
-        <div style={{
-          position: 'absolute',
-          top: '15%',
-          right: '10%',
-          width: '100px',
-          height: '100px',
-          border: '2px solid rgba(59,130,246,0.2)',
-          borderRadius: '20px',
-          transform: 'rotate(45deg)',
-          pointerEvents: 'none'
-        }} />
-        <div style={{
-          position: 'absolute',
-          bottom: '15%',
-          left: '10%',
-          width: '80px',
-          height: '80px',
-          border: '2px solid rgba(139,92,246,0.2)',
-          borderRadius: '20px',
-          transform: 'rotate(15deg)',
-          pointerEvents: 'none'
-        }} />
 
-        {/* Header with icon */}
-        <div style={{
-          textAlign: 'center',
-          marginBottom: '20px'
-        }}>
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-            width: '60px',
-            height: '60px',
-            borderRadius: '20px',
-            marginBottom: '15px',
-            boxShadow: '0 10px 25px rgba(59,130,246,0.3)'
-          }}>
-            <span style={{ fontSize: '30px' }}>📱</span>
+      <div
+        style={{
+          flex: 1,
+          position: "relative",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          color: "white",
+          overflow: "hidden",
+        }}
+      >
+        {/* ================= BACKGROUND DECORATIONS ================= */}
+
+        {/* Top left glow */}
+        <div
+          style={{
+            position: "absolute",
+            top: "8%",
+            left: "6%",
+            width: 300,
+            height: 300,
+            borderRadius: "50%",
+            background:
+              "radial-gradient(circle, rgba(59,130,246,0.12), transparent 70%)",
+            filter: "blur(20px)",
+          }}
+        />
+
+        {/* Bottom right glow */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: "8%",
+            right: "6%",
+            width: 350,
+            height: 350,
+            borderRadius: "50%",
+            background:
+              "radial-gradient(circle, rgba(139,92,246,0.12), transparent 70%)",
+            filter: "blur(25px)",
+          }}
+        />
+
+        {/* Center glow */}
+        <div
+          style={{
+            position: "absolute",
+            top: "45%",
+            left: "30%",
+            width: 220,
+            height: 220,
+            borderRadius: "50%",
+            background:
+              "radial-gradient(circle, rgba(59,130,246,0.08), transparent 70%)",
+            filter: "blur(35px)",
+          }}
+        />
+
+        {/* Floating boxes */}
+{[
+  { top: "8%", left: "12%", size: 42, rotate: "15deg" },
+  { top: "18%", right: "14%", size: 90, rotate: "45deg" },
+  { top: "35%", left: "18%", size: 55, rotate: "25deg" },
+  { top: "52%", right: "20%", size: 38, rotate: "10deg" },
+  { top: "65%", left: "10%", size: 70, rotate: "35deg" },
+  { top: "75%", right: "30%", size: 52, rotate: "55deg" },
+
+  { bottom: "8%", left: "15%", size: 82, rotate: "25deg" },
+  { bottom: "18%", right: "10%", size: 48, rotate: "35deg" },
+  { bottom: "28%", left: "28%", size: 35, rotate: "65deg" },
+  { bottom: "42%", right: "16%", size: 60, rotate: "12deg" },
+
+  { top: "12%", left: "42%", size: 25, rotate: "10deg" },
+  { top: "25%", right: "35%", size: 30, rotate: "40deg" },
+  { top: "45%", left: "35%", size: 22, rotate: "20deg" },
+  { bottom: "30%", left: "42%", size: 28, rotate: "15deg" },
+  { bottom: "55%", right: "28%", size: 32, rotate: "50deg" },
+  { bottom: "70%", right: "42%", size: 22, rotate: "20deg" },
+].map((box, i) => (
+  <div
+    key={i}
+    style={{
+      position: "absolute",
+      ...box,
+      width: box.size,
+      height: box.size,
+      border: "1px solid rgba(59,130,246,0.12)",
+      borderRadius: 18,
+      transform: `rotate(${box.rotate})`,
+      boxShadow: "0 0 20px rgba(59,130,246,0.08)",
+      animation: `boxFloat ${12 + i * 0.8}s ease-in-out infinite`,
+      animationDelay: `${i * 0.5}s`,
+    }}
+  />
+))}
+
+{/* Tiny glowing lights */}
+{[...Array(35)].map((_, i) => (
+  <div
+    key={i}
+    style={{
+      position: "absolute",
+      width: Math.random() * 4 + 2,
+      height: Math.random() * 4 + 2,
+      borderRadius: "50%",
+      background: "rgba(96,165,250,0.6)",
+      top: `${Math.random() * 95}%`,
+      left: `${Math.random() * 95}%`,
+      boxShadow: "0 0 12px rgba(96,165,250,0.6)",
+    }}
+  />
+))}
+
+        {/* Tiny particles */}
+        {[...Array(12)].map((_, i) => (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              width: 4,
+              height: 4,
+              borderRadius: "50%",
+              background: "rgba(96,165,250,0.4)",
+              top: `${Math.random() * 90}%`,
+              left: `${Math.random() * 90}%`,
+              boxShadow: "0 0 10px rgba(96,165,250,0.5)",
+            }}
+          />
+        ))}
+
+        {/* ================= CONTENT ================= */}
+
+        {/* Floating phone icon */}
+<div
+  style={{
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center", // ito ang totoong center fix
+    justifyContent: "center",
+    marginBottom: 20,
+    zIndex: 10,
+  }}
+>
+          <div
+  style={{
+    width: 62,
+    height: 62,
+    borderRadius: 22,
+    background:
+      "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)",
+    display: "flex", // pwede nang flex, hindi na inline-flex
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14, // para sakto sa title
+    boxShadow: "0 0 35px rgba(59,130,246,0.25)",
+    animation: "phoneFloat 8s ease-in-out infinite",
+  }}
+>
+            <span style={{ fontSize: 28 }}>📱</span>
           </div>
-          <h1 style={{ 
-            fontSize: '1.8rem', 
-            fontWeight: '700',
-            margin: 0,
-            background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text'
-          }}>
-            QR Code Scanner
-          </h1>
-          <p style={{ 
-            marginTop: '8px', 
-            color: isDarkMode ? '#94a3b8' : '#64748b', 
-            fontSize: '0.85rem' 
-          }}>
-            Present this QR code at the library entrance
-          </p>
-        </div>
-        
-        <p style={{ 
-          marginBottom: '20px', 
-          color: isDarkMode ? '#94a3b8' : '#64748b', 
-          fontSize: '0.9rem', 
-          fontWeight: '500',
-          letterSpacing: '1px'
-        }}>
-          Your Registered QR Code
-        </p>
-        
-        {/* QR Code Container with glow effect */}
-        <div 
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-          style={{ 
-            background: isDarkMode ? '#1e293b' : '#ffffff',
-            padding: '25px',
-            borderRadius: '28px',
-            boxShadow: isHovered 
-              ? '0 25px 50px rgba(59,130,246,0.3), 0 0 0 2px rgba(59,130,246,0.2)' 
-              : '0 20px 40px rgba(0, 0, 0, 0.2)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'all 0.3s ease',
-            border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`
+
+         <h1
+  style={{
+    display: "inline-block", // FIX
+    marginTop: 14,
+    marginBottom: 8,
+    fontSize: "2rem",
+    fontWeight: 700,
+    lineHeight: 1.2,
+    background:
+      "linear-gradient(135deg, #60a5fa 0%, #8b5cf6 100%)",
+    WebkitBackgroundClip: "text",
+    WebkitTextFillColor: "transparent",
+  }}
+>
+  QR Code Scanner
+</h1>
+
+        <div
+  style={{
+    textAlign: "center",
+  }}
+>
+  <p
+    style={{
+      color: "#94a3b8",
+      fontSize: ".9rem",
+      marginBottom: "6px",
+    }}
+  >
+    Present this QR code at the library entrance
+  </p>
+
+  <p
+    style={{
+      color: "#60a5fa",
+      fontSize: ".75rem",
+      fontWeight: 600,
+      letterSpacing: "2px",
+      margin: 0,
+    }}
+  >
+    🔹 REQUIRED 🔹
+  </p>
+</div>
+</div>
+
+        <p
+          style={{
+            marginBottom: 22,
+            color: "#94a3b8",
+            letterSpacing: 1.5,
+            zIndex: 10,
           }}
         >
-          <QRCodeSVG 
-            value={studentId} 
+          Your Registered QR Code
+        </p>
+
+        {/* QR Container */}
+        <div
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          style={{
+            zIndex: 10,
+            padding: 28,
+            borderRadius: 28,
+            background: "rgba(255,255,255,0.05)",
+            backdropFilter: "blur(15px)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            transition: "0.4s ease",
+            boxShadow: isHovered
+              ? "0 0 60px rgba(59,130,246,0.2)"
+              : "0 0 30px rgba(0,0,0,0.3)",
+          }}
+        >
+          <QRCodeSVG
+            value={studentId}
             size={260}
-            level={"H"}
-            includeMargin={false}
-            bgColor={isDarkMode ? '#1e293b' : '#ffffff'}
-            fgColor={isDarkMode ? '#ffffff' : '#000000'}
+            level="H"
+            bgColor="#1e293b"
+            fgColor="#ffffff"
           />
         </div>
 
-        {/* Student ID Section with Copy Feature */}
-        <div style={{ marginTop: '35px', textAlign: 'center' }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            marginBottom: '8px'
-          }}>
-            <span style={{ color: '#60a5fa', fontSize: '0.7rem', letterSpacing: '2px' }}>
-              STUDENT ID
-            </span>
-            <div style={{
-              width: '30px',
-              height: '1px',
-              background: 'linear-gradient(90deg, #60a5fa, transparent)'
-            }} />
+        {/* Student ID */}
+        <div
+          style={{
+            marginTop: 30,
+            textAlign: "center",
+            zIndex: 10,
+          }}
+        >
+          <div
+            style={{
+              color: "#60a5fa",
+              fontSize: ".75rem",
+              letterSpacing: 2,
+              marginBottom: 10,
+            }}
+          >
+            STUDENT ID
           </div>
-          
-          <div style={{
-            position: 'relative',
-            display: 'inline-block'
-          }}>
-            <div
-              onClick={copyToClipboard}
+
+          <div
+            onClick={copyToClipboard}
+            style={{
+              cursor: "pointer",
+              padding: "14px 36px",
+              borderRadius: 18,
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.06)",
+              display: "inline-block",
+              position: "relative",
+            }}
+          >
+            <h2
               style={{
-                background: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                padding: '12px 35px',
-                borderRadius: '16px',
-                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                position: 'relative'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)';
-                e.currentTarget.style.borderColor = '#60a5fa';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)';
-                e.currentTarget.style.borderColor = isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+                margin: 0,
+                color: "#60a5fa",
+                fontFamily: "monospace",
+                fontSize: "2rem",
+                letterSpacing: 3,
               }}
             >
-              <h2 style={{ 
-                fontSize: '1.8rem',
-                letterSpacing: '3px', 
-                color: '#60a5fa', 
-                margin: 0,
-                fontFamily: 'monospace',
-                fontWeight: '600'
-              }}>
-                {studentId}
-              </h2>
-            </div>
-            
-            {/* Tooltip */}
+              {studentId}
+            </h2>
+
             {showTooltip && (
-              <div style={{
-                position: 'absolute',
-                bottom: '-35px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                background: '#10b981',
-                color: 'white',
-                padding: '4px 12px',
-                borderRadius: '20px',
-                fontSize: '11px',
-                whiteSpace: 'nowrap',
-                animation: 'fadeInUp 0.3s ease'
-              }}>
-                ✓ Copied to clipboard!
+              <div
+                style={{
+                  position: "absolute",
+                  left: "50%",
+                  bottom: -38,
+                  transform: "translateX(-50%)",
+                  background: "#10b981",
+                  color: "white",
+                  fontSize: 11,
+                  padding: "4px 12px",
+                  borderRadius: 20,
+                }}
+              >
+                ✓ Copied!
               </div>
             )}
           </div>
-          
-          <p style={{ 
-            marginTop: '20px', 
-            color: isDarkMode ? '#64748b' : '#94a3b8', 
-            fontSize: '0.7rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '6px'
-          }}>
-            <span>🖱️</span>
-            Click the ID to copy
-            <span style={{ marginLeft: '6px' }}>📋</span>
+
+          <p
+            style={{
+              marginTop: 18,
+              color: "#64748b",
+              fontSize: ".75rem",
+            }}
+          >
+            🖱️ Click the ID to copy 📋
           </p>
         </div>
 
-        {/* Instructions Card */}
-        <div style={{
-          marginTop: '30px',
-          padding: '12px 20px',
-          background: isDarkMode ? 'rgba(59,130,246,0.1)' : 'rgba(59,130,246,0.05)',
-          borderRadius: '40px',
-          border: `1px solid ${isDarkMode ? 'rgba(59,130,246,0.2)' : 'rgba(59,130,246,0.15)'}`,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          flexWrap: 'wrap',
-          justifyContent: 'center'
-        }}>
-          <span style={{ fontSize: '14px' }}>📌</span>
-          <span style={{ fontSize: '11px', color: isDarkMode ? '#94a3b8' : '#64748b' }}>
-            Present this QR code to the librarian for scanning
-          </span>
-          <span style={{ fontSize: '14px' }}>✅</span>
+        {/* Footer instruction */}
+        <div
+          style={{
+            marginTop: 28,
+            padding: "12px 22px",
+            borderRadius: 40,
+            background: "rgba(59,130,246,0.08)",
+            border: "1px solid rgba(59,130,246,0.12)",
+            fontSize: ".75rem",
+            color: "#94a3b8",
+            zIndex: 10,
+          }}
+        >
+          📌 Present this QR code to the Scanner for scanning ✅
         </div>
       </div>
 
       <style>{`
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateX(-50%) translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-          }
-        }
+    @keyframes boxFloat {
+  0% {
+    transform: translate(0px, 0px);
+  }
+
+  25% {
+    transform: translate(18px, -14px);
+  }
+
+  50% {
+    transform: translate(25px, 16px);
+  }
+
+  75% {
+    transform: translate(-18px, 14px);
+  }
+
+  100% {
+    transform: translate(0px, 0px);
+  }
+}
+  
+  @keyframes phoneFloat {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
       `}</style>
     </div>
   );

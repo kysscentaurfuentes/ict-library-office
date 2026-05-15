@@ -48,6 +48,7 @@ interface UserRow {
   year_level?: string;
 
   profile_picture?: string;
+  vibration_enabled?: boolean;
 }
 
 type Context = {
@@ -149,7 +150,8 @@ student_type,
 college_department,
 program,
 year_level,
-profile_picture
+profile_picture,
+vibration_enabled
 FROM users
 WHERE id = $1
         `,
@@ -366,7 +368,8 @@ updateProfilePicture: async (
       course,
       school_id_image,
       profile_picture,
-      role
+      role,
+      vibration_enabled
     `,
     [profile_picture, auth.userId]
   );
@@ -387,7 +390,8 @@ updateUserInformation: async (
     student_type,
     college_department,
     program,
-    year_level
+    year_level,
+    vibration_enabled
   }: {
     phone_number: string;
     suffix?: string;
@@ -400,6 +404,7 @@ updateUserInformation: async (
     college_department?: string;
     program?: string;
     year_level?: string;
+    vibration_enabled?: boolean;
   },
   context: Context
 ) => {
@@ -487,9 +492,10 @@ SET
   student_type = $12,
   college_department = $13,
   program = $14,
-  year_level = $15
+  year_level = $15,
+  vibration_enabled = $16
 
-WHERE id = $16
+WHERE id = $17
     RETURNING
       id,
       first_name,
@@ -515,6 +521,7 @@ WHERE id = $16
       college_department,
       program,
       year_level
+      vibration_enabled
     `,
     [
   phone_number,
@@ -537,7 +544,7 @@ WHERE id = $16
   college_department,
   program,
   year_level,
-
+  vibration_enabled,
   auth.userId
 ]
   );
