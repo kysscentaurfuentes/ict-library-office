@@ -197,28 +197,71 @@ const [identifierType, setIdentifierType] =
   const [schoolIdImage, setSchoolIdImage] =
     useState<File | null>(null);
 
-    const handleIdentifierChange = (
+   const handleIdentifierChange = (
   e: React.ChangeEvent<HTMLInputElement>
 ): void => {
 
-  let value =
-    e.target.value;
+  let value = e.target.value;
 
-  // kapag may letters = CARSU email mode
-  const hasLetters =
-    /[a-zA-Z]/.test(value);
+  // Already complete Student ID? Lock it.
+  if (
+    /^\d{3}-\d{5}$/.test(identifier) &&
+    value.length > identifier.length
+  ) {
+    return;
+  }
 
-  if (hasLetters) {
+  // If current input already contains dash,
+  // force Student ID mode only.
+  const hasDash =
+    identifier.includes('-') ||
+    value.includes('-');
 
-    const cleaned =
-      value
-        .replace(/@.*/g, '')
-        .replace(/[^a-zA-Z0-9._]/g, '');
+  if (hasDash) {
 
-    setIdentifier(cleaned);
+    let digits =
+      value.replace(/\D/g, '');
 
-    if (cleaned.length >= 4) {
-      setIdentifierType('email');
+    if (digits.length > 8) {
+      digits =
+        digits.slice(0, 8);
+    }
+
+    if (digits.length > 3) {
+      digits =
+        digits.slice(0, 3) +
+        '-' +
+        digits.slice(3);
+    }
+
+    setIdentifier(digits);
+    setIdentifierType('studentId');
+
+    return;
+  }
+
+  // If starts with number = Student ID mode
+  if (/^\d/.test(value)) {
+
+    let digits =
+      value.replace(/\D/g, '');
+
+    if (digits.length > 8) {
+      digits =
+        digits.slice(0, 8);
+    }
+
+    if (digits.length > 3) {
+      digits =
+        digits.slice(0, 3) +
+        '-' +
+        digits.slice(3);
+    }
+
+    setIdentifier(digits);
+
+    if (digits.length >= 1) {
+      setIdentifierType('studentId');
     } else {
       setIdentifierType('');
     }
@@ -226,28 +269,16 @@ const [identifierType, setIdentifierType] =
     return;
   }
 
-  // kapag puro numbers = Student ID mode
-  let digits =
-    value.replace(/\D/g, '');
+  // Otherwise = Email mode
+  const cleaned =
+    value
+      .replace(/@.*/g, '')
+      .replace(/[^a-zA-Z0-9._]/g, '');
 
-  if (digits.length > 8) {
-    digits =
-      digits.slice(0, 8);
-  }
+  setIdentifier(cleaned);
 
-  if (digits.length > 3) {
-    digits =
-      digits.slice(0, 3) +
-      '-' +
-      digits.slice(3);
-  }
-
-  setIdentifier(digits);
-
-  if (digits.length >= 4) {
-    setIdentifierType(
-      'studentId'
-    );
+  if (cleaned.length >= 1) {
+    setIdentifierType('email');
   } else {
     setIdentifierType('');
   }

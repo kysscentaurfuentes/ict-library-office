@@ -17,9 +17,12 @@ type User {
   phone_number: String
 
   birthdate: String
+  birthdate_locked: Boolean
   age: Int
   gender: String
+  gender_locked: Boolean
   nationality: String
+  nationality_locked: Boolean
   user_classification: String
   student_type: String
   college_department: String

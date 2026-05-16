@@ -20,9 +20,12 @@ query GetMe {
     phone_number
 
     birthdate
+    birthdate_locked
     age
     gender
+    gender_locked
     nationality
+    nationality_locked
 
     user_classification
     student_type
@@ -427,7 +430,9 @@ useEffect(() => {
       data.me.email || '',
 
     phoneNumber:
-      data.me.phone_number || '',
+  data.me.phone_number === 'N/A'
+    ? ''
+    : data.me.phone_number || '',
 
     suffix:
       data.me.suffix || '',
@@ -508,10 +513,25 @@ useEffect(() => {
     document.body.style.fontSize = fontSizeValue;
   };
 
-  const validatePhoneNumber = (value: string): string => {
-    const digitsOnly = value.replace(/\D/g, '');
-    return digitsOnly.slice(0, 10);
-  };
+ const validatePhoneNumber = (
+  value: string
+): string => {
+
+  // Numbers only
+  let digitsOnly =
+    value.replace(/\D/g, '');
+
+  // Must start with 9
+  if (
+    digitsOnly.length > 0 &&
+    digitsOnly[0] !== '9'
+  ) {
+    return '';
+  }
+
+  // Max 10 digits only
+  return digitsOnly.slice(0, 10);
+};
 
   const getCollegeDepartment = (
   course: string
@@ -727,20 +747,37 @@ const getCollegeAcronym = (
   // Phone Number Handler
   // =========================
   const handlePhoneNumberChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ): void => {
-    const rawValue = e.target.value;
+  e: React.ChangeEvent<HTMLInputElement>
+): void => {
 
-    const cleanedValue = rawValue.replace(/^\+63/, '');
+  const rawValue =
+    e.target.value;
 
-    const validatedDigits =
-      validatePhoneNumber(cleanedValue);
+  const cleanedValue =
+    rawValue.replace(
+      /^\+63/,
+      ''
+    );
 
-    setUserInfo((prev) => ({
-      ...prev,
-      phoneNumber: validatedDigits,
-    }));
-  };
+  const validatedDigits =
+    validatePhoneNumber(
+      cleanedValue
+    );
+
+  // Prevent invalid first digit
+  if (
+    cleanedValue.length > 0 &&
+    validatedDigits === ''
+  ) {
+    return;
+  }
+
+  setUserInfo((prev) => ({
+    ...prev,
+    phoneNumber:
+      validatedDigits,
+  }));
+};
 
   const handleSuffixChange = (
   e: React.ChangeEvent<HTMLSelectElement>
@@ -777,6 +814,7 @@ const saveUserInfo = async (): Promise<void> => {
         program: userInfo.program || null,
         year_level: userInfo.yearLevel || null,
         vibration_enabled: vibrationEnabled || false,
+        dark_mode: isDarkMode,
       },
     });
 
@@ -2087,6 +2125,8 @@ body.dark-mode {
 
   overflow: hidden;
 
+  min-width: 200px; /* slightly wider */
+
   border: 1px solid var(--border);
   border-radius: 10px;
 
@@ -2116,6 +2156,7 @@ body.dark-mode {
 
 .phone-number-input {
   flex: 1 !important;
+  min-width: 140px; /* para di matakpan last digit */
 
   border: none !important;
   border-radius: 0 !important;
@@ -2291,10 +2332,12 @@ body.dark-mode {
    SUCCESS MESSAGE
 ========================================================= */
 .success-message {
+  position: fixed;
+  top: 20px;
+  right: 25px;
+
   display: flex;
   align-items: center;
-
-  margin-bottom: 1.25rem;
 
   padding: 0.9rem 1.1rem;
 
@@ -2305,6 +2348,24 @@ body.dark-mode {
   color: #166534;
 
   font-weight: 600;
+
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+
+  z-index: 9999;
+
+  animation: slideInToast 0.25s ease;
+}
+
+@keyframes slideInToast {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .dark-mode .success-message {
