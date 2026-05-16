@@ -365,9 +365,27 @@ const [userInfo, setUserInfo] = useState<UserInfo>({
   return age;
 };
 
+ const normalizeBirthdate = (value?: string | null): string => {
+  if (!value) return '';
+
+  // already correct format
+  if (typeof value === 'string' && value.includes('-')) {
+    return value.slice(0, 10);
+  }
+
+  // epoch seconds or ms
+  const num = Number(value);
+  if (!isNaN(num)) {
+    const date = new Date(num < 1e12 ? num * 1000 : num);
+    return date.toISOString().slice(0, 10);
+  }
+
+  return '';
+};
+
   // =========================
-// Sync GraphQL User Data
-// =========================
+  // Sync GraphQL User Data
+  // =========================
 useEffect(() => {
   if (!data?.me) return;
 
@@ -404,7 +422,7 @@ useEffect(() => {
   // =========================
   // Auto Calculate Age
   // =========================
-const computedAge =
+  const computedAge =
   typeof data.me.birthdate === 'string' &&
   data.me.birthdate.length >= 10
     ? calculateAge(data.me.birthdate)
@@ -445,10 +463,9 @@ const computedAge =
     nationalityLocked:
       data.me.nationality_locked || false,
 
-    birthdate:
-  typeof data.me.birthdate === 'string'
-    ? data.me.birthdate.slice(0, 10)
-    : '',
+   
+
+  birthdate: normalizeBirthdate(data.me.birthdate),
 
     birthdateLocked:
       data.me.birthdate_locked || false,
@@ -804,9 +821,13 @@ const saveUserInfo = async (): Promise<void> => {
       variables: {
         phone_number: userInfo.phoneNumber,
         suffix: userInfo.suffix || null,
-        birthdate: userInfo.birthdate
-  ? userInfo.birthdate.slice(0, 10)
-  : null,
+       birthdate:
+  userInfo.birthdate
+    ? new Date(Number(userInfo.birthdate) < 1e12
+        ? Number(userInfo.birthdate) * 1000
+        : Number(userInfo.birthdate)
+      ).toISOString().slice(0, 10)
+    : null,
         age: userInfo.age || null,
         gender: userInfo.gender || null,
         nationality: userInfo.nationality || null,
