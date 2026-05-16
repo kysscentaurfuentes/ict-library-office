@@ -28,7 +28,7 @@ interface UserRow {
   suffix_locked?: boolean;
   phone_number?: string;
 
-  birthdate?: string;
+  birthdate?: string | null;
   birthdate_locked?: boolean;
 
   age?: number;
@@ -401,7 +401,7 @@ updateUserInformation: async (
   }: {
     phone_number: string;
     suffix?: string;
-    birthdate?: string;
+    birthdate?: string | null;
     age?: number;
     gender?: string;
     nationality?: string;
@@ -449,7 +449,7 @@ let finalBirthdateLocked =
 
 if (!user.birthdate_locked) {
   if (birthdate && birthdate.trim() !== '') {
-    finalBirthdate = birthdate ? birthdate.slice(0, 10) : undefined;
+    finalBirthdate = birthdate ? String(birthdate).slice(0, 10) : null;
     finalBirthdateLocked = true;
   }
 }

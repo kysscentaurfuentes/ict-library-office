@@ -345,24 +345,22 @@ const [userInfo, setUserInfo] = useState<UserInfo>({
     }
   }, []);
 
-   const calculateAge = (birthdate: string): number => {
-  if (!birthdate) return 0;
+   const calculateAge = (birthdate?: string): number => {
+  if (!birthdate || birthdate.length < 10) return 0;
+
+  const [year, month, day] = birthdate.split("-").map(Number);
+
+  if (!year || !month || !day) return 0;
 
   const today = new Date();
-  const birth = new Date(birthdate + "T00:00:00");
 
-  let age = today.getFullYear() - birth.getFullYear();
+  let age = today.getFullYear() - year;
 
-  const monthDifference =
-    today.getMonth() - birth.getMonth();
+  const hasNotHadBirthdayYet =
+    today.getMonth() + 1 < month ||
+    (today.getMonth() + 1 === month && today.getDate() < day);
 
-  if (
-    monthDifference < 0 ||
-    (monthDifference === 0 &&
-      today.getDate() < birth.getDate())
-  ) {
-    age--;
-  }
+  if (hasNotHadBirthdayYet) age--;
 
   return age;
 };
@@ -406,9 +404,11 @@ useEffect(() => {
   // =========================
   // Auto Calculate Age
   // =========================
-const computedAge = data.me.birthdate
-  ? calculateAge(data.me.birthdate)
-  : 0;
+const computedAge =
+  typeof data.me.birthdate === 'string' &&
+  data.me.birthdate.length >= 10
+    ? calculateAge(data.me.birthdate)
+    : 0;
 
   // =========================
   // User Info Sync
@@ -446,7 +446,9 @@ const computedAge = data.me.birthdate
       data.me.nationality_locked || false,
 
     birthdate:
-      data.me.birthdate?.slice(0, 10) || '',
+  typeof data.me.birthdate === 'string'
+    ? data.me.birthdate.slice(0, 10)
+    : '',
 
     birthdateLocked:
       data.me.birthdate_locked || false,
