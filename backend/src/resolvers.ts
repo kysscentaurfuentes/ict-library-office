@@ -449,7 +449,7 @@ let finalBirthdateLocked =
 
 if (!user.birthdate_locked) {
   if (birthdate && birthdate.trim() !== '') {
-    finalBirthdate = birthdate;
+    finalBirthdate = birthdate ? birthdate.slice(0, 10) : undefined;
     finalBirthdateLocked = true;
   }
 }

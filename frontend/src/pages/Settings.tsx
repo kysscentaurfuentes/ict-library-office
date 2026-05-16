@@ -349,7 +349,7 @@ const [userInfo, setUserInfo] = useState<UserInfo>({
   if (!birthdate) return 0;
 
   const today = new Date();
-  const birth = new Date(birthdate);
+  const birth = new Date(birthdate + "T00:00:00");
 
   let age = today.getFullYear() - birth.getFullYear();
 
@@ -406,10 +406,9 @@ useEffect(() => {
   // =========================
   // Auto Calculate Age
   // =========================
-  const computedAge =
-    calculateAge(
-      data.me.birthdate || ''
-    );
+const computedAge = data.me.birthdate
+  ? calculateAge(data.me.birthdate)
+  : 0;
 
   // =========================
   // User Info Sync
@@ -447,7 +446,7 @@ useEffect(() => {
       data.me.nationality_locked || false,
 
     birthdate:
-      data.me.birthdate || '',
+      data.me.birthdate?.slice(0, 10) || '',
 
     birthdateLocked:
       data.me.birthdate_locked || false,
@@ -803,7 +802,9 @@ const saveUserInfo = async (): Promise<void> => {
       variables: {
         phone_number: userInfo.phoneNumber,
         suffix: userInfo.suffix || null,
-        birthdate: userInfo.birthdate || null,
+        birthdate: userInfo.birthdate
+  ? userInfo.birthdate.slice(0, 10)
+  : null,
         age: userInfo.age || null,
         gender: userInfo.gender || null,
         nationality: userInfo.nationality || null,
