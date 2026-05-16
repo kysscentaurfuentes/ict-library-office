@@ -75,6 +75,8 @@ mutation UpdateUserInformation(
     phone_number
     suffix
     gender
+    vibration_enabled
+    dark_mode
   }
 }
 `;
@@ -1590,11 +1592,25 @@ return (
 
   updateThemeSetting('darkMode', value);
 
-  await updateUserInformationMutation({
-    variables: {
-      dark_mode: value,
-    },
-  });
+  try {
+    await updateUserInformationMutation({
+      variables: {
+        phone_number: userInfo.phoneNumber || "",
+        dark_mode: value,
+      },
+    });
+
+    console.log(
+      "Dark mode saved to database:",
+      value
+    );
+
+  } catch (error) {
+    console.error(
+      "Failed to save dark mode:",
+      error
+    );
+  }
 }}
               />
             </div>
