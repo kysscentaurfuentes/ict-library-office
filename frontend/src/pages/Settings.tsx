@@ -32,6 +32,7 @@ query GetMe {
     program
     year_level
     vibration_enabled
+    dark_mode
   }
 }
 `;
@@ -51,6 +52,7 @@ mutation UpdateUserInformation(
   $program: String
   $year_level: String
   $vibration_enabled: Boolean
+  $dark_mode: Boolean
 ) {
   updateUserInformation(
     phone_number: $phone_number
@@ -67,6 +69,7 @@ mutation UpdateUserInformation(
     program: $program
     year_level: $year_level
     vibration_enabled: $vibration_enabled
+    dark_mode: $dark_mode
   ) {
     id
     phone_number
@@ -166,6 +169,7 @@ interface GetMeData {
 
     user_classification?: string;
     vibration_enabled?: boolean;
+    dark_mode?: boolean;
   };
 }
 
@@ -281,11 +285,12 @@ const [userInfo, setUserInfo] = useState<UserInfo>({
   // Load Saved Settings
   // =========================
   useEffect(() => {
-    const savedDarkMode = localStorage.getItem('darkMode');
+    
     const savedFontSize = localStorage.getItem('fontSize');
     const savedVolume = localStorage.getItem('notificationVolume');
     const savedTwoFactor = localStorage.getItem('twoFactorEnabled');
     const savedProfilePicture = localStorage.getItem('profilePicture');
+    const savedDarkMode = localStorage.getItem('darkMode');
 
     // Dark Mode
     if (savedDarkMode === 'true') {
@@ -358,54 +363,123 @@ const [userInfo, setUserInfo] = useState<UserInfo>({
 };
 
   // =========================
-  // Sync GraphQL User Data
-  // =========================
+// Sync GraphQL User Data
+// =========================
 useEffect(() => {
-  if (data?.me) {
+  if (!data?.me) return;
 
-    const computedAge = calculateAge(
+  // =========================
+  // Dark Mode Sync
+  // =========================
+  const darkModeEnabled =
+    data.me.dark_mode ?? false;
+
+  setIsDarkMode(
+    darkModeEnabled
+  );
+
+  if (darkModeEnabled) {
+    document.documentElement.classList.add(
+      'dark-mode'
+    );
+
+    document.body.classList.add(
+      'dark-mode'
+    );
+
+  } else {
+
+    document.documentElement.classList.remove(
+      'dark-mode'
+    );
+
+    document.body.classList.remove(
+      'dark-mode'
+    );
+  }
+
+  // =========================
+  // Auto Calculate Age
+  // =========================
+  const computedAge =
+    calculateAge(
       data.me.birthdate || ''
     );
 
-    setUserInfo((prev) => ({
-      ...prev,
+  // =========================
+  // User Info Sync
+  // =========================
+  setUserInfo((prev) => ({
+    ...prev,
 
-      firstName: data.me.first_name || '',
-      middleName: data.me.middle_name || '',
-      lastName: data.me.last_name || '',
+    firstName:
+      data.me.first_name || '',
 
-      email: data.me.email || '',
-      phoneNumber: data.me.phone_number || '',
+    middleName:
+      data.me.middle_name || '',
 
-      suffix: data.me.suffix || '',
-      suffixLocked: data.me.suffix_locked || false,
+    lastName:
+      data.me.last_name || '',
 
-      nationality: data.me.nationality || '',
-      nationalityLocked: data.me.nationality_locked || false,
+    email:
+      data.me.email || '',
 
-      birthdate: data.me.birthdate || '',
-      birthdateLocked: data.me.birthdate_locked || false,
+    phoneNumber:
+      data.me.phone_number || '',
 
-      age: computedAge,
+    suffix:
+      data.me.suffix || '',
 
-      gender: data.me.gender || '',
-      genderLocked: data.me.gender_locked || false,
+    suffixLocked:
+      data.me.suffix_locked || false,
 
-      studentType: data.me.student_type || '',
-      collegeDepartment: data.me.college_department || '',
+    nationality:
+      data.me.nationality || '',
 
-      course: data.me.course || '',
-      program: data.me.program || '',
-      yearLevel: data.me.year_level || '',
+    nationalityLocked:
+      data.me.nationality_locked || false,
 
-      userClassification:
-        data.me.user_classification || '',
-    }));
+    birthdate:
+      data.me.birthdate || '',
 
-    setVibrationEnabled(
-      data.me.vibration_enabled ?? true
-    );
-  }
+    birthdateLocked:
+      data.me.birthdate_locked || false,
+
+    age:
+      computedAge,
+
+    gender:
+      data.me.gender || '',
+
+    genderLocked:
+      data.me.gender_locked || false,
+
+    studentType:
+      data.me.student_type || '',
+
+    collegeDepartment:
+      data.me.college_department || '',
+
+    course:
+      data.me.course || '',
+
+    program:
+      data.me.program || '',
+
+    yearLevel:
+      data.me.year_level || '',
+
+    userClassification:
+      data.me.user_classification || '',
+  }));
+
+  // =========================
+  // Vibration Sync
+  // =========================
+  setVibrationEnabled(
+    data.me.vibration_enabled ?? true
+  );
+
 }, [data]);
 
   // =========================
@@ -1511,10 +1585,17 @@ return (
                 type="checkbox"
                 id="darkMode"
                 checked={isDarkMode}
-                onChange={(e) => {
-                  setIsDarkMode(e.target.checked);
-                  updateThemeSetting('darkMode', e.target.checked);
-                }}
+                onChange={async (e) => {
+  const value = e.target.checked;
+
+  updateThemeSetting('darkMode', value);
+
+  await updateUserInformationMutation({
+    variables: {
+      dark_mode: value,
+    },
+  });
+}}
               />
             </div>
           </div>

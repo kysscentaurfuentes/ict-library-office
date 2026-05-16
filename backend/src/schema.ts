@@ -1,3 +1,4 @@
+// backend/src/schema.ts
 export const typeDefs = `#graphql
 
 type User {
@@ -26,6 +27,7 @@ type User {
   year_level: String
   profile_picture: String
   vibration_enabled: Boolean
+  dark_mode: Boolean
 }
 
   type AuthPayload {
@@ -89,6 +91,7 @@ updateUserInformation(
   program: String
   year_level: String
   vibration_enabled: Boolean
+  dark_mode: Boolean
 ): User
 
     blockDevice(

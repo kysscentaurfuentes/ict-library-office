@@ -18,6 +18,7 @@ const SIGNIN = gql`
       role
       profile_picture
       vibration_enabled
+      dark_mode
     }
   }
 }
@@ -35,6 +36,7 @@ type LoginResponse = {
       role: string;
       profile_picture: string;
       vibration_enabled: boolean;
+      dark_mode: boolean;
     };
   };
 };
@@ -103,6 +105,13 @@ const handleSignin = async (
     res.data.login.user.vibration_enabled
   )
   );
+
+  localStorage.setItem(
+  'darkMode',
+  JSON.stringify(
+    res.data.login.user.dark_mode
+  )
+);
 
       console.log(
         'Login successful! Student ID saved:',

@@ -49,6 +49,7 @@ interface UserRow {
 
   profile_picture?: string;
   vibration_enabled?: boolean;
+  dark_mode?: boolean;
 }
 
 type Context = {
@@ -151,7 +152,8 @@ college_department,
 program,
 year_level,
 profile_picture,
-vibration_enabled
+vibration_enabled,
+dark_mode
 FROM users
 WHERE id = $1
         `,
@@ -259,7 +261,8 @@ WHERE id = $1
     school_id_image: user.school_id_image,
     role: user.role,
     profile_picture: user.profile_picture,
-    vibration_enabled: user.vibration_enabled
+    vibration_enabled: user.vibration_enabled,
+    dark_mode: user.dark_mode
   }
 };
     },
@@ -370,7 +373,8 @@ updateProfilePicture: async (
       school_id_image,
       profile_picture,
       role,
-      vibration_enabled
+      vibration_enabled,
+      dark_mode
     `,
     [profile_picture, auth.userId]
   );
@@ -392,7 +396,8 @@ updateUserInformation: async (
     college_department,
     program,
     year_level,
-    vibration_enabled
+    vibration_enabled,
+    dark_mode
   }: {
     phone_number: string;
     suffix?: string;
@@ -406,6 +411,7 @@ updateUserInformation: async (
     program?: string;
     year_level?: string;
     vibration_enabled?: boolean;
+    dark_mode?: boolean;
   },
   context: Context
 ) => {
@@ -494,9 +500,10 @@ SET
   college_department = $13,
   program = $14,
   year_level = $15,
-  vibration_enabled = $16
+  vibration_enabled = $16,
+  dark_mode = $17
 
-WHERE id = $17
+WHERE id = $18
     RETURNING
       id,
       first_name,
@@ -522,7 +529,8 @@ WHERE id = $17
       college_department,
       program,
       year_level,
-      vibration_enabled
+      vibration_enabled,
+      dark_mode
     `,
     [
   phone_number,
@@ -546,6 +554,7 @@ WHERE id = $17
   program,
   year_level,
   vibration_enabled,
+  dark_mode,
   auth.userId
 ]
   );

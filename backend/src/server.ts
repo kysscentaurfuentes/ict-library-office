@@ -26,6 +26,8 @@ import rateLimit from "express-rate-limit";
 import { fileURLToPath } from "url";
 import forgotAccountRoute from './routes/forgotAccount.js';
 import { upload } from "./upload.js";
+import { initSocket } from "./socket.js";
+import { userSockets } from "./socket.js";
 
 // Setup require for ESM
 const require = createRequire(import.meta.url);
@@ -83,8 +85,6 @@ const limiter = rateLimit({
   max: 30, // max 30 requests per minute
   
 });
-
-
 
 app.use(limiter);
 
@@ -318,6 +318,7 @@ async function getUser(token?: string) {
 // ==========================
 async function startServer() {
   const httpServer = http.createServer(app);
+  const io = initSocket(httpServer);
 
   // CORS - allow all devices on network
 const allowedOrigins = process.env.CORS_ORIGIN
@@ -353,13 +354,13 @@ const allowedOrigins = process.env.CORS_ORIGIN
     try {
       const result = await pool.query(
         `SELECT
-first_name,
-middle_name,
-last_name,
-course,
-"StudentId"
-FROM users
-         WHERE "StudentId" = $1`,
+           first_name,
+           middle_name,
+           last_name,
+           course,
+           "StudentId"
+           FROM users
+           WHERE "StudentId" = $1`,
         [displayID]
       );
 
@@ -485,6 +486,21 @@ FROM users
         ]
       );
 
+      const socketId = userSockets.get(displayID);
+
+console.log("LOOKING FOR SOCKET:", displayID);
+console.log("FOUND SOCKET:", socketId);
+
+if (socketId) {
+  console.log("EMITTING scan-success to:", socketId);
+
+  io.to(socketId).emit("scan-success", {
+    student_id: displayID,
+    status: finalStatus,
+    time: new Date().toLocaleTimeString(),
+  });
+}
+
       return res.json({
         status: finalStatus,
         student_id: displayID,
@@ -502,6 +518,8 @@ FROM users
       });
     }
   });
+
+
 
   // ==========================
   // ✅ ATTENDANCE APIs
