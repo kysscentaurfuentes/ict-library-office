@@ -447,12 +447,11 @@ let finalBirthdate = user.birthdate;
 let finalBirthdateLocked =
   user.birthdate_locked;
 
-if (
-  !user.birthdate_locked &&
-  birthdate
-) {
-  finalBirthdate = birthdate;
-  finalBirthdateLocked = true;
+if (!user.birthdate_locked) {
+  if (birthdate && birthdate.trim() !== '') {
+    finalBirthdate = birthdate;
+    finalBirthdateLocked = true;
+  }
 }
 
 let finalGender = user.gender;
