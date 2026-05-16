@@ -569,9 +569,9 @@ WHERE id = $19
   college_department,
   program,
   year_level,
-  vibration_enabled,
-  dark_mode,
-  two_factor_enabled,
+  vibration_enabled ?? user.vibration_enabled,
+  dark_mode ?? user.dark_mode,
+  two_factor_enabled ?? user.two_factor_enabled,
   auth.userId
 ]
   );

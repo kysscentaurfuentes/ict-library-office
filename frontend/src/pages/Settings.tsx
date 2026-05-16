@@ -165,6 +165,8 @@ const Settings: React.FC = () => {
       gender?: string;
       gender_locked?: boolean;
 
+      age?: number;
+
       nationality?: string;
       nationality_locked?: boolean;
 
@@ -894,6 +896,7 @@ const Settings: React.FC = () => {
 
         vibration_enabled: vibrationEnabled || false,
         dark_mode: isDarkMode,
+        two_factor_enabled: twoFactorEnabled,
       },
     });
 
@@ -1751,10 +1754,31 @@ const Settings: React.FC = () => {
                 type="checkbox"
                 id="twoFactorAuth"
                 checked={twoFactorEnabled}
-                onChange={(e) => {
-                  setTwoFactorEnabled(e.target.checked);
-                  updateSetting('twoFactorEnabled', e.target.checked);
-                }}
+                onChange={async (e) => {
+  const value = e.target.checked;
+
+  setTwoFactorEnabled(value);
+
+  try {
+    await updateUserInformationMutation({
+      variables: {
+        phone_number: userInfo.phoneNumber || "",
+        two_factor_enabled: value,
+      },
+    });
+
+    console.log(
+      "2-Step Verification saved to database:",
+      value
+    );
+
+  } catch (error) {
+    console.error(
+      "Failed to save 2-Step Verification:",
+      error
+    );
+  }
+}}
               />
             </div>
             <div className="form-group">
@@ -1906,6 +1930,7 @@ const Settings: React.FC = () => {
           )}
         </main>
       </div>
+
 
       <style>{`
 /* =========================================================
