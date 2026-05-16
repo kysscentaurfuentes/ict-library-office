@@ -50,6 +50,7 @@ interface UserRow {
   profile_picture?: string;
   vibration_enabled?: boolean;
   dark_mode?: boolean;
+  two_factor_enabled?: boolean;
 }
 
 type Context = {
@@ -153,7 +154,8 @@ program,
 year_level,
 profile_picture,
 vibration_enabled,
-dark_mode
+dark_mode,
+two_factor_enabled
 FROM users
 WHERE id = $1
         `,
@@ -236,6 +238,17 @@ WHERE id = $1
       if (!isValid) {
         throw new Error('Invalid credentials');
       }
+
+      if (user.two_factor_enabled) {
+  return {
+    token: null,
+    user: {
+      id: user.id,
+      email: user.email,
+      two_factor_enabled: true
+    }
+  };
+}
 
       const token = jwt.sign(
         {
@@ -397,7 +410,8 @@ updateUserInformation: async (
     program,
     year_level,
     vibration_enabled,
-    dark_mode
+    dark_mode,
+    two_factor_enabled
   }: {
     phone_number: string;
     suffix?: string;
@@ -412,6 +426,7 @@ updateUserInformation: async (
     year_level?: string;
     vibration_enabled?: boolean;
     dark_mode?: boolean;
+    two_factor_enabled?: boolean;
   },
   context: Context
 ) => {
@@ -500,9 +515,10 @@ SET
   program = $14,
   year_level = $15,
   vibration_enabled = $16,
-  dark_mode = $17
+  dark_mode = $17,
+  two_factor_enabled = $18
 
-WHERE id = $18
+WHERE id = $19
     RETURNING
       id,
       first_name,
@@ -529,7 +545,8 @@ WHERE id = $18
       program,
       year_level,
       vibration_enabled,
-      dark_mode
+      dark_mode,
+      two_factor_enabled
     `,
     [
   phone_number,
@@ -554,6 +571,7 @@ WHERE id = $18
   year_level,
   vibration_enabled,
   dark_mode,
+  two_factor_enabled,
   auth.userId
 ]
   );

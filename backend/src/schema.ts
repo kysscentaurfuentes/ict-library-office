@@ -31,6 +31,7 @@ type User {
   profile_picture: String
   vibration_enabled: Boolean
   dark_mode: Boolean
+  two_factor_enabled: Boolean
 }
 
   type AuthPayload {
@@ -95,6 +96,7 @@ updateUserInformation(
   year_level: String
   vibration_enabled: Boolean
   dark_mode: Boolean
+  two_factor_enabled: Boolean
 ): User
 
     blockDevice(

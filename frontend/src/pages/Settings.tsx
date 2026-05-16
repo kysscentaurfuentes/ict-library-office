@@ -36,6 +36,7 @@ query GetMe {
     year_level
     vibration_enabled
     dark_mode
+    two_factor_enabled
   }
 }
 `;
@@ -56,6 +57,7 @@ mutation UpdateUserInformation(
   $year_level: String
   $vibration_enabled: Boolean
   $dark_mode: Boolean
+  $two_factor_enabled: Boolean
 ) {
   updateUserInformation(
     phone_number: $phone_number
@@ -73,6 +75,7 @@ mutation UpdateUserInformation(
     year_level: $year_level
     vibration_enabled: $vibration_enabled
     dark_mode: $dark_mode
+    two_factor_enabled: $two_factor_enabled
   ) {
     id
     phone_number
@@ -109,7 +112,7 @@ interface UserInfo {
   birthdateLocked: boolean;
 
   age: number;
-  
+
   gender: string;
   genderLocked: boolean;
 
@@ -143,44 +146,47 @@ const suffixOptions = [
 ];
 
 const Settings: React.FC = () => {
-interface GetMeData {
-  me: {
-    first_name: string;
-    middle_name: string;
-    last_name: string;
-    email: string;
-    StudentId: string;
-    role: string;
+  interface GetMeData {
+    me: {
+      first_name: string;
+      middle_name: string;
+      last_name: string;
+      email: string;
+      StudentId: string;
+      role: string;
 
-    suffix?: string;
-    suffix_locked?: boolean;
-    phone_number?: string;
+      suffix?: string;
+      suffix_locked?: boolean;
+      phone_number?: string;
 
-    birthdate?: string;
-    birthdate_locked?: boolean;
+      birthdate?: string;
+      birthdate_locked?: boolean;
 
-    gender?: string;
-    gender_locked?: boolean;
+      gender?: string;
+      gender_locked?: boolean;
 
-    nationality?: string;
-    nationality_locked?: boolean;
+      nationality?: string;
+      nationality_locked?: boolean;
 
-    student_type?: string;
-    college_department?: string;
+      student_type?: string;
+      college_department?: string;
 
-    course?: string;
-    program?: string;
-    year_level?: string;
+      course?: string;
+      program?: string;
+      year_level?: string;
 
-    user_classification?: string;
-    vibration_enabled?: boolean;
-    dark_mode?: boolean;
-  };
-}
+      user_classification?: string;
+      vibration_enabled?: boolean;
+      dark_mode?: boolean;
+      two_factor_enabled?: boolean;
+    };
+  }
 
-const { data } = useQuery<GetMeData>(GET_ME, {
-  fetchPolicy: 'no-cache',
-});
+  const { data } = useQuery<GetMeData>(GET_ME, {
+    fetchPolicy: 'no-cache',
+  });
+
+  const me = data?.me;
 
   // =========================
   // Main Settings State
@@ -191,7 +197,7 @@ const { data } = useQuery<GetMeData>(GET_ME, {
   const [notificationSoundVolume, setNotificationSoundVolume] = useState<number>(50);
   const [successMessage, setSuccessMessage] = useState<string>('');
   const [vibrationEnabled, setVibrationEnabled] =
-  useState<boolean>(true);
+    useState<boolean>(true);
 
   // =========================
   // Password Modal State
@@ -220,38 +226,38 @@ const { data } = useQuery<GetMeData>(GET_ME, {
   // =========================
   // User Information State
   // =========================
-const [userInfo, setUserInfo] = useState<UserInfo>({
-  firstName: '',
-  middleName: '',
-  lastName: '',
+  const [userInfo, setUserInfo] = useState<UserInfo>({
+    firstName: '',
+    middleName: '',
+    lastName: '',
 
-  email: '',
-  phoneNumber: '',
+    email: '',
+    phoneNumber: '',
 
-  suffix: '',
-  suffixLocked: false,
+    suffix: '',
+    suffixLocked: false,
 
-  nationality: '',
-  nationalityLocked: false,
+    nationality: '',
+    nationalityLocked: false,
 
-  birthdate: '',
-  birthdateLocked: false,
-  
-  age: 0,
+    birthdate: '',
+    birthdateLocked: false,
 
-  gender: '',
-  genderLocked: false,
+    age: 0,
 
-  studentType: '',
-  collegeDepartment: '',
+    gender: '',
+    genderLocked: false,
 
-  course: '',
-  program: '',
-  yearLevel: '',
+    studentType: '',
+    collegeDepartment: '',
 
-  userClassification: '',
-  vibration_enabled: true,
-});
+    course: '',
+    program: '',
+    yearLevel: '',
+
+    userClassification: '',
+    vibration_enabled: true,
+  });
 
   // =========================
   // Linked Accounts State
@@ -290,7 +296,7 @@ const [userInfo, setUserInfo] = useState<UserInfo>({
   // Load Saved Settings
   // =========================
   useEffect(() => {
-    
+
     const savedFontSize = localStorage.getItem('fontSize');
     const savedVolume = localStorage.getItem('notificationVolume');
     const savedTwoFactor = localStorage.getItem('twoFactorEnabled');
@@ -345,167 +351,189 @@ const [userInfo, setUserInfo] = useState<UserInfo>({
     }
   }, []);
 
-   const calculateAge = (birthdate?: string): number => {
-  if (!birthdate || birthdate.length < 10) return 0;
+  const calculateAge = (birthdate: string): number => {
+    if (!birthdate) return 0;
 
-  const [year, month, day] = birthdate.split("-").map(Number);
+    const parts = birthdate.split('-').map(Number);
 
-  if (!year || !month || !day) return 0;
+    if (parts.length !== 3) return 0;
 
-  const today = new Date();
+    const [year, month, day] = parts;
 
-  let age = today.getFullYear() - year;
+    const today = new Date();
 
-  const hasNotHadBirthdayYet =
-    today.getMonth() + 1 < month ||
-    (today.getMonth() + 1 === month && today.getDate() < day);
+    let age = today.getFullYear() - year;
 
-  if (hasNotHadBirthdayYet) age--;
+    const hasNotHadBirthday =
+      today.getMonth() + 1 < month ||
+      (today.getMonth() + 1 === month && today.getDate() < day);
 
-  return age;
-};
+    if (hasNotHadBirthday) age--;
 
- const normalizeBirthdate = (value?: string | null): string => {
-  if (!value) return '';
+    return age;
+  };
 
-  // already correct format
-  if (typeof value === 'string' && value.includes('-')) {
-    return value.slice(0, 10);
-  }
+  const normalizeBirthdate = (value?: string | null): string => {
+    if (!value) return '';
 
-  // epoch seconds or ms
-  const num = Number(value);
-  if (!isNaN(num)) {
-    const date = new Date(num < 1e12 ? num * 1000 : num);
-    return date.toISOString().slice(0, 10);
-  }
+    // already ISO format
+    if (value.includes('-') && value.length >= 10) {
+      return value.slice(0, 10);
+    }
 
-  return '';
-};
+    // handle MM/DD/YYYY or DD/MM/YYYY
+    if (value.includes('/')) {
+      const [a, b, c] = value.split('/');
+
+      // assume YYYY missing → convert carefully
+      if (c.length === 4) {
+        // MM/DD/YYYY → YYYY-MM-DD
+        return `${c}-${a.padStart(2, '0')}-${b.padStart(2, '0')}`;
+      }
+
+      return '';
+    }
+
+    // epoch support
+    const num = Number(value);
+    if (!isNaN(num)) {
+      const date = new Date(num < 1e12 ? num * 1000 : num);
+      return date.toISOString().slice(0, 10);
+    }
+
+    return '';
+  };
 
   // =========================
   // Sync GraphQL User Data
   // =========================
-useEffect(() => {
-  if (!data?.me) return;
+  useEffect(() => {
+    if (!data?.me) return;
 
-  // =========================
-  // Dark Mode Sync
-  // =========================
-  const darkModeEnabled =
-    data.me.dark_mode ?? false;
+    const me = data.me;
 
-  setIsDarkMode(
-    darkModeEnabled
+      // =========================
+  // Two Factor Sync
+  // =========================
+  setTwoFactorEnabled(
+    me?.two_factor_enabled ?? false
   );
 
-  if (darkModeEnabled) {
-    document.documentElement.classList.add(
-      'dark-mode'
+    // =========================
+    // Dark Mode Sync
+    // =========================
+    const darkModeEnabled =
+      me.dark_mode ?? false;
+
+    setIsDarkMode(
+      darkModeEnabled
     );
 
-    document.body.classList.add(
-      'dark-mode'
+    if (darkModeEnabled) {
+      document.documentElement.classList.add(
+        'dark-mode'
+      );
+
+      document.body.classList.add(
+        'dark-mode'
+      );
+
+    } else {
+
+      document.documentElement.classList.remove(
+        'dark-mode'
+      );
+
+      document.body.classList.remove(
+        'dark-mode'
+      );
+    }
+
+    // =========================
+    // Auto Calculate Age
+    // =========================
+    const computedAge = me?.birthdate
+      ? calculateAge(normalizeBirthdate(me.birthdate))
+      : 0;
+
+    // =========================
+    // User Info Sync
+    // =========================
+    setUserInfo((prev) => ({
+      ...prev,
+
+      firstName:
+        me?.first_name || '',
+
+      middleName:
+        me?.middle_name || '',
+
+      lastName:
+        me?.last_name || '',
+
+      email:
+        me?.email || '',
+
+      phoneNumber:
+        me?.phone_number === 'N/A'
+          ? ''
+          : me?.phone_number || '',
+
+      suffix:
+        me?.suffix || '',
+
+      suffixLocked:
+        me?.suffix_locked || false,
+
+      nationality:
+        me?.nationality || '',
+
+      nationalityLocked:
+        me?.nationality_locked || false,
+
+
+
+      birthdate: normalizeBirthdate(me?.birthdate),
+
+      birthdateLocked:
+        me?.birthdate_locked || false,
+
+      age:
+        computedAge,
+
+      gender:
+        me?.gender || '',
+
+      genderLocked:
+        me?.gender_locked || false,
+
+      studentType:
+        me?.student_type || '',
+
+      collegeDepartment:
+        me?.college_department || '',
+
+      course:
+        me?.course || '',
+
+      program:
+        me?.program || '',
+
+      yearLevel:
+        me?.year_level || '',
+
+      userClassification:
+        me?.user_classification || '',
+    }));
+
+    // =========================
+    // Vibration Sync
+    // =========================
+    setVibrationEnabled(
+      me?.vibration_enabled ?? true
     );
 
-  } else {
-
-    document.documentElement.classList.remove(
-      'dark-mode'
-    );
-
-    document.body.classList.remove(
-      'dark-mode'
-    );
-  }
-
-  // =========================
-  // Auto Calculate Age
-  // =========================
-  const computedAge =
-  typeof data.me.birthdate === 'string' &&
-  data.me.birthdate.length >= 10
-    ? calculateAge(data.me.birthdate)
-    : 0;
-
-  // =========================
-  // User Info Sync
-  // =========================
-  setUserInfo((prev) => ({
-    ...prev,
-
-    firstName:
-      data.me.first_name || '',
-
-    middleName:
-      data.me.middle_name || '',
-
-    lastName:
-      data.me.last_name || '',
-
-    email:
-      data.me.email || '',
-
-    phoneNumber:
-  data.me.phone_number === 'N/A'
-    ? ''
-    : data.me.phone_number || '',
-
-    suffix:
-      data.me.suffix || '',
-
-    suffixLocked:
-      data.me.suffix_locked || false,
-
-    nationality:
-      data.me.nationality || '',
-
-    nationalityLocked:
-      data.me.nationality_locked || false,
-
-   
-
-  birthdate: normalizeBirthdate(data.me.birthdate),
-
-    birthdateLocked:
-      data.me.birthdate_locked || false,
-
-    age:
-      computedAge,
-
-    gender:
-      data.me.gender || '',
-
-    genderLocked:
-      data.me.gender_locked || false,
-
-    studentType:
-      data.me.student_type || '',
-
-    collegeDepartment:
-      data.me.college_department || '',
-
-    course:
-      data.me.course || '',
-
-    program:
-      data.me.program || '',
-
-    yearLevel:
-      data.me.year_level || '',
-
-    userClassification:
-      data.me.user_classification || '',
-  }));
-
-  // =========================
-  // Vibration Sync
-  // =========================
-  setVibrationEnabled(
-    data.me.vibration_enabled ?? true
-  );
-
-}, [data]);
+  }, [data]);
 
   // =========================
   // Helpers
@@ -531,157 +559,133 @@ useEffect(() => {
     document.body.style.fontSize = fontSizeValue;
   };
 
- const validatePhoneNumber = (
-  value: string
-): string => {
+  const validatePhoneNumber = (
+    value: string
+  ): string => {
 
-  // Numbers only
-  let digitsOnly =
-    value.replace(/\D/g, '');
+    // Numbers only
+    let digitsOnly =
+      value.replace(/\D/g, '');
 
-  // Must start with 9
-  if (
-    digitsOnly.length > 0 &&
-    digitsOnly[0] !== '9'
-  ) {
-    return '';
-  }
+    // Must start with 9
+    if (
+      digitsOnly.length > 0 &&
+      digitsOnly[0] !== '9'
+    ) {
+      return '';
+    }
 
-  // Max 10 digits only
-  return digitsOnly.slice(0, 10);
-};
+    // Max 10 digits only
+    return digitsOnly.slice(0, 10);
+  };
 
   const getCollegeDepartment = (
-  course: string
-): string => {
+    course: string
+  ): string => {
 
-  const normalizedCourse =
-    course.toUpperCase();
+    const normalizedCourse =
+      course.toUpperCase();
 
-  // =========================
-  // CAA
-  // =========================
-  if (
-    normalizedCourse.includes("AGRICULTURE") ||
-    normalizedCourse.includes("FOOD TECHNOLOGY")
-  ) {
-    return "College of Agriculture and Agri-Industries";
-  }
+    if (
+      normalizedCourse.includes("AGRICULTURE") ||
+      normalizedCourse.includes("FOOD TECHNOLOGY")
+    ) {
+      return "College of Agriculture and Agri-Industries";
+    }
 
-  // =========================
-  // CED
-  // =========================
-  if (
-    normalizedCourse.includes("EDUCATION") ||
-    normalizedCourse.includes("GUIDANCE") ||
-    normalizedCourse.includes("COUNSELING") ||
-    normalizedCourse.includes("TEACHING")
-  ) {
-    return "College of Education";
-  }
+    if (
+      normalizedCourse.includes("EDUCATION") ||
+      normalizedCourse.includes("GUIDANCE") ||
+      normalizedCourse.includes("COUNSELING") ||
+      normalizedCourse.includes("TEACHING")
+    ) {
+      return "College of Education";
+    }
 
-  // =========================
-  // CMNS
-  // =========================
-  if (
-    normalizedCourse.includes("BIOLOGY") ||
-    normalizedCourse.includes("CHEMISTRY") ||
-    normalizedCourse.includes("PHYSICS") ||
-    normalizedCourse.includes("MATHEMATICS") ||
-    normalizedCourse.includes("MARINE BIOLOGY")
-  ) {
-    return "College of Mathematics and Natural Sciences";
-  }
+    if (
+      normalizedCourse.includes("BIOLOGY") ||
+      normalizedCourse.includes("CHEMISTRY") ||
+      normalizedCourse.includes("PHYSICS") ||
+      normalizedCourse.includes("MATHEMATICS") ||
+      normalizedCourse.includes("MARINE BIOLOGY")
+    ) {
+      return "College of Mathematics and Natural Sciences";
+    }
 
-  // =========================
-  // CHASS
-  // =========================
-  if (
-    normalizedCourse.includes("SOCIOLOGY") ||
-    normalizedCourse.includes("PSYCHOLOGY") ||
-    normalizedCourse.includes("SOCIAL WORK")
-  ) {
-    return "College of Humanities and Social Sciences";
-  }
+    if (
+      normalizedCourse.includes("SOCIOLOGY") ||
+      normalizedCourse.includes("PSYCHOLOGY") ||
+      normalizedCourse.includes("SOCIAL WORK")
+    ) {
+      return "College of Humanities and Social Sciences";
+    }
 
-  // =========================
-  // CCIS
-  // =========================
-  if (
-    normalizedCourse.includes("COMPUTER SCIENCE") ||
-    normalizedCourse.includes("INFORMATION SYSTEM") ||
-    normalizedCourse.includes("INFORMATION TECHNOLOGY")
-  ) {
-    return "College of Computing and Information Sciences";
-  }
+    if (
+      normalizedCourse.includes("COMPUTER SCIENCE") ||
+      normalizedCourse.includes("INFORMATION SYSTEM") ||
+      normalizedCourse.includes("INFORMATION TECHNOLOGY")
+    ) {
+      return "College of Computing and Information Sciences";
+    }
 
-  // =========================
-  // CEGS
-  // =========================
-  if (
-    normalizedCourse.includes("ENGINEERING") ||
-    normalizedCourse.includes("ARCHITECTURE") ||
-    normalizedCourse.includes("GEOLOGY")
-  ) {
-    return "College of Engineering and Geo-Sciences";
-  }
+    if (
+      normalizedCourse.includes("ENGINEERING") ||
+      normalizedCourse.includes("ARCHITECTURE") ||
+      normalizedCourse.includes("GEOLOGY")
+    ) {
+      return "College of Engineering and Geo-Sciences";
+    }
 
-  // =========================
-  // COFES
-  // =========================
-  if (
-    normalizedCourse.includes("FORESTRY") ||
-    normalizedCourse.includes("ENVIRONMENTAL")
-  ) {
-    return "College of Forestry and Environmental Science";
-  }
+    if (
+      normalizedCourse.includes("FORESTRY") ||
+      normalizedCourse.includes("ENVIRONMENTAL")
+    ) {
+      return "College of Forestry and Environmental Science";
+    }
 
-  // =========================
-  // CM
-  // =========================
-  if (
-    normalizedCourse.includes("MEDICINE")
-  ) {
-    return "College of Medicine";
-  }
+    if (
+      normalizedCourse.includes("MEDICINE")
+    ) {
+      return "College of Medicine";
+    }
 
-  return "";
-};
+    return "";
+  };
 
-const getCollegeAcronym = (
-  department: string
-): string => {
+  const getCollegeAcronym = (
+    department: string
+  ): string => {
 
-  switch (department) {
+    switch (department) {
 
-    case "College of Agriculture and Agri-Industries":
-      return "CAA";
+      case "College of Agriculture and Agri-Industries":
+        return "CAA";
 
-    case "College of Education":
-      return "CED";
+      case "College of Education":
+        return "CED";
 
-    case "College of Mathematics and Natural Sciences":
-      return "CMNS";
+      case "College of Mathematics and Natural Sciences":
+        return "CMNS";
 
-    case "College of Humanities and Social Sciences":
-      return "CHASS";
+      case "College of Humanities and Social Sciences":
+        return "CHASS";
 
-    case "College of Computing and Information Sciences":
-      return "CCIS";
+      case "College of Computing and Information Sciences":
+        return "CCIS";
 
-    case "College of Engineering and Geo-Sciences":
-      return "CEGS";
+      case "College of Engineering and Geo-Sciences":
+        return "CEGS";
 
-    case "College of Forestry and Environmental Science":
-      return "COFES";
+      case "College of Forestry and Environmental Science":
+        return "COFES";
 
-    case "College of Medicine":
-      return "CM";
+      case "College of Medicine":
+        return "CM";
 
-    default:
-      return "";
-  }
-};
+      default:
+        return "";
+    }
+  };
 
   // =========================
   // Mock API
@@ -765,96 +769,141 @@ const getCollegeAcronym = (
   // Phone Number Handler
   // =========================
   const handlePhoneNumberChange = (
-  e: React.ChangeEvent<HTMLInputElement>
-): void => {
+    e: React.ChangeEvent<HTMLInputElement>
+  ): void => {
 
-  const rawValue =
-    e.target.value;
+    const rawValue =
+      e.target.value;
 
-  const cleanedValue =
-    rawValue.replace(
-      /^\+63/,
-      ''
-    );
+    const cleanedValue =
+      rawValue.replace(
+        /^\+63/,
+        ''
+      );
 
-  const validatedDigits =
-    validatePhoneNumber(
-      cleanedValue
-    );
+    const validatedDigits =
+      validatePhoneNumber(
+        cleanedValue
+      );
 
-  // Prevent invalid first digit
-  if (
-    cleanedValue.length > 0 &&
-    validatedDigits === ''
-  ) {
-    return;
-  }
+    // Prevent invalid first digit
+    if (
+      cleanedValue.length > 0 &&
+      validatedDigits === ''
+    ) {
+      return;
+    }
 
-  setUserInfo((prev) => ({
-    ...prev,
-    phoneNumber:
-      validatedDigits,
-  }));
-};
+    setUserInfo((prev) => ({
+      ...prev,
+      phoneNumber:
+        validatedDigits,
+    }));
+  };
 
   const handleSuffixChange = (
-  e: React.ChangeEvent<HTMLSelectElement>
-): void => {
-  if (userInfo.suffixLocked) return;
+    e: React.ChangeEvent<HTMLSelectElement>
+  ): void => {
+    if (userInfo.suffixLocked) return;
 
-  setUserInfo((prev) => ({
-    ...prev,
-    suffix: e.target.value,
-  }));
-};
+    setUserInfo((prev) => ({
+      ...prev,
+      suffix: e.target.value,
+    }));
+  };
 
   // =========================
   // Save User Information
   // =========================
-const [updateUserInformationMutation] =
-  useMutation(UPDATE_USER_INFORMATION);
+  const [updateUserInformationMutation] =
+    useMutation(UPDATE_USER_INFORMATION);
 
-const saveUserInfo = async (): Promise<void> => {
+  const saveUserInfo = async (): Promise<void> => {
+    try {
+
+      await updateUserInformationMutation({
+        variables: {
+          phone_number: userInfo.phoneNumber,
+          suffix: userInfo.suffix || null,
+          birthdate: userInfo.birthdate || null,
+          age: userInfo.age || null,
+          gender: userInfo.gender || null,
+          nationality: userInfo.nationality || null,
+          user_classification: userInfo.userClassification || null,
+          student_type: userInfo.studentType || null,
+          college_department: userInfo.collegeDepartment || null,
+          course: userInfo.course || null,
+          program: userInfo.program || null,
+          year_level: userInfo.yearLevel || null,
+          vibration_enabled: vibrationEnabled || false,
+          dark_mode: isDarkMode,
+          two_factor_enabled: twoFactorEnabled,
+        },
+      });
+
+      setSuccessMessage(
+        'User information updated successfully!'
+      );
+
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 3000);
+
+    } catch (error) {
+
+      console.error(error);
+
+      alert('Failed to update user information');
+    }
+  };
+
+  // =========================
+  // Save Academic Information
+  // =========================
+ const saveAcademicInfo = async (): Promise<void> => {
   try {
+
+    const computedCollegeDepartment =
+      getCollegeDepartment(userInfo.course);
+
+    const computedProgram =
+      COURSE_ACRONYMS[userInfo.course] || "";
 
     await updateUserInformationMutation({
       variables: {
-        phone_number: userInfo.phoneNumber,
+        phone_number: userInfo.phoneNumber || "",
+
+        user_classification: userInfo.userClassification || null,
+        student_type:
+          userInfo.userClassification === "Student"
+            ? userInfo.studentType || null
+            : null,
+        year_level: userInfo.yearLevel || null,
+
         suffix: userInfo.suffix || null,
-       birthdate:
-  userInfo.birthdate
-    ? new Date(Number(userInfo.birthdate) < 1e12
-        ? Number(userInfo.birthdate) * 1000
-        : Number(userInfo.birthdate)
-      ).toISOString().slice(0, 10)
-    : null,
+        birthdate: userInfo.birthdate || null,
         age: userInfo.age || null,
         gender: userInfo.gender || null,
         nationality: userInfo.nationality || null,
-        user_classification: userInfo.userClassification || null,
-        student_type: userInfo.studentType || null,
-        college_department: userInfo.collegeDepartment || null,
+
+        // ✅ THESE ARE THE IMPORTANT FIXES
+        college_department: computedCollegeDepartment || null,
+        program: computedProgram || null,
+
         course: userInfo.course || null,
-        program: userInfo.program || null,
-        year_level: userInfo.yearLevel || null,
+
         vibration_enabled: vibrationEnabled || false,
         dark_mode: isDarkMode,
       },
     });
 
-    setSuccessMessage(
-      'User information updated successfully!'
-    );
+    setSuccessMessage("Academic information updated successfully!");
 
-    setTimeout(() => {
-      setSuccessMessage('');
-    }, 3000);
+    setTimeout(() => setSuccessMessage(""), 3000);
 
   } catch (error) {
-
     console.error(error);
-
-    alert('Failed to update user information');
+    alert("Failed to update academic information");
   }
 };
 
@@ -890,168 +939,168 @@ const saveUserInfo = async (): Promise<void> => {
   // Profile Picture Upload
   // =========================
   const handleProfilePictureUpload = async (
-  e: React.ChangeEvent<HTMLInputElement>
-): Promise<void> => {
+    e: React.ChangeEvent<HTMLInputElement>
+  ): Promise<void> => {
 
-  try {
+    try {
 
-    // =========================
-    // 📸 GET FILE
-    // =========================
-    const file =
-      e.target.files?.[0];
+      // =========================
+      // 📸 GET FILE
+      // =========================
+      const file =
+        e.target.files?.[0];
 
-    if (!file) {
-      return;
-    }
+      if (!file) {
+        return;
+      }
 
-    // =========================
-    // 👤 CURRENT USER
-    // =========================
-    const currentUser =
-      JSON.parse(
-        localStorage.getItem("user") || "{}"
+      // =========================
+      // 👤 CURRENT USER
+      // =========================
+      const currentUser =
+        JSON.parse(
+          localStorage.getItem("user") || "{}"
+        );
+
+      // =========================
+      // 🎓 GET STUDENT ID
+      // =========================
+      const studentId =
+        currentUser.StudentId;
+
+      if (!studentId) {
+
+        alert(
+          "Student ID not found"
+        );
+
+        return;
+      }
+
+      // =========================
+      // 📦 CREATE FORM DATA
+      // =========================
+      const formData =
+        new FormData();
+
+      formData.append(
+        "studentId",
+        studentId
       );
 
-    // =========================
-    // 🎓 GET STUDENT ID
-    // =========================
-    const studentId =
-      currentUser.StudentId;
+      formData.append(
+        "uploadType",
+        "profile-picture"
+      );
 
-    if (!studentId) {
+      formData.append(
+        "image",
+        file
+      );
+
+      // =========================
+      // 🌐 API URL
+      // =========================
+      const API_BASE_URL =
+        import.meta.env.VITE_API_URL ||
+        "http://localhost:4000";
+
+      // =========================
+      // 🚀 UPLOAD REQUEST
+      // =========================
+      const response =
+        await fetch(
+          `${API_BASE_URL}/api/upload-profile-picture`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+      // =========================
+      // ❌ FAILED
+      // =========================
+      if (!response.ok) {
+
+        const errorData =
+          await response.json();
+
+        throw new Error(
+          errorData.message ||
+          "Upload failed"
+        );
+      }
+
+      // =========================
+      // ✅ SUCCESS RESPONSE
+      // =========================
+      const data =
+        await response.json();
+      console.log("UPLOAD RESPONSE:", data);
+      const imageUrl =
+        data.imageUrl;
+
+      // =========================
+      // 🖼 UPDATE UI PREVIEW
+      // =========================
+      setProfilePicturePreview(
+        imageUrl
+      );
+
+      // =========================
+      // 💾 UPDATE USER OBJECT
+      // =========================
+      const updatedUser = {
+
+        ...currentUser,
+
+        profile_picture:
+          imageUrl,
+      };
+
+      // =========================
+      // 💾 SAVE UPDATED USER
+      // =========================
+      localStorage.setItem(
+        "user",
+        JSON.stringify(updatedUser)
+      );
+
+      window.dispatchEvent(
+        new Event("profilePictureUpdated")
+      );
+
+      // =========================
+      // 💾 OPTIONAL LEGACY SAVE
+      // =========================
+      localStorage.setItem(
+        "profilePicture",
+        imageUrl
+      );
+
+      // =========================
+      // ✅ SUCCESS MESSAGE
+      // =========================
+      setSuccessMessage(
+        "Profile picture updated!"
+      );
+
+      setTimeout(() => {
+
+        setSuccessMessage("");
+
+      }, 3000);
+
+    } catch (error: any) {
+
+      console.error(error);
 
       alert(
-        "Student ID not found"
-      );
-
-      return;
-    }
-
-    // =========================
-    // 📦 CREATE FORM DATA
-    // =========================
-    const formData =
-      new FormData();
-
-formData.append(
-  "studentId",
-  studentId
-);
-
-formData.append(
-  "uploadType",
-  "profile-picture"
-);
-
-formData.append(
-  "image",
-  file
-);
-
-    // =========================
-    // 🌐 API URL
-    // =========================
-    const API_BASE_URL =
-      import.meta.env.VITE_API_URL ||
-      "http://localhost:4000";
-
-    // =========================
-    // 🚀 UPLOAD REQUEST
-    // =========================
-    const response =
-      await fetch(
-        `${API_BASE_URL}/api/upload-profile-picture`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-    // =========================
-    // ❌ FAILED
-    // =========================
-    if (!response.ok) {
-
-      const errorData =
-        await response.json();
-
-      throw new Error(
-        errorData.message ||
-        "Upload failed"
+        error.message ||
+        "Failed to upload profile picture"
       );
     }
-
-    // =========================
-    // ✅ SUCCESS RESPONSE
-    // =========================
-    const data =
-      await response.json();
-console.log("UPLOAD RESPONSE:", data);
-    const imageUrl =
-      data.imageUrl;
-
-    // =========================
-    // 🖼 UPDATE UI PREVIEW
-    // =========================
-setProfilePicturePreview(
-  imageUrl
-);
-
-    // =========================
-    // 💾 UPDATE USER OBJECT
-    // =========================
-    const updatedUser = {
-
-      ...currentUser,
-
-      profile_picture:
-        imageUrl,
-    };
-
-    // =========================
-    // 💾 SAVE UPDATED USER
-    // =========================
-    localStorage.setItem(
-      "user",
-      JSON.stringify(updatedUser)
-    );
-
-    window.dispatchEvent(
-  new Event("profilePictureUpdated")
-);
-
-    // =========================
-    // 💾 OPTIONAL LEGACY SAVE
-    // =========================
-    localStorage.setItem(
-      "profilePicture",
-      imageUrl
-    );
-
-    // =========================
-    // ✅ SUCCESS MESSAGE
-    // =========================
-    setSuccessMessage(
-      "Profile picture updated!"
-    );
-
-    setTimeout(() => {
-
-      setSuccessMessage("");
-
-    }, 3000);
-
-  } catch (error: any) {
-
-    console.error(error);
-
-    alert(
-      error.message ||
-      "Failed to upload profile picture"
-    );
-  }
-};
+  };
 
   // =========================
   // Unlink Account
@@ -1085,7 +1134,7 @@ setProfilePicturePreview(
 
     if (
       newAccountProvider ===
-        'Caraga State University' &&
+      'Caraga State University' &&
       !newAccountEmail.endsWith('@carsu.edu.ph')
     ) {
       alert(
@@ -1125,520 +1174,535 @@ setProfilePicturePreview(
     }, 3000);
   };
 
- 
-return (
-  <div className={`settings-wrapper ${isDarkMode ? 'dark-mode' : ''}`}>
-    <Sidebar />
+  return (
+    <div className={`settings-wrapper ${isDarkMode ? 'dark-mode' : ''}`}>
+      <Sidebar />
 
-    <div className="settings-container">
-      <main className="main-content">
-        <h1 className="settings-title">Settings</h1>
+      <div className="settings-container">
+        <main className="main-content">
+          <h1 className="settings-title">Settings</h1>
 
-        {successMessage && (
-          <div className="success-message">
-            <span>✓ {successMessage}</span>
+          {successMessage && (
+            <div className="success-message">
+              <span>✓ {successMessage}</span>
+            </div>
+          )}
+
+          {/* Editable User Information */}
+          <div className="section-card">
+            <h3>User Information</h3>
+
+            <div className="form-stack">
+
+              {/* NAME ROW */}
+              <div
+                className="name-row"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr 1fr',
+                  gap: '1rem',
+                }}
+              >
+                <div className="form-field name-field">
+                  <label>First Name</label>
+
+                  <input
+                    type="text"
+                    value={userInfo.firstName}
+                    readOnly
+                    disabled
+                    className="readonly-input"
+                  />
+                </div>
+
+                <div className="form-field name-field">
+                  <label>Middle Name</label>
+
+                  <input
+                    type="text"
+                    value={userInfo.middleName}
+                    readOnly
+                    disabled
+                    className="readonly-input"
+                  />
+                </div>
+
+                <div className="form-field name-field">
+                  <label>Last Name</label>
+
+                  <input
+                    type="text"
+                    value={userInfo.lastName}
+                    readOnly
+                    disabled
+                    className="readonly-input"
+                  />
+                </div>
+              </div>
+
+              {/* EMAIL */}
+              <div className="form-field">
+                <label>Email Address</label>
+
+                <input
+                  type="email"
+                  value={userInfo.email}
+                  readOnly
+                  disabled
+                  className="readonly-input"
+                />
+              </div>
+
+              {/* PERSONAL INFO COMPACT ROW */}
+              <div
+                className="compact-info-row"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 0.7fr 0.7fr 1fr 1fr',
+                  gap: '1rem',
+                  alignItems: 'start',
+                }}
+              >
+
+
+                {/* SUFFIX */}
+                <div className="form-field suffix-field">
+                  <label>Suffix</label>
+
+                  <select
+                    value={userInfo.suffix}
+                    onChange={handleSuffixChange}
+                    disabled={userInfo.suffixLocked}
+                    className={
+                      userInfo.suffixLocked
+                        ? 'readonly-input'
+                        : ''
+                    }
+                  >
+                    {suffixOptions.map((suffix) => (
+                      <option key={suffix} value={suffix}>
+                        {suffix || 'Select suffix'}
+                      </option>
+                    ))}
+                  </select>
+
+                  <small className="field-hint">
+                    {userInfo.suffixLocked
+                      ? 'Locked'
+                      : 'Editable once'}
+                  </small>
+                  <small className="field-hint">
+  If any of the information above is incorrect<br />
+  Please refer to the Feedback section<br />
+  For correction request
+</small>
+                </div>
+
+                {/* BIRTHDATE */}
+                <div className="form-field">
+                  <label>Birthdate</label>
+
+                  <input
+                    type="date"
+                    value={userInfo.birthdate}
+                    disabled={userInfo.birthdateLocked}
+                    className={
+                      userInfo.birthdateLocked
+                        ? 'readonly-input'
+                        : ''
+                    }
+                    onChange={(e) => {
+                      const newBirthdate = e.target.value;
+
+                      setUserInfo((prev) => ({
+                        ...prev,
+                        birthdate: newBirthdate,
+                        age: calculateAge(newBirthdate),
+                      }));
+                    }}
+                  />
+
+                  <small className="field-hint">
+                    {userInfo.birthdateLocked
+                      ? 'Locked'
+                      : 'Editable once'}
+                  </small>
+                </div>
+
+                {/* AGE */}
+                <div className="form-field">
+                  <label>Age</label>
+
+                  <input
+                    type="text"
+                    value={userInfo.age}
+                    readOnly
+                    disabled
+                    className="readonly-input"
+                  />
+                </div>
+
+                {/* GENDER */}
+                <div className="form-field">
+                  <label>Gender</label>
+
+                  <select
+                    value={userInfo.gender}
+                    disabled={userInfo.genderLocked}
+                    className={
+                      userInfo.genderLocked
+                        ? 'readonly-input'
+                        : ''
+                    }
+                    onChange={(e) =>
+                      setUserInfo((prev) => ({
+                        ...prev,
+                        gender: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">Select</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Prefer not to say">Prefer not to say</option>
+                  </select>
+
+                  <small className="field-hint">
+                    {userInfo.genderLocked
+                      ? 'Locked'
+                      : 'Editable once'}
+                  </small>
+                </div>
+
+                {/* NATIONALITY */}
+                <div className="form-field">
+                  <label>Nationality</label>
+
+                  <select
+                    value={userInfo.nationality}
+                    disabled={userInfo.nationalityLocked}
+                    className={
+                      userInfo.nationalityLocked
+                        ? 'readonly-input'
+                        : ''
+                    }
+                    onChange={(e) =>
+                      setUserInfo((prev) => ({
+                        ...prev,
+                        nationality: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">
+                      Select Nationality
+                    </option>
+
+                    <option value="Filipino">
+                      Filipino
+                    </option>
+
+                    <option value="American">
+                      American
+                    </option>
+
+                    <option value="Japanese">
+                      Japanese
+                    </option>
+
+                    <option value="Korean">
+                      Korean
+                    </option>
+
+                    <option value="Chinese">
+                      Chinese
+                    </option>
+
+                    <option value="Lithuanian">
+                      Lithuanian
+                    </option>
+
+                    <option value="Pakistani">
+                      Pakistani
+                    </option>
+
+                    <option value="Other">
+                      Other
+                    </option>
+                  </select>
+
+                  <small className="field-hint">
+                    {userInfo.nationalityLocked
+                      ? 'Locked'
+                      : 'Editable once'}
+                  </small>
+
+                  <small
+                    className="field-hint"
+                    style={{
+                      marginTop: '0.35rem',
+                      display: 'block',
+                    }}
+                  >
+                    If your nationality is not listed, please submit a request through the
+                    Feedback section for assistance.
+                  </small>
+                </div>
+
+
+                {/* PHONE */}
+                <div className="form-field">
+                  <label>Phone Number</label>
+
+                  <div className="phone-input-wrapper">
+                    <span className="phone-prefix">
+                      <span className="flag-icon">🇵🇭</span> +63
+                    </span>
+
+                    <input
+                      type="tel"
+                      value={userInfo.phoneNumber}
+                      onChange={handlePhoneNumberChange}
+                      placeholder="9123456789"
+                      maxLength={10}
+                      pattern="\d*"
+                      inputMode="numeric"
+                      className="phone-number-input"
+                    />
+                  </div>
+
+                  <small className="field-hint">
+                    Enter 10 digits after +63
+                  </small>
+                </div>
+              </div>
+
+              {/* BUTTON */}
+              <button
+                className="btn-primary"
+                onClick={saveUserInfo}
+                style={{ marginTop: '0.5rem' }}
+              >
+                Save User Information
+              </button>
+
+            </div>
           </div>
-        )}
 
-        {/* Editable User Information */}
-        <div className="section-card">
-          <h3>User Information</h3>
+          {/* Academic Information */}
+          <div className="section-card">
+            <h3>Academic Information</h3>
 
-          <div className="form-stack">
+            <div className="form-stack">
 
-            {/* NAME ROW */}
-            <div
-              className="name-row"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr 1fr',
-                gap: '1rem',
-              }}
-            >
-              <div className="form-field name-field">
-                <label>First Name</label>
-
-                <input
-                  type="text"
-                  value={userInfo.firstName}
-                  readOnly
-                  disabled
-                  className="readonly-input"
-                />
-              </div>
-
-              <div className="form-field name-field">
-                <label>Middle Name</label>
-
-                <input
-                  type="text"
-                  value={userInfo.middleName}
-                  readOnly
-                  disabled
-                  className="readonly-input"
-                />
-              </div>
-
-              <div className="form-field name-field">
-                <label>Last Name</label>
-
-                <input
-                  type="text"
-                  value={userInfo.lastName}
-                  readOnly
-                  disabled
-                  className="readonly-input"
-                />
-              </div>
-            </div>
-
-            {/* EMAIL */}
-            <div className="form-field">
-              <label>Email Address</label>
-
-              <input
-                type="email"
-                value={userInfo.email}
-                readOnly
-                disabled
-                className="readonly-input"
-              />
-            </div>
-
-            {/* PERSONAL INFO COMPACT ROW */}
-            <div
-              className="compact-info-row"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 0.7fr 0.7fr 1fr 1fr',
-                gap: '1rem',
-                alignItems: 'start',
-              }}
-            >
-              
-
-              {/* SUFFIX */}
-              <div className="form-field suffix-field">
-                <label>Suffix</label>
+              {/* USER CLASSIFICATION */}
+              <div className="form-field">
+                <label>User Classification</label>
 
                 <select
-                  value={userInfo.suffix}
-                  onChange={handleSuffixChange}
-                  disabled={userInfo.suffixLocked}
+                  value={userInfo.userClassification}
+                  onChange={(e) => {
+
+                    const classification =
+                      e.target.value;
+
+                    setUserInfo((prev) => ({
+                      ...prev,
+
+                      userClassification:
+                        classification,
+
+                      // auto clear kapag hindi student
+                      studentType:
+  classification === "Student"
+    ? prev.studentType
+    : "",
+                    }));
+                  }}
+                >
+                  <option value="">
+                    Select Classification
+                  </option>
+
+                  <option value="Student">
+                    Student
+                  </option>
+
+                  <option value="Staff">
+                    Staff
+                  </option>
+
+                  <option value="Visitor">
+                    Visitor
+                  </option>
+                </select>
+              </div>
+
+              {/* STUDENT TYPE */}
+              <div className="form-field">
+                <label>Student Type</label>
+
+                <select
+                  value={userInfo.studentType}
+                  disabled={
+                    userInfo.userClassification !==
+                    "Student"
+                  }
+                  onChange={(e) =>
+                    setUserInfo((prev) => ({
+                      ...prev,
+                      studentType:
+                        e.target.value,
+                    }))
+                  }
                   className={
-                    userInfo.suffixLocked
-                      ? 'readonly-input'
-                      : ''
+                    userInfo.userClassification !==
+                      "Student"
+                      ? "readonly-input disabled-select"
+                      : ""
                   }
                 >
-                  {suffixOptions.map((suffix) => (
-                    <option key={suffix} value={suffix}>
-                      {suffix || 'Select suffix'}
-                    </option>
-                  ))}
+                  <option value="">
+                    {userInfo.userClassification !==
+                      "Student"
+                      ? "Locked for non-students"
+                      : "Select Student Type"}
+                  </option>
+
+                  <option value="Regular">
+                    Regular
+                  </option>
+
+                  <option value="Irregular">
+                    Irregular
+                  </option>
                 </select>
-
-                <small className="field-hint">
-                  {userInfo.suffixLocked
-                    ? 'Locked'
-                    : 'Editable once'}
-                </small>
               </div>
 
+              {/* COLLEGE + ACRONYM */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    "1fr 180px",
+                  gap: "1rem",
+                }}
+              >
+
+                {/* FULL COLLEGE NAME */}
+                <div className="form-field">
+                  <label>
+                    College Department
+                  </label>
+
+                  <input
+                    type="text"
+                    readOnly
+                    disabled
+                    className="readonly-input"
+                    value={getCollegeDepartment(userInfo.course)}
+                  />
+
+                </div>
+
+                {/* AUTO GENERATED ACRONYM */}
+                <div className="form-field">
+                  <label>Acronym</label>
+
+                  <input
+                    type="text"
+                    readOnly
+                    disabled
+                    className="readonly-input"
+                    value={getCollegeAcronym(
+                      getCollegeDepartment(userInfo.course)
+                    )}
+                  />
+
+                </div>
+              </div>
+
+              {/* COURSE + ACRONYM */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 180px",
+                  gap: "1rem",
+                }}
+              >
+
+                {/* CURRENT COURSE */}
+                <div className="form-field">
+                  <label>Current Course</label>
+
+                  <input
+                    type="text"
+                    value={userInfo.course}
+                    readOnly
+                    disabled
+                    className="readonly-input"
+                  />
+
+                  <small
+                    className="field-hint"
+                    style={{
+                      marginTop: "0.5rem",
+                      display: "block",
+                    }}
+                  >
+                    To request a course change, please submit your concern through
+                    the Feedback section located in the sidebar. Course updates are
+                    managed by the administrator to avoid data inconsistencies.
+                  </small>
+                </div>
+
+                {/* AUTO GENERATED COURSE ACRONYM */}
+                <div className="form-field">
+                  <label>Acronym</label>
+
+                  <input
+                    type="text"
+                    readOnly
+                    disabled
+                    className="readonly-input"
+                    value={
+                      COURSE_ACRONYMS[userInfo.course] || ""
+                    }
+                  />
+                </div>
+              </div>
+
+              {/* YEAR LEVEL */}
               <div className="form-field">
-  <label>Birthdate</label>
+                <label>Edit Year Level</label>
 
-  <input
-    type="date"
-    value={userInfo.birthdate}
-    disabled={userInfo.birthdateLocked}
-    className={
-      userInfo.birthdateLocked
-        ? 'readonly-input'
-        : ''
-    }
-    onChange={(e) =>
-      setUserInfo((prev) => ({
-        ...prev,
-        birthdate: e.target.value,
-        age: calculateAge(e.target.value),
-      }))
-    }
-  />
-
-  <small className="field-hint">
-    {userInfo.birthdateLocked
-      ? 'Locked'
-      : 'Editable once'}
-  </small>
-</div>
-
-              {/* AGE */}
-              <div className="form-field">
-                <label>Age</label>
-
-                <input
-                  type="text"
-                  value={userInfo.age}
-                  readOnly
-                  disabled
-                  className="readonly-input"
-                />
+                <select
+                  value={userInfo.yearLevel}
+                  onChange={(e) =>
+                    setUserInfo((prev) => ({
+                      ...prev,
+                      yearLevel: e.target.value,
+                    }))
+                  }
+                  className="year-select"
+                >
+                  <option value="1">First Year</option>
+                  <option value="2">Second Year</option>
+                  <option value="3">Third Year</option>
+                  <option value="4">Fourth Year</option>
+                  <option value="5+">Fifth Year and Above</option>
+                </select>
               </div>
 
-            {/* GENDER */}
-<div className="form-field">
-  <label>Gender</label>
-
-  <select
-    value={userInfo.gender}
-    disabled={userInfo.genderLocked}
-    className={
-      userInfo.genderLocked
-        ? 'readonly-input'
-        : ''
-    }
-    onChange={(e) =>
-      setUserInfo((prev) => ({
-        ...prev,
-        gender: e.target.value,
-      }))
-    }
-  >
-    <option value="">Select</option>
-    <option value="Male">Male</option>
-    <option value="Female">Female</option>
-    <option value="Prefer not to say">Prefer not to say</option>
-  </select>
-
-  <small className="field-hint">
-    {userInfo.genderLocked
-      ? 'Locked'
-      : 'Editable once'}
-  </small>
-</div>
-
-{/* NATIONALITY */}
-<div className="form-field">
-  <label>Nationality</label>
-
-  <select
-    value={userInfo.nationality}
-    disabled={userInfo.nationalityLocked}
-    className={
-      userInfo.nationalityLocked
-        ? 'readonly-input'
-        : ''
-    }
-    onChange={(e) =>
-      setUserInfo((prev) => ({
-        ...prev,
-        nationality: e.target.value,
-      }))
-    }
-  >
-    <option value="">
-      Select Nationality
-    </option>
-
-    <option value="Filipino">
-      Filipino
-    </option>
-
-    <option value="American">
-      American
-    </option>
-
-    <option value="Japanese">
-      Japanese
-    </option>
-
-    <option value="Korean">
-      Korean
-    </option>
-
-    <option value="Chinese">
-      Chinese
-    </option>
-
-    <option value="Lithuanian">
-      Lithuanian
-    </option>
-
-    <option value="Pakistani">
-      Pakistani
-    </option>
-
-    <option value="Other">
-      Other
-    </option>
-  </select>
-
-  <small className="field-hint">
-    {userInfo.nationalityLocked
-      ? 'Locked'
-      : 'Editable once'}
-  </small>
-
-  <small
-    className="field-hint"
-    style={{
-      marginTop: '0.35rem',
-      display: 'block',
-    }}
-  >
-    If your nationality is not listed, please submit a request through the
-    Feedback section for assistance.
-  </small>
-</div>
-
-
-            {/* PHONE */}
-            <div className="form-field">
-              <label>Phone Number</label>
-
-              <div className="phone-input-wrapper">
-                <span className="phone-prefix">
-                  <span className="flag-icon">🇵🇭</span> +63
-                </span>
-
-                <input
-                  type="tel"
-                  value={userInfo.phoneNumber}
-                  onChange={handlePhoneNumberChange}
-                  placeholder="9123456789"
-                  maxLength={10}
-                  pattern="\d*"
-                  inputMode="numeric"
-                  className="phone-number-input"
-                />
-              </div>
-
-              <small className="field-hint">
-                Enter 10 digits after +63
-              </small>
-            </div>
-            </div>
-
-            {/* BUTTON */}
-            <button
-              className="btn-primary"
-              onClick={saveUserInfo}
-              style={{ marginTop: '0.5rem' }}
-            >
-              Save User Information
-            </button>
-
-          </div>
-        </div>
-
-{/* Academic Information */}
-<div className="section-card">
-  <h3>Academic Information</h3>
-
-  <div className="form-stack">
-
-    {/* USER CLASSIFICATION */}
-    <div className="form-field">
-      <label>User Classification</label>
-
-      <select
-        value={userInfo.userClassification}
-        onChange={(e) => {
-
-          const classification =
-            e.target.value;
-
-          setUserInfo((prev) => ({
-            ...prev,
-
-            userClassification:
-              classification,
-
-            // auto clear kapag hindi student
-            studentType:
-              classification === "Student"
-                ? prev.studentType
-                : "",
-          }));
-        }}
-      >
-        <option value="">
-          Select Classification
-        </option>
-
-        <option value="Student">
-          Student
-        </option>
-
-        <option value="Staff">
-          Staff
-        </option>
-
-        <option value="Visitor">
-          Visitor
-        </option>
-      </select>
-    </div>
-
-    {/* STUDENT TYPE */}
-    <div className="form-field">
-      <label>Student Type</label>
-
-      <select
-        value={userInfo.studentType}
-        disabled={
-          userInfo.userClassification !==
-          "Student"
-        }
-        onChange={(e) =>
-          setUserInfo((prev) => ({
-            ...prev,
-            studentType:
-              e.target.value,
-          }))
-        }
-        className={
-          userInfo.userClassification !==
-          "Student"
-            ? "readonly-input"
-            : ""
-        }
-      >
-        <option value="">
-          {userInfo.userClassification !==
-          "Student"
-            ? "Locked for non-students"
-            : "Select Student Type"}
-        </option>
-
-        <option value="Regular">
-          Regular
-        </option>
-
-        <option value="Irregular">
-          Irregular
-        </option>
-      </select>
-    </div>
-
-    {/* COLLEGE + ACRONYM */}
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns:
-          "1fr 180px",
-        gap: "1rem",
-      }}
-    >
-
-      {/* FULL COLLEGE NAME */}
-      <div className="form-field">
-        <label>
-          College Department
-        </label>
-
-     <input
-  type="text"
-  readOnly
-  disabled
-  className="readonly-input"
-  value={getCollegeDepartment(userInfo.course)}
-/>
-         
-      </div>
-
-      {/* AUTO GENERATED ACRONYM */}
-      <div className="form-field">
-        <label>Acronym</label>
-
-        <input
-  type="text"
-  readOnly
-  disabled
-  className="readonly-input"
-  value={getCollegeAcronym(
-    getCollegeDepartment(userInfo.course)
-  )}
-/>
-          
-      </div>
-    </div>
-
-    {/* COURSE + ACRONYM */}
-<div
-  style={{
-    display: "grid",
-    gridTemplateColumns: "1fr 180px",
-    gap: "1rem",
-  }}
+              <button
+  className="btn-primary"
+  onClick={saveAcademicInfo}
+  style={{ marginTop: "0.75rem" }}
 >
+  Save Academic Information
+</button>
 
-  {/* CURRENT COURSE */}
-  <div className="form-field">
-    <label>Current Course</label>
-
-    <input
-      type="text"
-      value={userInfo.course}
-      readOnly
-      disabled
-      className="readonly-input"
-    />
-
-    <small
-      className="field-hint"
-      style={{
-        marginTop: "0.5rem",
-        display: "block",
-      }}
-    >
-      To request a course change, please submit your concern through
-      the Feedback section located in the sidebar. Course updates are
-      managed by the administrator to avoid data inconsistencies.
-    </small>
-  </div>
-
-  {/* AUTO GENERATED COURSE ACRONYM */}
-  <div className="form-field">
-    <label>Acronym</label>
-
-    <input
-      type="text"
-      readOnly
-      disabled
-      className="readonly-input"
-      value={
-        COURSE_ACRONYMS[userInfo.course] || ""
-      }
-    />
-  </div>
-</div>
-
-{/* YEAR LEVEL */}
-<div className="form-field">
-  <label>Edit Year Level</label>
-
-  <select
-    value={userInfo.yearLevel}
-    onChange={(e) =>
-      setUserInfo((prev) => ({
-        ...prev,
-        yearLevel: e.target.value,
-      }))
-    }
-    className="year-select"
-  >
-    <option value="1">First Year</option>
-    <option value="2">Second Year</option>
-    <option value="3">Third Year</option>
-    <option value="4">Fourth Year</option>
-    <option value="5+">Fifth Year and Above</option>
-  </select>
-</div>
-
-  </div>
-</div>
+            </div>
+          </div>
 
           {/* Theme Section */}
           <div className="section-card">
@@ -1650,30 +1714,30 @@ return (
                 id="darkMode"
                 checked={isDarkMode}
                 onChange={async (e) => {
-  const value = e.target.checked;
+                  const value = e.target.checked;
 
-  updateThemeSetting('darkMode', value);
+                  updateThemeSetting('darkMode', value);
 
-  try {
-    await updateUserInformationMutation({
-      variables: {
-        phone_number: userInfo.phoneNumber || "",
-        dark_mode: value,
-      },
-    });
+                  try {
+                    await updateUserInformationMutation({
+                      variables: {
+                        phone_number: userInfo.phoneNumber || "",
+                        dark_mode: value,
+                      },
+                    });
 
-    console.log(
-      "Dark mode saved to database:",
-      value
-    );
+                    console.log(
+                      "Dark mode saved to database:",
+                      value
+                    );
 
-  } catch (error) {
-    console.error(
-      "Failed to save dark mode:",
-      error
-    );
-  }
-}}
+                  } catch (error) {
+                    console.error(
+                      "Failed to save dark mode:",
+                      error
+                    );
+                  }
+                }}
               />
             </div>
           </div>
@@ -1738,13 +1802,13 @@ return (
             <div className="form-group">
               <label>Enable Vibration (for scanned QR codes)</label>
               <input
-  type="checkbox"
-  id="enableVibration"
-  checked={vibrationEnabled}
-  onChange={(e) =>
-    setVibrationEnabled(e.target.checked)
-  }
-/>
+                type="checkbox"
+                id="enableVibration"
+                checked={vibrationEnabled}
+                onChange={(e) =>
+                  setVibrationEnabled(e.target.checked)
+                }
+              />
             </div>
           </div>
 
@@ -1814,8 +1878,8 @@ return (
                 <h3>Link New Account</h3>
                 <div className="form-stack">
                   <label>Provider</label>
-                  <select 
-                    value={newAccountProvider} 
+                  <select
+                    value={newAccountProvider}
                     onChange={(e) => setNewAccountProvider(e.target.value)}
                   >
                     <option value="Google">Google</option>
@@ -1843,7 +1907,7 @@ return (
         </main>
       </div>
 
-    <style>{`
+      <style>{`
 /* =========================================================
    RESET + ROOT
 ========================================================= */
