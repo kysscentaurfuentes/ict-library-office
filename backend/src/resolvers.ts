@@ -51,6 +51,8 @@ interface UserRow {
   vibration_enabled?: boolean;
   dark_mode?: boolean;
   two_factor_enabled?: boolean;
+  two_factor_otp?: string | null;
+  two_factor_otp_expires_at?: string | null;
 }
 
 type Context = {
@@ -128,36 +130,36 @@ export const resolvers = {
       const res = await pool.query<UserRow>(
         `
         SELECT
-  id,
-  first_name,
-  middle_name,
-  last_name,
-  email,
-  "StudentId",
-  course,
-  school_id_image,
-  role,
-  suffix,
-  suffix_locked,
-  phone_number,
-  birthdate,
-  birthdate_locked,
-age,
-gender,
-gender_locked,
-nationality,
-nationality_locked,
-user_classification,
-student_type,
-college_department,
-program,
-year_level,
-profile_picture,
-vibration_enabled,
-dark_mode,
-two_factor_enabled
-FROM users
-WHERE id = $1
+        id,
+        first_name,
+        middle_name,
+        last_name,
+        email,
+        "StudentId",
+        course,
+        school_id_image,
+        role,
+        suffix,
+        suffix_locked,
+        phone_number,
+        birthdate,
+        birthdate_locked,
+        age,
+        gender,
+        gender_locked,
+        nationality,
+        nationality_locked,
+        user_classification,
+        student_type,
+        college_department,
+        program,
+        year_level,
+        profile_picture,
+        vibration_enabled,
+        dark_mode,
+        two_factor_enabled
+        FROM users
+        WHERE id = $1
         `,
         [auth.userId]
       );
@@ -187,21 +189,21 @@ WHERE id = $1
     },
   },
 
-  Mutation: {
+   Mutation: {
     login: async (_: any, { identifier, password }: any) => {
 
-  console.log("RAW IDENTIFIER:", identifier);
+    console.log("RAW IDENTIFIER:", identifier);
 
-  const cleanIdentifier = normalizeIdentifier(identifier);
+    const cleanIdentifier = normalizeIdentifier(identifier);
 
-  console.log("CLEAN IDENTIFIER:", cleanIdentifier);
+    console.log("CLEAN IDENTIFIER:", cleanIdentifier);
 
-  console.log("IS STUDENT ID:", isStudentId(cleanIdentifier));
+   console.log("IS STUDENT ID:", isStudentId(cleanIdentifier));
 
-  let query = '';
-  let value = '';
+   let query = '';
+   let value = '';
 
-  if (isStudentId(cleanIdentifier)) {
+   if (isStudentId(cleanIdentifier)) {
 
     query = `
       SELECT * FROM users
@@ -210,7 +212,7 @@ WHERE id = $1
 
     value = cleanIdentifier;
 
-  } else {
+    } else {
 
     query = `
       SELECT * FROM users
@@ -218,17 +220,17 @@ WHERE id = $1
     `;
 
     value = buildEmail(cleanIdentifier);
-  }
+    }
 
-  console.log("LOGIN VALUE:", value);
+    console.log("LOGIN VALUE:", value);
 
-  const res = await pool.query<UserRow>(query, [value]);
+   const res = await pool.query<UserRow>(query, [value]);
 
-  console.log("LOGIN RESULT:", res.rows);
+    console.log("LOGIN RESULT:", res.rows);
 
-  const user = res.rows[0];
+    const user = res.rows[0];
 
-  assertUser(user);
+    assertUser(user);
 
       const isValid = await bcrypt.compare(
         password,
@@ -236,19 +238,41 @@ WHERE id = $1
       );
 
       if (!isValid) {
-        throw new Error('Invalid credentials');
-      }
+  throw new Error('Invalid credentials');
+}
 
-      if (user.two_factor_enabled) {
-  return {
+// 👇 DITO ILALAGAY ANG 2FA LOGIC
+if (user.two_factor_enabled) {
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+  await pool.query(
+    `
+    UPDATE users
+    SET two_factor_otp = $1,
+        two_factor_otp_expires_at = NOW() + INTERVAL '5 minutes'
+    WHERE id = $2 
+    `,
+    [code, user.id]
+  );
+
+  console.log("2FA CODE:", code);
+return {
     token: null,
     user: {
       id: user.id,
+      first_name: user.first_name,
+      middle_name: user.middle_name,
+      last_name: user.last_name,
       email: user.email,
+      StudentId: user.StudentId,
+      role: user.role,
+      profile_picture: user.profile_picture,
+      vibration_enabled: user.vibration_enabled,
+      dark_mode: user.dark_mode,
       two_factor_enabled: true
     }
   };
-}
+  }
 
       const token = jwt.sign(
         {
@@ -279,6 +303,61 @@ WHERE id = $1
   }
 };
     },
+    verifyTwoFactor: async (_: any, { identifier, code }: any) => {
+  const clean = normalizeIdentifier(identifier);
+
+  const value = isStudentId(clean)
+    ? clean
+    : buildEmail(clean);
+
+  const res = await pool.query<UserRow>(
+    `
+    SELECT *
+    FROM users
+    WHERE LOWER(email) = LOWER($1)
+       OR "StudentId" = $1
+    `,
+    [value]
+  );
+
+  const user = res.rows[0];
+  assertUser(user);
+
+  // check OTP
+  if (!user.two_factor_otp || !user.two_factor_otp_expires_at) {
+    throw new Error("No 2FA request found");
+  }
+
+  if (user.two_factor_otp !== code) {
+    throw new Error("Invalid code");
+  }
+
+  if (new Date(user.two_factor_otp_expires_at) < new Date()) {
+    throw new Error("Code expired");
+  }
+
+  // clear OTP
+  await pool.query(
+    `
+    UPDATE users
+    SET two_factor_otp = NULL,
+        two_factor_otp_expires_at = NULL
+    WHERE id = $1
+    `,
+    [user.id]
+  );
+
+  const token = jwt.sign(
+    { userId: user.id, role: user.role },
+    SECRET,
+    { expiresIn: "1d" }
+  );
+
+  return {
+    token,
+    user
+  };
+},
 
     signup: async (
   _: any,
@@ -432,6 +511,8 @@ updateUserInformation: async (
 ) => {
 
   const auth = requireAuth(context);
+
+  
 
   // get current user
   const existingUser = await pool.query<UserRow>(

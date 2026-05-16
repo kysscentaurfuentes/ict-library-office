@@ -15,6 +15,7 @@ import SoftwareAccess from '../pages/SoftwareAccess'; // 👉 ADD THIS
 import Printer from '../pages/Printer'; // 👉 ADD THIS
 import Feedback from '../pages/Feedback'; // 👉 ADD THIS
 import About from '../pages/About'; // 👉 ADD THIS
+import TwoFactor from '../auth/TwoFactor';
 import Resume from '../pages/Resume';
 
 export default function AppRouter() {
@@ -40,6 +41,7 @@ export default function AppRouter() {
         <Route path="/printer" element={<Printer />} />
         <Route path="/feedback" element={<Feedback />} />
         <Route path="/about" element={<About />} />
+        <Route path="/two-factor" element={<TwoFactor />} />
         {/* <Route path="/resume" element={<Resume />} /> */}
         {/* 404 */}
         <Route path="*" element={

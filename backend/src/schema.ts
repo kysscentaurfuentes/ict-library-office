@@ -32,7 +32,7 @@ type User {
   vibration_enabled: Boolean
   dark_mode: Boolean
   two_factor_enabled: Boolean
-}
+ }
 
   type AuthPayload {
     token: String
@@ -66,38 +66,38 @@ type User {
     ): AuthPayload
 
     signup(
-  first_name: String!,
-  middle_name: String,
-  last_name: String!,
-  email: String!,
-  password: String!,
-  StudentId: String!,
-  course: String!,
-  school_id_image: String
-): AuthPayload
+    first_name: String!,
+   middle_name: String,
+    last_name: String!,
+    email: String!,
+    password: String!,
+   StudentId: String!,
+   course: String!,
+   school_id_image: String
+    ): AuthPayload
 
-updateProfilePicture(
-  profile_picture: String!
-): User
+    updateProfilePicture(
+    profile_picture: String!
+    ): User
 
-updateUserInformation(
-  phone_number: String!
-  suffix: String
+    updateUserInformation(
+    phone_number: String!
+    suffix: String
   
-  birthdate: String
-  age: Int
-  gender: String
-  nationality: String
-  user_classification: String
-  student_type: String
-  college_department: String
-  course: String
-  program: String
-  year_level: String
-  vibration_enabled: Boolean
-  dark_mode: Boolean
-  two_factor_enabled: Boolean
-): User
+    birthdate: String
+    age: Int
+    gender: String
+    nationality: String
+    user_classification: String
+    student_type: String
+    college_department: String
+    course: String
+   program: String
+   year_level: String
+   vibration_enabled: Boolean
+   dark_mode: Boolean
+   two_factor_enabled: Boolean
+    ): User
 
     blockDevice(
       mac: String!
@@ -111,5 +111,10 @@ updateUserInformation(
       mac: String!,
       name: String!
     ): RenameResponse
+
+      verifyTwoFactor(
+      identifier: String!
+      code: String!
+      ): AuthPayload
   }
 `;

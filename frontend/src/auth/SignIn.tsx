@@ -19,6 +19,7 @@ const SIGNIN = gql`
       profile_picture
       vibration_enabled
       dark_mode
+      two_factor_enabled
     }
   }
 }
@@ -37,6 +38,7 @@ type LoginResponse = {
       profile_picture: string;
       vibration_enabled: boolean;
       dark_mode: boolean;
+      two_factor_enabled?: boolean;
     };
   };
 };
@@ -62,10 +64,11 @@ const handleSignin = async (
   identifier?: string
 ) => {
 
-    console.log("IDENTIFIER:", identifier);
+  console.log("IDENTIFIER:", identifier);
   console.log("STUDENT ID:", _studentId);
-  
+
   try {
+    // ✅ SINGLE REQUEST ONLY
     const res = await login({
       variables: {
         identifier: identifier || '',
@@ -73,59 +76,69 @@ const handleSignin = async (
       },
     });
 
-    if (res.data?.login.token) {
-      localStorage.setItem(
-        'token',
-        res.data.login.token
-      );
+    // safety check
+    const result = res.data?.login;
 
-      localStorage.setItem(
-        'studentId',
-        res.data.login.user.StudentId
-      );
-
-      localStorage.setItem(
-        'role',
-        res.data.login.user.role
-      );
-
-      localStorage.setItem(
-       'userName',
-      res.data.login.user.first_name
-);
-
-      localStorage.setItem(
-       'user',
-      JSON.stringify(res.data.login.user)
-      );
-
-      localStorage.setItem(
-  'vibrationEnabled',
-  JSON.stringify(
-    res.data.login.user.vibration_enabled
-  )
-  );
-
-  localStorage.setItem(
-  'darkMode',
-  JSON.stringify(
-    res.data.login.user.dark_mode
-  )
-);
-
-      console.log(
-        'Login successful! Student ID saved:',
-        res.data.login.user.StudentId
-      );
-
-      window.location.hash =
-        '#/homescreen';
+    if (!result) {
+      console.error("No login response");
+      return;
     }
-  } catch (err) {
-    console.error(
-      'Login failed:',
-      err
+
+    // 🔐 2FA FLOW
+    if (result.user?.two_factor_enabled && !result.token) {
+      localStorage.setItem('pendingIdentifier', identifier || '');
+      window.location.hash = '#/two-factor';
+      return;
+    }
+
+    // ❌ invalid login safety
+    if (!result.token) {
+      console.error("No token returned");
+      return;
+    }
+
+    // ✅ SAVE TO LOCAL STORAGE
+    localStorage.setItem('token', result.token);
+
+    localStorage.setItem(
+      'studentId',
+      result.user.StudentId || ''
     );
+
+    localStorage.setItem(
+      'role',
+      result.user.role || ''
+    );
+
+    localStorage.setItem(
+      'userName',
+      result.user.first_name || ''
+    );
+
+    localStorage.setItem(
+      'user',
+      JSON.stringify(result.user)
+    );
+
+    localStorage.setItem(
+      'vibrationEnabled',
+      JSON.stringify(result.user.vibration_enabled)
+    );
+
+    localStorage.setItem(
+      'darkMode',
+      JSON.stringify(result.user.dark_mode)
+    );
+
+    console.log(
+      'Login successful! Student ID saved:',
+      result.user.StudentId
+    );
+
+    window.location.hash = '#/homescreen';
+
+  } catch (err) {
+    console.error('Login failed:', err);
   }
 };
 
