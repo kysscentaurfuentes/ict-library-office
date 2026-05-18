@@ -130,7 +130,7 @@ const CheckAvailability: React.FC = () => {
 
   return (
     <div className={`check-availability-wrapper ${isDarkMode ? 'dark-mode' : ''}`} style={{ display: "flex", height: "100vh", width: "100vw", overflow: "hidden" }}>
-      <Sidebar />
+      
 
       <div style={{ 
         flex: 1, 

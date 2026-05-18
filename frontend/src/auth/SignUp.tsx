@@ -88,15 +88,19 @@ const handleSignup = async (
     // =========================
     // API BASE
     // =========================
-    const API_BASE =
-      window.location.hostname === 'localhost'
-        ? import.meta.env.VITE_LOCAL_API
-        : import.meta.env.VITE_NGROK_API;
+   const API_BASE =
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_API_FALLBACK;
 
     // =========================
     // CREATE FORMDATA
     // =========================
     const formData = new FormData();
+
+formData.append(
+  "uploadType",
+  "school-id"
+);
 
 formData.append(
   "studentId",
@@ -111,6 +115,7 @@ formData.append(
     // =========================
     // UPLOAD IMAGE FIRST
     // =========================
+    console.log("API_BASE:", API_BASE);
     const uploadRes = await fetch(
       `${API_BASE}/api/upload-school-id`,
       {
@@ -145,31 +150,14 @@ formData.append(
       },
     });
 
-    if (res.data?.signup.token) {
+    if (!res.data?.signup.token) {
+  alert(
+    "Account created successfully. Your account is pending Admin approval."
+  );
 
-      localStorage.setItem(
-        'token',
-        res.data.signup.token
-      );
-
-      localStorage.setItem(
-        'studentId',
-        res.data.signup.user.StudentId
-      );
-
-      localStorage.setItem(
-        'role',
-        res.data.signup.user.role
-      );
-
-      localStorage.setItem(
-        'userName',
-        res.data.signup.user.first_name
-);
-
-      window.location.hash =
-        '#/homescreen';
-    }
+  window.location.hash = "#/signin";
+  return;
+}
 
   } catch (err) {
 

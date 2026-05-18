@@ -407,7 +407,7 @@ const Printer: React.FC = () => {
 
   return (
     <div className={`printer-wrapper ${isDarkMode ? 'dark-mode' : ''}`}>
-      <Sidebar />
+      
       <div className="printer-container">
         <main className="printer-main">
           <div className="printer-header">

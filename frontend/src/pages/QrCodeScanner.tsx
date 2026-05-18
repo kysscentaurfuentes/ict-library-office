@@ -1,5 +1,4 @@
 // frontend/src/pages/QrCodeScanner.tsx
-
 import { useState, useEffect } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import Sidebar from "../components/Sidebar";
@@ -35,46 +34,45 @@ export default function QrCodeScanner() {
     };
   }, []);
 
-const copyToClipboard = async () => {
-  try {
-    // Modern clipboard API
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(studentId);
-    } else {
-      // Fallback for HTTP / LAN IP
-      const textArea = document.createElement("textarea");
-      textArea.value = studentId;
+  const copyToClipboard = async () => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(studentId);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = studentId;
 
-      textArea.style.position = "fixed";
-      textArea.style.left = "-999999px";
-      textArea.style.top = "-999999px";
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        textArea.style.top = "-999999px";
 
-      document.body.appendChild(textArea);
+        document.body.appendChild(textArea);
 
-      textArea.focus();
-      textArea.select();
+        textArea.focus();
+        textArea.select();
 
-      document.execCommand("copy");
+        document.execCommand("copy");
 
-      textArea.remove();
+        textArea.remove();
+      }
+
+      setShowTooltip(true);
+
+      setTimeout(() => {
+        setShowTooltip(false);
+      }, 2000);
+
+    } catch (error) {
+      console.error("Copy failed:", error);
     }
-
-    setShowTooltip(true);
-
-    setTimeout(() => {
-      setShowTooltip(false);
-    }, 2000);
-
-  } catch (error) {
-    console.error("Copy failed:", error);
-  }
-};
+  };
 
   return (
     <div
       style={{
         display: "flex",
-        width: "100vw",
+        width: "100%", // FIX: Ginawang 100% para mag-fit sa natitirang viewport kasama ang sidebar
+        maxWidth: "100vw", // Seguradong hindi lalagpas sa screen
         height: "100vh",
         overflow: "hidden",
         background: isDarkMode
@@ -82,7 +80,6 @@ const copyToClipboard = async () => {
           : "#f8fafc",
       }}
     >
-      <Sidebar />
 
       <div
         style={{
@@ -144,59 +141,57 @@ const copyToClipboard = async () => {
         />
 
         {/* Floating boxes */}
-{[
-  { top: "8%", left: "12%", size: 42, rotate: "15deg" },
-  { top: "18%", right: "14%", size: 90, rotate: "45deg" },
-  { top: "35%", left: "18%", size: 55, rotate: "25deg" },
-  { top: "52%", right: "20%", size: 38, rotate: "10deg" },
-  { top: "65%", left: "10%", size: 70, rotate: "35deg" },
-  { top: "75%", right: "30%", size: 52, rotate: "55deg" },
+        {[
+          { top: "8%", left: "12%", size: 42, rotate: "15deg" },
+          { top: "18%", right: "14%", size: 90, rotate: "45deg" },
+          { top: "35%", left: "18%", size: 55, rotate: "25deg" },
+          { top: "52%", right: "20%", size: 38, rotate: "10deg" },
+          { top: "65%", left: "10%", size: 70, rotate: "35deg" },
+          { top: "75%", right: "30%", size: 52, rotate: "55deg" },
+          { bottom: "8%", left: "15%", size: 82, rotate: "25deg" },
+          { bottom: "18%", right: "10%", size: 48, rotate: "35deg" },
+          { bottom: "28%", left: "28%", size: 35, rotate: "65deg" },
+          { bottom: "42%", right: "16%", size: 60, rotate: "12deg" },
+          { top: "12%", left: "42%", size: 25, rotate: "10deg" },
+          { top: "25%", right: "35%", size: 30, rotate: "40deg" },
+          { top: "45%", left: "35%", size: 22, rotate: "20deg" },
+          { bottom: "30%", left: "42%", size: 28, rotate: "15deg" },
+          { bottom: "55%", right: "28%", size: 32, rotate: "50deg" },
+          { bottom: "70%", right: "42%", size: 22, rotate: "20deg" },
+        ].map((box, i) => (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              ...box,
+              width: box.size,
+              height: box.size,
+              border: "1px solid rgba(59,130,246,0.12)",
+              borderRadius: 18,
+              transform: `rotate(${box.rotate})`,
+              boxShadow: "0 0 20px rgba(59,130,246,0.08)",
+              animation: `boxFloat ${12 + i * 0.8}s ease-in-out infinite`,
+              animationDelay: `${i * 0.5}s`,
+            }}
+          />
+        ))}
 
-  { bottom: "8%", left: "15%", size: 82, rotate: "25deg" },
-  { bottom: "18%", right: "10%", size: 48, rotate: "35deg" },
-  { bottom: "28%", left: "28%", size: 35, rotate: "65deg" },
-  { bottom: "42%", right: "16%", size: 60, rotate: "12deg" },
-
-  { top: "12%", left: "42%", size: 25, rotate: "10deg" },
-  { top: "25%", right: "35%", size: 30, rotate: "40deg" },
-  { top: "45%", left: "35%", size: 22, rotate: "20deg" },
-  { bottom: "30%", left: "42%", size: 28, rotate: "15deg" },
-  { bottom: "55%", right: "28%", size: 32, rotate: "50deg" },
-  { bottom: "70%", right: "42%", size: 22, rotate: "20deg" },
-].map((box, i) => (
-  <div
-    key={i}
-    style={{
-      position: "absolute",
-      ...box,
-      width: box.size,
-      height: box.size,
-      border: "1px solid rgba(59,130,246,0.12)",
-      borderRadius: 18,
-      transform: `rotate(${box.rotate})`,
-      boxShadow: "0 0 20px rgba(59,130,246,0.08)",
-      animation: `boxFloat ${12 + i * 0.8}s ease-in-out infinite`,
-      animationDelay: `${i * 0.5}s`,
-    }}
-  />
-))}
-
-{/* Tiny glowing lights */}
-{[...Array(35)].map((_, i) => (
-  <div
-    key={i}
-    style={{
-      position: "absolute",
-      width: Math.random() * 4 + 2,
-      height: Math.random() * 4 + 2,
-      borderRadius: "50%",
-      background: "rgba(96,165,250,0.6)",
-      top: `${Math.random() * 95}%`,
-      left: `${Math.random() * 95}%`,
-      boxShadow: "0 0 12px rgba(96,165,250,0.6)",
-    }}
-  />
-))}
+        {/* Tiny glowing lights */}
+        {[...Array(35)].map((_, i) => (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              width: Math.random() * 4 + 2,
+              height: Math.random() * 4 + 2,
+              borderRadius: "50%",
+              background: "rgba(96,165,250,0.6)",
+              top: `${Math.random() * 95}%`,
+              left: `${Math.random() * 95}%`,
+              boxShadow: "0 0 12px rgba(96,165,250,0.6)",
+            }}
+          />
+        ))}
 
         {/* Tiny particles */}
         {[...Array(12)].map((_, i) => (
@@ -217,80 +212,76 @@ const copyToClipboard = async () => {
 
         {/* ================= CONTENT ================= */}
 
-        {/* Floating phone icon */}
-<div
-  style={{
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center", // ito ang totoong center fix
-    justifyContent: "center",
-    marginBottom: 20,
-    zIndex: 10,
-  }}
->
+        {/* Header container */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            marginBottom: 20,
+            zIndex: 10,
+          }}
+        >
           <div
-  style={{
-    width: 62,
-    height: 62,
-    borderRadius: 22,
-    background:
-      "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)",
-    display: "flex", // pwede nang flex, hindi na inline-flex
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 14, // para sakto sa title
-    boxShadow: "0 0 35px rgba(59,130,246,0.25)",
-    animation: "phoneFloat 8s ease-in-out infinite",
-  }}
->
+            style={{
+              width: 62,
+              height: 62,
+              borderRadius: 22,
+              background:
+                "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: 14,
+              boxShadow: "0 0 35px rgba(59,130,246,0.25)",
+              animation: "phoneFloat 8s ease-in-out infinite",
+            }}
+          >
             <span style={{ fontSize: 28 }}>📱</span>
           </div>
 
-         <h1
-  style={{
-    display: "inline-block", // FIX
-    marginTop: 14,
-    marginBottom: 8,
-    fontSize: "2rem",
-    fontWeight: 700,
-    lineHeight: 1.2,
-    background:
-      "linear-gradient(135deg, #60a5fa 0%, #8b5cf6 100%)",
-    WebkitBackgroundClip: "text",
-    WebkitTextFillColor: "transparent",
-  }}
->
-  QR Code Scanner
-</h1>
+          <h1
+            style={{
+              display: "inline-block",
+              marginTop: 14,
+              marginBottom: 8,
+              fontSize: "2rem",
+              fontWeight: 700,
+              lineHeight: 1.2,
+              background:
+                "linear-gradient(135deg, #60a5fa 0%, #8b5cf6 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
+            QR Code Scanner
+          </h1>
 
-        <div
-  style={{
-    textAlign: "center",
-  }}
->
-  <p
-    style={{
-      color: "#94a3b8",
-      fontSize: ".9rem",
-      marginBottom: "6px",
-    }}
-  >
-    Present this QR code at the library entrance
-  </p>
+          <div style={{ textAlign: "center" }}>
+            <p
+              style={{
+                color: "#94a3b8",
+                fontSize: ".9rem",
+                marginBottom: "6px",
+              }}
+            >
+              Present this QR code at the library entrance
+            </p>
 
-  <p
-    style={{
-      color: "#60a5fa",
-      fontSize: ".75rem",
-      fontWeight: 600,
-      letterSpacing: "2px",
-      margin: 0,
-    }}
-  >
-    🔹 REQUIRED 🔹
-  </p>
-</div>
-</div>
+            <p
+              style={{
+                color: "#60a5fa",
+                fontSize: ".75rem",
+                fontWeight: 600,
+                letterSpacing: "2px",
+                margin: 0,
+              }}
+            >
+              🔹 REQUIRED 🔹
+            </p>
+          </div>
+        </div>
 
         <p
           style={{
@@ -420,39 +411,18 @@ const copyToClipboard = async () => {
       </div>
 
       <style>{`
-    @keyframes boxFloat {
-  0% {
-    transform: translate(0px, 0px);
-  }
-
-  25% {
-    transform: translate(18px, -14px);
-  }
-
-  50% {
-    transform: translate(25px, 16px);
-  }
-
-  75% {
-    transform: translate(-18px, 14px);
-  }
-
-  100% {
-    transform: translate(0px, 0px);
-  }
-}
-  
-  @keyframes phoneFloat {
-  0% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-  100% {
-    transform: translateY(0px);
-  }
-}
+        @keyframes boxFloat {
+          0% { transform: translate(0px, 0px); }
+          25% { transform: translate(18px, -14px); }
+          50% { transform: translate(25px, 16px); }
+          75% { transform: translate(-18px, 14px); }
+          100% { transform: translate(0px, 0px); }
+        }
+        @keyframes phoneFloat {
+          0% { transform: translateY(0px); }
+          50% { transform: translateY(-10px); }
+          100% { transform: translateY(0px); }
+        }
       `}</style>
     </div>
   );

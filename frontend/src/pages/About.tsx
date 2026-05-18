@@ -152,7 +152,7 @@ const [imageError, setImageError] = useState(false);
 
   return (
     <div className={`about-wrapper ${isDarkMode ? 'dark-mode' : ''}`}>
-      <Sidebar />
+      
       <div className="about-container">
         <main className="about-main">
           {/* Header Section */}

@@ -1,10 +1,9 @@
 // frontend/src/components/Sidebar.tsx
-
+import { gql, useQuery } from "@apollo/client";
 import {
   useNavigate,
   useLocation,
 } from 'react-router-dom';
-
 import {
   Home,
   QrCode,
@@ -19,13 +18,25 @@ import {
   Info,
   LogOut,
   User,
-} from 'lucide-react';
+  Shield
+} from "lucide-react";
 
 import {
   useEffect,
   useMemo,
   useState,
 } from 'react';
+
+const ME = gql`
+  query {
+    me {
+      first_name
+      last_name
+      role
+      profile_picture
+    }
+  }
+`;
 
 interface SidebarProps {
   hoveredFromParent?: string | null;
@@ -41,89 +52,23 @@ export default function Sidebar({
 }: SidebarProps) {
 
   const navigate = useNavigate();
-
   const location = useLocation();
 
   // ====================================
   // USER STATE
   // ====================================
 
-  const [user, setUser] =
-    useState<any>(null);
+   const { data } = useQuery(ME, {
+  skip: !localStorage.getItem("token"),
+  fetchPolicy: "cache-and-network",
+});
 
-  const [imageError, setImageError] =
-    useState(false);
+const user = useMemo(() => data?.me ?? null, [data?.me]);
+const isAdmin = useMemo(() => {
+  return user?.role === "Admin";
+}, [user?.role]);
 
-  // ====================================
-  // LOAD USER
-  // ====================================
-
-  useEffect(() => {
-
-    const loadUser = () => {
-
-      try {
-
-        const storedUser =
-          localStorage.getItem('user');
-
-        if (!storedUser) {
-          setUser(null);
-          return;
-        }
-
-        const parsed =
-          JSON.parse(storedUser);
-
-        console.log(
-          'SIDEBAR USER:',
-          parsed
-        );
-
-        setUser(parsed);
-
-        setImageError(false);
-
-      } catch (error) {
-
-        console.error(
-          'Failed parsing user:',
-          error
-        );
-
-        setUser(null);
-      }
-    };
-
-    // INITIAL LOAD
-    loadUser();
-
-    // REALTIME UPDATE
-    window.addEventListener(
-      'profilePictureUpdated',
-      loadUser
-    );
-
-    window.addEventListener(
-      'storage',
-      loadUser
-    );
-
-    return () => {
-
-      window.removeEventListener(
-        'profilePictureUpdated',
-        loadUser
-      );
-
-      window.removeEventListener(
-        'storage',
-        loadUser
-      );
-    };
-
-  }, []);
-
+const [imageError, setImageError] = useState(false);
   // ====================================
   // PROFILE PICTURE URL
   // ====================================
@@ -156,78 +101,69 @@ const finalUrl =
   // MENU ITEMS
   // ====================================
 
-  const menuItems = [
-
-    {
-      name: 'Home',
-      icon: <Home size={20} />,
-      path: '/homescreen',
-    },
-
-    {
-      name: 'QR Code Scanner',
-      icon: <QrCode size={20} />,
-      path: '/qr-scanner',
-    },
-
-    {
-      name: 'Live View',
-      icon: <Tv size={20} />,
-      path: '/live',
-    },
-
-    {
-      name: 'Router',
-      icon: <Wifi size={20} />,
-      path: '/router',
-    },
-
-    {
-      name: 'Attendance Log',
-      icon: (
-        <ClipboardList size={20} />
-      ),
-      path: '/attendance-log',
-    },
-
-    {
-      name: 'Check Availability',
-      icon: <Search size={20} />,
-      path: '/check-availability',
-    },
-
-    {
-      name: 'Settings',
-      icon: <Settings size={20} />,
-      path: '/settings',
-    },
-
-    {
-      name: 'Software Access',
-      icon: <Code size={20} />,
-      path: '/software-access',
-    },
-
-    {
-      name: 'Printing Services',
-      icon: <Printer size={20} />,
-      path: '/printer',
-    },
-
-    {
-      name: 'Feedback',
-      icon: (
-        <MessageSquare size={20} />
-      ),
-      path: '/feedback',
-    },
-
-    {
-      name: 'About',
-      icon: <Info size={20} />,
-      path: '/about',
-    },
-  ];
+  const menuItems = useMemo(() => [
+  {
+    name: 'Home',
+    icon: <Home size={20} />,
+    path: '/homescreen',
+  },
+  {
+    name: 'QR Code Scanner',
+    icon: <QrCode size={20} />,
+    path: '/qr-scanner',
+  },
+  {
+    name: 'Live View',
+    icon: <Tv size={20} />,
+    path: '/live',
+  },
+ {
+  name: 'Router',
+  icon: <Wifi size={20} />,
+  path: '/router',
+  AdminOnly: true,
+},
+  {
+    name: 'Attendance Log',
+    icon: <ClipboardList size={20} />,
+    path: '/attendance-log',
+  },
+  {
+    name: 'Check Availability',
+    icon: <Search size={20} />,
+    path: '/check-availability',
+  },
+  {
+    name: 'Settings',
+    icon: <Settings size={20} />,
+    path: '/settings',
+  },
+  {
+    name: 'Software Access',
+    icon: <Code size={20} />,
+    path: '/software-access',
+  },
+  {
+    name: 'Printing Services',
+    icon: <Printer size={20} />,
+    path: '/printer',
+  },
+  {
+    name: 'Feedback',
+    icon: <MessageSquare size={20} />,
+    path: '/feedback',
+  },
+  {
+    name: 'About',
+    icon: <Info size={20} />,
+    path: '/about',
+  },
+  ...(isAdmin ? [{
+    name: 'Admin Panel',
+    icon: <Shield size={20} />,
+    path: '/admin',
+  }] : []),
+], [isAdmin]);
 
   // ====================================
   // RENDER
@@ -236,18 +172,19 @@ const finalUrl =
   return (
 
     <div
-      style={{
-        width: '260px',
-        background: '#020617',
-        height: '100vh',
-        padding: '20px',
-        display: 'flex',
-        flexDirection: 'column',
-        borderRight:
-          '2px solid #1e293b',
-        boxSizing: 'border-box',
-      }}
-    >
+  style={{
+    width: '260px',
+    background: '#020617',
+    height: '100vh',
+    position: 'fixed',   // 🔥 ADD THIS
+    left: 0,
+    top: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    borderRight: '2px solid #1e293b',
+    boxSizing: 'border-box',
+  }}
+>
 
       {/* ==================================== */}
       {/* HEADER */}
@@ -329,7 +266,7 @@ const finalUrl =
     color: '#fff',
   }}
 >
-  {user?.first_name} {user?.last_name || 'Student'}
+  {user?.first_name} {user?.last_name || 'Student'} 
 </h2>
 
           <span
@@ -357,7 +294,9 @@ const finalUrl =
         }}
       >
 
-        {menuItems.map((item) => {
+        {menuItems
+  .filter(item => !item.AdminOnly || isAdmin)
+  .map((item) => {
 
           const isActive =
             location.pathname ===

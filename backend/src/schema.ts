@@ -32,6 +32,7 @@ type User {
   vibration_enabled: Boolean
   dark_mode: Boolean
   two_factor_enabled: Boolean
+  account_status: String
  }
 
   type AuthPayload {
@@ -63,6 +64,8 @@ type User {
   me: User
   routerDevices: [Device]
   checkOtpStatus(identifier: String!): OtpStatus
+
+  pendingUsers: [User]
 }
 
   type Mutation {
@@ -123,5 +126,7 @@ type User {
       identifier: String!
       code: String!
       ): AuthPayload
+        approveUser(userId: Int!): Boolean
+  rejectUser(userId: Int!): Boolean
   }
 `;

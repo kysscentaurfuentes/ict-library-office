@@ -254,7 +254,7 @@ const SoftwareAccess: React.FC = () => {
 
   return (
     <div className={`software-access-wrapper ${isDarkMode ? 'dark-mode' : ''}`}>
-      <Sidebar />
+      
       <div className="software-container">
         <main className="software-main">
           <div className="software-header">

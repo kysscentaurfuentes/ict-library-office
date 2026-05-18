@@ -340,7 +340,7 @@ const Feedback: React.FC = () => {
 
   return (
     <div className={`feedback-wrapper ${isDarkMode ? 'dark-mode' : ''}`}>
-      <Sidebar />
+      
       <div className="feedback-container">
         <main className="feedback-main">
           <div className="feedback-header">

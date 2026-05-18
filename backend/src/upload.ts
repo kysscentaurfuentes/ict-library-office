@@ -144,7 +144,8 @@ const storage =
             SCHOOL_IDS_DIR
           );
         }
-
+          // backend/src/uploads/school-ids/(DITO)
+          // backend/src/uploads/profile-pictures/(DITO)
         // ==========================
         // 👤 PROFILE PICTURE
         // ==========================

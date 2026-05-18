@@ -1,54 +1,64 @@
-// frontend/src/routes/approuter.tsx
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 
+import MainLayout from '../components/MainLayout';
+
+import HomeScreen from '../pages/HomeScreen';
 import Router from '../pages/Router';
 import LiveView from '../pages/LiveView';
-import HomeScreen from '../pages/HomeScreen';
-import QrCodeScanner from '../pages/QrCodeScanner'; // 👉 ADD THIS
-import SignIn from '../auth/SignIn'; // 👉 ADD THIS
-import SignUp from '../auth/SignUp'; // 👉 ADD THIS
-import FaceDetect from "../components/FaceDetect"
-import AttendanceLog from '../pages/AttendanceLog' // 👉 ADD THIS
-import CheckAvailability from '../pages/CheckAvailability'; // 👉 ADD THIS
-import Settings from '../pages/Settings'; // 👉 ADD THIS
-import SoftwareAccess from '../pages/SoftwareAccess'; // 👉 ADD THIS
-import Printer from '../pages/Printer'; // 👉 ADD THIS
-import Feedback from '../pages/Feedback'; // 👉 ADD THIS
-import About from '../pages/About'; // 👉 ADD THIS
+import QrCodeScanner from '../pages/QrCodeScanner';
+import AttendanceLog from '../pages/AttendanceLog';
+import CheckAvailability from '../pages/CheckAvailability';
+import Settings from '../pages/Settings';
+import SoftwareAccess from '../pages/SoftwareAccess';
+import Printer from '../pages/Printer';
+import Feedback from '../pages/Feedback';
+import About from '../pages/About';
+
+import AdminDashboard from '../pages/Admin/AdminDashboard';
+import AdminRoute from '../guards/AdminRoute';
+
+import SignIn from '../auth/SignIn';
+import SignUp from '../auth/SignUp';
 import TwoFactor from '../auth/TwoFactor';
-import Resume from '../pages/Resume';
 
 export default function AppRouter() {
   return (
     <HashRouter>
       <Routes>
 
-        {/* Default route */}
         <Route path="/" element={<Navigate to="/signin" />} />
 
-        {/* Pages */}
-        <Route path="/router" element={<Router />} />
-        <Route path="/live" element={<LiveView />} />
-        <Route path="/homescreen" element={<HomeScreen />} />
-        <Route path="/qr-scanner" element={<QrCodeScanner />} />
+        {/* AUTH (NO SIDEBAR) */}
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
-        <Route path="/face-detect" element={<FaceDetect />} />
-        <Route path="/attendance-log" element={<AttendanceLog />} />
-        <Route path="/check-availability" element={<CheckAvailability />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/software-access" element={<SoftwareAccess />} />
-        <Route path="/printer" element={<Printer />} />
-        <Route path="/feedback" element={<Feedback />} />
-        <Route path="/about" element={<About />} />
         <Route path="/two-factor" element={<TwoFactor />} />
-        {/* <Route path="/resume" element={<Resume />} /> */}
-        {/* 404 */}
-        <Route path="*" element={
-          <div style={{ color: 'white', padding: '20px' }}>
-            <h2>404 - Page Not Found</h2>
-          </div>
-        } />
+
+        {/* ✅ ALL MAIN APP PAGES INSIDE LAYOUT */}
+        <Route element={<MainLayout />}>
+          <Route path="/homescreen" element={<HomeScreen />} />
+          <Route path="/router" element={<Router />} />
+          <Route path="/live" element={<LiveView />} />
+          <Route path="/qr-scanner" element={<QrCodeScanner />} />
+          <Route path="/attendance-log" element={<AttendanceLog />} />
+          <Route path="/check-availability" element={<CheckAvailability />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/software-access" element={<SoftwareAccess />} />
+          <Route path="/printer" element={<Printer />} />
+          <Route path="/feedback" element={<Feedback />} />
+          <Route path="/about" element={<About />} />
+
+          {/* ADMIN INSIDE SAME LAYOUT */}
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <AdminDashboard />
+              </AdminRoute>
+            }
+          />
+        </Route>
+
+        <Route path="*" element={<div style={{ color: 'white' }}>404</div>} />
 
       </Routes>
     </HashRouter>

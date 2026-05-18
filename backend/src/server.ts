@@ -132,10 +132,11 @@ app.use(
 app.post(
   "/api/upload-school-id",
   (req, res) => {
-
+    console.log("UPLOAD REQUEST HIT");
     upload.single("image")(req, res, (err: any) => {
-
+      console.log("BODY:", req.body);
       if (err) {
+        console.log("UPLOAD ERROR:", err);
         return res.status(400).json({
           message: err.message || "Upload failed",
         });
@@ -144,7 +145,7 @@ app.post(
       const fileReq = req as Request & {
         file?: Express.Multer.File;
       };
-
+      console.log("FILE:", fileReq.file);
       if (!fileReq.file) {
         return res.status(400).json({
           message: "No file uploaded",
@@ -152,8 +153,9 @@ app.post(
       }
 
       const BASE_URL =
-        process.env.PUBLIC_URL ||
-        `http://${LOCAL_IP}:${PORT}`;
+        process.env.NODE_ENV === "production"
+            ? process.env.PUBLIC_URL
+    : `http://localhost:${PORT}`;
 console.log("BASE_URL:", BASE_URL);
       return res.json({
   imageUrl:
@@ -189,8 +191,9 @@ app.post(
       }
 
       const BASE_URL =
-        process.env.PUBLIC_URL ||
-        `http://${LOCAL_IP}:${PORT}`;
+        process.env.NODE_ENV === "production"
+            ? process.env.PUBLIC_URL
+    : `http://localhost:${PORT}`;
 
       const imageUrl =
         `${BASE_URL}/uploads/profile-pictures/${fileReq.file.filename}`;

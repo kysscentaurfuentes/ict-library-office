@@ -64,6 +64,8 @@ interface UserRow {
   otp_locked_until?: string | null;
 
   last_otp_sent_at?: string | null;
+
+  account_status?: string;
 }
 
 type Context = {
@@ -88,7 +90,7 @@ function requireAuth(context: Context) {
 function requireAdmin(context: Context) {
   const user = requireAuth(context);
 
-  if (user.role !== 'admin') {
+  if (user.role !== 'Admin') {
     throw new Error('Unauthorized: Admin only');
   }
 
@@ -246,6 +248,34 @@ export const resolvers = {
 
       return res.rows;
     },
+    pendingUsers: async (
+  _: any,
+  __: any,
+  context: Context
+) => {
+
+  requireAdmin(context);
+
+  const result = await pool.query(
+    `
+    SELECT
+      id,
+      first_name,
+      middle_name,
+      last_name,
+      email,
+      "StudentId",
+      course,
+      school_id_image,
+      account_status
+    FROM users
+    WHERE account_status = 'PENDING'
+    ORDER BY id DESC
+    `
+  );
+
+  return result.rows;
+},
   },
 
    Mutation: {
@@ -290,7 +320,17 @@ export const resolvers = {
     const user = res.rows[0];
     // 2nd assertUser
     assertUser(user);
-    
+   if (user.account_status === "PENDING") {
+  throw new Error(
+    "Your account is pending by Admin approval."
+  );
+}
+
+if (user.account_status === "REJECTED") {
+  throw new Error(
+    "Your account has been rejected by Admin."
+  );
+}
     // 🚫 Check if account is locked using database time
 const lockCheck = await pool.query(
   `
@@ -636,9 +676,10 @@ OR "StudentId" = $2
       "StudentId",
       course,
       school_id_image,
-      role
+      role,
+      account_status
     )
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
     RETURNING *
     `,
     [
@@ -650,27 +691,17 @@ OR "StudentId" = $2
       StudentId,
       course,
       school_id_image,
-      "Student"
+      "Student",
+      "PENDING"
     ]
   );
 
   const user = result.rows[0];
 
-  const token = jwt.sign(
-    {
-      userId: user.id,
-      role: user.role,
-    },
-    SECRET,
-    {
-      expiresIn: "1d",
-    }
-  );
-
   return {
-    token,
-    user
-  };
+  token: null,
+  user
+};
 },
 
 updateProfilePicture: async (
@@ -986,5 +1017,44 @@ WHERE id = $19
 
       return true;
     },
+    approveUser: async (
+  _: any,
+  { userId }: { userId: number },
+  context: Context
+) => {
+
+  requireAdmin(context);
+
+  await pool.query(
+    `
+    UPDATE users
+    SET account_status = 'APPROVED'
+    WHERE id = $1
+    `,
+    [userId]
+  );
+
+  return true;
+},
+
+rejectUser: async (
+  _: any,
+  { userId }: { userId: number },
+  context: Context
+) => {
+
+  requireAdmin(context);
+
+  await pool.query(
+    `
+    UPDATE users
+    SET account_status = 'REJECTED'
+    WHERE id = $1
+    `,
+    [userId]
+  );
+
+  return true;
+},
   },
 };

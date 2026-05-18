@@ -119,8 +119,10 @@ const handleNameChange = (
   value: string,
   setter: (value: string) => void
 ): void => {
-  const cleanedValue =
-    value.replace(/[^a-zA-Z\s]/g, '');
+  const cleanedValue = value
+    .replace(/[^a-zA-Z\s]/g, '')   // letters + spaces lang
+    .replace(/\s{2,}/g, ' ')       // multiple spaces → single space
+    .replace(/^\s+/, '');          // optional: no leading space
 
   setter(cleanedValue);
 };
@@ -497,9 +499,17 @@ const handleSubmit = async (
 
         return;
       }
-
+const isValidEmailLocal = (value: string) => {
+  return /^[a-zA-Z0-9._%+-]+$/.test(value);
+};
      const finalEmail =
   `${email}@carsu.edu.ph`;
+if (!isValidEmailLocal(email)) {
+  setLocalError(
+    'Email username contains invalid characters.'
+  );
+  return;
+}
 
 const emailRegex =
   /^[a-zA-Z0-9._%+-]+@carsu\.edu\.ph$/;

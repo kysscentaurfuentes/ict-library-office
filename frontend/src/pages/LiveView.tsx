@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import Sidebar from '../components/Sidebar';
 import Hls from 'hls.js';
 
 export default function LiveView() {
@@ -7,11 +6,27 @@ export default function LiveView() {
   const [faceCount, setFaceCount] = useState<number>(0);
   const [latency, setLatency] = useState<number>(0);
   const [bufferHealth, setBufferHealth] = useState<number>(0);
+  
+  // >>> 1. IN-UPDATE NA STATE: Kumukuha muna sa localStorage kung may nakasave <<<
+  const [positionX, setPositionX] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const savedPosition = localStorage.getItem('layoutXPosition');
+      return savedPosition ? Number(savedPosition) : 0;
+    }
+    return 0;
+  });
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
 
   const STREAM_URL = 'https://ict-library-office-backend.onrender.com/hls/stream.m3u8';
   const FACES_API = 'https://ict-library-office-backend.onrender.com/faces';
+
+  // Bagong function para sa pagbabago at pag-save ng posisyon
+  const updatePositionX = (value: number) => {
+    setPositionX(value);
+    localStorage.setItem('layoutXPosition', String(value));
+  };
 
   // Load dark mode preference
   useEffect(() => {
@@ -21,6 +36,7 @@ export default function LiveView() {
       document.documentElement.classList.add('dark-mode');
       document.body.classList.add('dark-mode');
     } else {
+      setIsDarkMode(false);
       document.documentElement.classList.remove('dark-mode');
       document.body.classList.remove('dark-mode');
     }
@@ -37,6 +53,12 @@ export default function LiveView() {
         setIsDarkMode(false);
         document.documentElement.classList.remove('dark-mode');
         document.body.classList.remove('dark-mode');
+      }
+
+      // Isama na rin ang pakikinig sa pagbabago ng layout position sa ibang tabs/pages
+      const savedPosition = localStorage.getItem('layoutXPosition');
+      if (savedPosition !== null) {
+        setPositionX(Number(savedPosition));
       }
     };
 
@@ -57,54 +79,47 @@ export default function LiveView() {
     };
 
     fetchFaceCount();
-    const interval = setInterval(fetchFaceCount, 1000); // Update every second
+    const interval = setInterval(fetchFaceCount, 1000);
     return () => clearInterval(interval);
   }, []);
 
   // Monitor latency and buffer
-  // Monitor latency and buffer
-useEffect(() => {
-  const monitorPerformance = () => {
-    if (hlsRef.current && videoRef.current) {
-      const hls = hlsRef.current;
-      const video = videoRef.current;
-      
-      if (hls.liveSyncPosition && video.currentTime > 0) {
-        const currentLatency = Math.abs(video.currentTime - hls.liveSyncPosition) * 1000;
-        setLatency(Math.round(currentLatency));
+  useEffect(() => {
+    const monitorPerformance = () => {
+      if (hlsRef.current && videoRef.current) {
+        const hls = hlsRef.current;
+        const video = videoRef.current;
+        
+        if (hls.liveSyncPosition && video.currentTime > 0) {
+          const currentLatency = Math.abs(video.currentTime - hls.liveSyncPosition) * 1000;
+          setLatency(Math.round(currentLatency));
+        }
+        
+        let bufferLen = 0;
+        if (video.buffered.length > 0) {
+          bufferLen = video.buffered.end(video.buffered.length - 1) - video.currentTime;
+        }
+        setBufferHealth(Math.max(0, bufferLen));
       }
-      
-      // Get buffer length from video element
-      let bufferLen = 0;
-      if (video.buffered.length > 0) {
-        bufferLen = video.buffered.end(video.buffered.length - 1) - video.currentTime;
-      }
-      setBufferHealth(Math.max(0, bufferLen));
-    }
-  };
-  
-  const interval = setInterval(monitorPerformance, 500);
-  return () => clearInterval(interval);
-}, []);
+    };
+    
+    const interval = setInterval(monitorPerformance, 500);
+    return () => clearInterval(interval);
+  }, []);
 
   // Initialize HLS with ultra low latency settings
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    // Disable all video controls
     video.controls = false;
     video.disableRemotePlayback = true;
-    
-    // Force autoplay
     video.autoplay = true;
     video.muted = true;
     video.playsInline = true;
     video.setAttribute('playsinline', '');
     video.setAttribute('autoplay', '');
     video.setAttribute('muted', '');
-    
-    // Prevent any user interaction
     video.style.pointerEvents = 'none';
 
     const initHls = () => {
@@ -116,11 +131,11 @@ useEffect(() => {
         const hls = new Hls({
           enableWorker: true,
           lowLatencyMode: true,
-          liveSyncDurationCount: 1,  // Reduced for lower latency
+          liveSyncDurationCount: 1,
           liveMaxLatencyDurationCount: 2,
-          maxLiveSyncPlaybackRate: 1.5,  // Allow faster catch-up
+          maxLiveSyncPlaybackRate: 1.5,
           startLevel: -1,
-          maxBufferLength: 1,  // Smaller buffer for lower latency
+          maxBufferLength: 1,
           maxMaxBufferLength: 2,
           backBufferLength: 0.5,
           liveDurationInfinity: true,
@@ -162,7 +177,6 @@ useEffect(() => {
                 break;
             }
           } else if (data.details === 'bufferStalledError') {
-            // Try to recover from buffer stall
             hls.startLoad();
           }
         });
@@ -178,7 +192,6 @@ useEffect(() => {
     
     initHls();
     
-    // Cleanup
     return () => {
       if (hlsRef.current) {
         hlsRef.current.destroy();
@@ -187,7 +200,6 @@ useEffect(() => {
     };
   }, []);
 
-  // Fullscreen
   const toggleFullscreen = () => {
     const video = videoRef.current;
     if (!video) return;
@@ -201,7 +213,6 @@ useEffect(() => {
     }
   };
 
-  // Refresh - reload HLS
   const handleRefresh = () => {
     if (hlsRef.current) {
       hlsRef.current.destroy();
@@ -230,7 +241,6 @@ useEffect(() => {
     }
   };
 
-  // Get latency color
   const getLatencyColor = () => {
     if (latency < 500) return '#10b981';
     if (latency < 1000) return '#fbbf24';
@@ -241,24 +251,80 @@ useEffect(() => {
     <div style={{ 
       display: 'flex', 
       height: '100vh', 
-      width: '100vw', 
+      width: '100%', 
       background: isDarkMode ? '#0f172a' : '#f8fafc', 
-      fontFamily: 'sans-serif' 
+      fontFamily: 'sans-serif',
+      overflow: 'hidden',
+      justifyContent: 'center', 
+      alignItems: 'center',        
+      boxSizing: 'border-box',
+      position: 'relative'
     }}>
-      <Sidebar />
 
+      {/* FLOATING CONTROLLER / ADJUSTER SLIDER */}
       <div style={{
-        flex: 1,
+        position: 'absolute',
+        top: '20px',
+        left: '20px',
+        zIndex: 100,
+        background: isDarkMode ? 'rgba(30, 41, 59, 0.85)' : 'rgba(255, 255, 255, 0.85)',
+        backdropFilter: 'blur(10px)',
+        padding: '12px 16px',
+        borderRadius: '12px',
+        border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`,
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: '20px'
+        gap: '6px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
       }}>
+        <label style={{ 
+          fontSize: '11px', 
+          fontWeight: 'bold', 
+          color: isDarkMode ? '#cbd5e1' : '#475569' 
+        }}>
+          ↔️ Layout X-Position: <span style={{ color: '#3b82f6' }}>{positionX}px</span>
+        </label>
+        {/* >>> IN-UPDATE: updatePositionX na ang tinatawag sa onChange <<< */}
+        <input 
+          type="range" 
+          min="-500" 
+          max="500"  
+          value={positionX} 
+          onChange={(e) => updatePositionX(Number(e.target.value))}
+          style={{ width: '180px', cursor: 'pointer' }}
+        />
+        {/* >>> IN-UPDATE: Ginawang 0 ang save gamit ang updatePositionX <<< */}
+        <button 
+          onClick={() => updatePositionX(0)}
+          style={{
+            fontSize: '10px',
+            background: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            padding: '2px 6px',
+            cursor: 'pointer',
+            alignSelf: 'flex-start'
+          }}
+        >
+          Reset to Center
+        </button>
+      </div>
+
+      {/* MAIN CONTENT AREA */}
+      <div style={{
+        width: '100%',
+        maxWidth: '930px',
+        display: 'flex',
+        flexDirection: 'column',
+        boxSizing: 'border-box',
+        transform: `translateX(${positionX}px)`,
+        transition: 'transform 0.05s ease-out'
+      }}>
+        
         {/* Decorative top bar */}
         <div style={{
           width: '100%',
-          maxWidth: '850px',
           marginBottom: '15px',
           display: 'flex',
           justifyContent: 'space-between',
@@ -289,16 +355,17 @@ useEffect(() => {
           }} />
         </div>
 
+        {/* Main Dashboard Panel Card */}
         <div style={{ 
           background: isDarkMode ? '#1e293b' : '#ffffff', 
-          padding: '20px', 
+          padding: '24px', 
           borderRadius: '24px', 
           boxShadow: isDarkMode 
             ? '0 20px 50px rgba(0,0,0,0.6)' 
-            : '0 20px 50px rgba(0,0,0,0.1)',
-          maxWidth: '850px', 
+            : '0 20px 50px rgba(0,0,0,0.05)',
           width: '100%',
-          border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`
+          border: `1px solid ${isDarkMode ? '#334155' : '#e2e8f0'}`,
+          boxSizing: 'border-box'
         }}>
           {/* Header */}
           <div style={{
@@ -398,8 +465,8 @@ useEffect(() => {
             {/* Face Detection Overlay */}
             <div style={{
               position: 'absolute',
-              top: '10px',
-              left: '10px',
+              top: '12px',
+              left: '12px',
               background: faceCount > 0 ? 'rgba(239, 68, 68, 0.9)' : 'rgba(0,0,0,0.7)',
               backdropFilter: 'blur(8px)',
               padding: '8px 16px',
@@ -436,8 +503,8 @@ useEffect(() => {
             {/* REC + Camera Overlay */}
             <div style={{
               position: 'absolute',
-              top: '10px',
-              right: '10px',
+              top: '12px',
+              right: '12px',
               background: 'rgba(0,0,0,0.7)',
               backdropFilter: 'blur(8px)',
               padding: '6px 12px',
@@ -481,7 +548,7 @@ useEffect(() => {
 
           {/* Status Footer */}
           <div style={{ 
-            marginTop: '15px', 
+            marginTop: '18px', 
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
@@ -520,12 +587,14 @@ useEffect(() => {
                   {latency}ms
                 </span>
               </div>
+              <span style={{ color: isDarkMode ? '#64748b' : '#94a3b8', fontSize: '0.7rem' }}>|</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style={{ fontSize: '0.7rem', color: isDarkMode ? '#64748b' : '#94a3b8' }}>📊 Buffer:</span>
                 <span style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#3b82f6' }}>
                   {bufferHealth.toFixed(1)}s
                 </span>
               </div>
+              <span style={{ color: isDarkMode ? '#64748b' : '#94a3b8', fontSize: '0.7rem' }}>|</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style={{ fontSize: '0.7rem', color: isDarkMode ? '#64748b' : '#94a3b8' }}>👤 Faces:</span>
                 <span style={{ fontSize: '0.7rem', fontWeight: 'bold', color: faceCount > 0 ? '#ef4444' : '#10b981' }}>
@@ -588,10 +657,9 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Decorative bottom bar */}
+        {/* Decorative bottom bar dots */}
         <div style={{
           width: '100%',
-          maxWidth: '850px',
           marginTop: '15px',
           display: 'flex',
           justifyContent: 'center',
@@ -603,34 +671,30 @@ useEffect(() => {
               height: '6px',
               borderRadius: '50%',
               background: isDarkMode ? '#334155' : '#cbd5e1',
-              opacity: 0.5
+              opacity: 0.5,
+              display: 'inline-block',
+              margin: '0 4px'
             }} />
           ))}
         </div>
       </div>
 
+      {/* Persistent Global Styles */}
       <style>{`
         @keyframes pulse {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.3; }
         }
         
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-        
         video::-webkit-media-controls {
           display: none !important;
         }
-        
         video::-webkit-media-controls-enclosure {
           display: none !important;
         }
-        
         video::-webkit-media-controls-panel {
           display: none !important;
         }
-        
         video::-webkit-media-controls-overlay-play-button {
           display: none !important;
         }

@@ -219,8 +219,8 @@ const getAttendanceForDate = (date: Date): AttendanceRecord[] => {
   const availableYears = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
 
   return (
-    <div style={{ display: 'flex', height: '100vh', width: '100vw', backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc' }}>
-      <Sidebar />
+    <div style={{ display: 'flex', height: '100vh', width: '100%', backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc' }}>
+      
       
       <div style={{ flex: 1, padding: '30px', overflowY: 'auto' }}>
         {/* Header */}

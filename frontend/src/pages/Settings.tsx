@@ -1179,7 +1179,7 @@ const Settings: React.FC = () => {
 
   return (
     <div className={`settings-wrapper ${isDarkMode ? 'dark-mode' : ''}`}>
-      <Sidebar />
+      
 
       <div className="settings-container">
         <main className="main-content">
