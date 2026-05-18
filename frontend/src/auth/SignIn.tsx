@@ -48,9 +48,59 @@ type LoginVariables = {
   password: string;
 };
 
+const LOCK_ERROR =
+  'Sign-in temporarily disabled due to too many failed attempts. Please try again shortly.';
+
 export default function SignIn() {
   const [login, { loading, error }] = useMutation<LoginResponse, LoginVariables>(SIGNIN);
   const currentBackground = useDynamicBackground(); // GAMITIN ANG HOOK
+  const [lockMessage, setLockMessage] = useState('');
+const savedLockUntil =
+  Number(localStorage.getItem('loginLockUntil')) || 0;
+
+const remaining =
+  Math.max(
+    0,
+    Math.floor((savedLockUntil - Date.now()) / 1000)
+  );
+
+const [isLocked, setIsLocked] =
+  useState(remaining > 0);
+
+const [lockCountdown, setLockCountdown] =
+  useState(remaining);
+
+useEffect(() => {
+  if (isLocked) {
+    setLockMessage(LOCK_ERROR);
+  }
+}, [isLocked]);
+
+  useEffect(() => {
+  let timer: ReturnType<typeof setInterval>;
+
+  if (isLocked && lockCountdown > 0) {
+    timer = setInterval(() => {
+      setLockCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          localStorage.removeItem('loginLockUntil');
+          setIsLocked(false);
+          setLockMessage('');
+          return 0;
+        }
+
+        return prev - 1;
+      });
+    }, 1000);
+  }
+
+  return () => {
+    if (timer) {
+      clearInterval(timer);
+    }
+  };
+}, [isLocked, lockCountdown]);
 
 const handleSignin = async (
   _firstName: string,
@@ -85,11 +135,20 @@ const handleSignin = async (
     }
 
     // 🔐 2FA FLOW
-    if (result.user?.two_factor_enabled && !result.token) {
-      localStorage.setItem('pendingIdentifier', identifier || '');
-      window.location.hash = '#/two-factor';
-      return;
-    }
+if (result.user?.two_factor_enabled && !result.token) {
+  localStorage.setItem(
+    'pendingIdentifier',
+    identifier || ''
+  );
+
+  localStorage.setItem(
+    'pendingEmail',
+    result.user.email || ''
+  );
+
+  window.location.hash = '#/two-factor';
+  return;
+}
 
     // ❌ invalid login safety
     if (!result.token) {
@@ -134,12 +193,34 @@ const handleSignin = async (
       'Login successful! Student ID saved:',
       result.user.StudentId
     );
-
+    localStorage.removeItem('savedIdentifier');
     window.location.hash = '#/homescreen';
 
-  } catch (err) {
-    console.error('Login failed:', err);
-  }
+  } catch (err: any) {
+  console.error('Login failed:', err);
+
+  const message =
+    err?.message || '';
+
+  if (
+  message.includes(
+    'Too many login attempts'
+  )
+) {
+  const lockUntil =
+  Date.now() + 60000;
+
+localStorage.setItem(
+  'loginLockUntil',
+  String(lockUntil)
+);
+
+setIsLocked(true);
+setLockCountdown(60);// 60 seconds
+
+setLockMessage(LOCK_ERROR);
+}
+}
 };
 
   return (
@@ -193,13 +274,15 @@ const handleSignin = async (
   }}
 >
   <AuthForm
-    title="SIGN IN"
-    buttonText="Login"
-    onSubmit={handleSignin}
-    loading={loading}
-    error={error?.message}
-    mode="login"
-  />
+  title="SIGN IN"
+  buttonText="Login"
+  onSubmit={handleSignin}
+  loading={loading}
+  isLocked={isLocked}
+  lockCountdown={lockCountdown}
+  error={lockMessage || error?.message}
+  mode="login"
+/>
 </div>
     </div>
   );

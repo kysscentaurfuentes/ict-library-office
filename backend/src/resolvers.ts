@@ -3,6 +3,8 @@ import jwt from 'jsonwebtoken';
 import { pool } from './db.js';
 import bcrypt from 'bcrypt';
 import dotenv from 'dotenv';
+import { sendOTP } from "./utils/mailer.js";
+import crypto from "crypto";
 
 dotenv.config();
 
@@ -50,9 +52,18 @@ interface UserRow {
   profile_picture?: string;
   vibration_enabled?: boolean;
   dark_mode?: boolean;
+
   two_factor_enabled?: boolean;
   two_factor_otp?: string | null;
   two_factor_otp_expires_at?: string | null;
+
+  failed_login_attempts?: number;
+  login_locked_until?: string | null;
+
+  failed_otp_attempts?: number;
+  otp_locked_until?: string | null;
+
+  last_otp_sent_at?: string | null;
 }
 
 type Context = {
@@ -63,7 +74,7 @@ type Context = {
 };
 
 function assertUser(user: UserRow | undefined): asserts user is UserRow {
-  if (!user) throw new Error('User not found');
+  if (!user) throw new Error('Invalid credentials');
 }
 
 function requireAuth(context: Context) {
@@ -124,47 +135,89 @@ export const resolvers = {
   Query: {
     hello: () => "Backend is working with Router 🚀",
 
-    me: async (_: any, __: any, context: Context) => {
-      const auth = requireAuth(context);
+    checkOtpStatus: async (
+      _: any,
+      { identifier }: any
+    ) => {
 
-      const res = await pool.query<UserRow>(
-        `
-        SELECT
-        id,
-        first_name,
-        middle_name,
-        last_name,
-        email,
-        "StudentId",
-        course,
-        school_id_image,
-        role,
-        suffix,
-        suffix_locked,
-        phone_number,
-        birthdate,
-        birthdate_locked,
-        age,
-        gender,
-        gender_locked,
-        nationality,
-        nationality_locked,
-        user_classification,
-        student_type,
-        college_department,
-        program,
-        year_level,
-        profile_picture,
-        vibration_enabled,
-        dark_mode,
-        two_factor_enabled
-        FROM users
-        WHERE id = $1
-        `,
-        [auth.userId]
-      );
+      const clean =
+        normalizeIdentifier(identifier);
 
-      const user = res.rows[0];
+      const result =
+        await pool.query<UserRow>(
+          `
+          SELECT
+            failed_otp_attempts,
+            otp_locked_until
+          FROM users
+          WHERE LOWER(email) = LOWER($1)
+             OR "StudentId" = $2
+          `,
+          [buildEmail(clean), clean]
+        );
+
+      const user = result.rows[0];
+
+      assertUser(user);
+
+      return {
+        failedAttempts:
+          user.failed_otp_attempts || 0,
+
+        lockedUntil:
+          user.otp_locked_until
+      };
+    },
+
+    me: async (
+      _: any,
+      __: any,
+      context: Context
+    ) => {
+
+      const auth =
+        requireAuth(context);
+
+      const res =
+        await pool.query<UserRow>(
+          `
+          SELECT
+            id,
+            first_name,
+            middle_name,
+            last_name,
+            email,
+            "StudentId",
+            course,
+            school_id_image,
+            role,
+            suffix,
+            suffix_locked,
+            phone_number,
+            birthdate,
+            birthdate_locked,
+            age,
+            gender,
+            gender_locked,
+            nationality,
+            nationality_locked,
+            user_classification,
+            student_type,
+            college_department,
+            program,
+            year_level,
+            profile_picture,
+            vibration_enabled,
+            dark_mode,
+            two_factor_enabled
+          FROM users
+          WHERE id = $1
+          `,
+          [auth.userId]
+        );
+
+      const user =
+        res.rows[0];
 
       assertUser(user);
 
@@ -227,10 +280,26 @@ export const resolvers = {
    const res = await pool.query<UserRow>(query, [value]);
 
     console.log("LOGIN RESULT:", res.rows);
-
+    // 2nd. constant user (Mutation Login)
     const user = res.rows[0];
-
+    // 2nd assertUser
     assertUser(user);
+    
+    // 🚫 Check if account is locked using database time
+const lockCheck = await pool.query(
+  `
+  SELECT NOW() < login_locked_until as locked
+  FROM users
+  WHERE id = $1
+  `,
+  [user.id]
+);
+// 1ST. CHECK LOCK LOGIN
+if (lockCheck.rows[0]?.locked) {
+  throw new Error(
+    "Too many login attempts. Try again later."
+  );
+}
 
       const isValid = await bcrypt.compare(
         password,
@@ -238,30 +307,73 @@ export const resolvers = {
       );
 
       if (!isValid) {
-  throw new Error('Invalid credentials');
+
+  const attempts =
+    (user.failed_login_attempts || 0) + 1;
+
+  const lockUntil =
+    attempts >= 5
+      ? "NOW() + INTERVAL '15 minutes'"
+      : "NULL";
+
+  await pool.query(
+  `
+  UPDATE users
+  SET
+    failed_login_attempts = $1,
+    login_locked_until = CASE
+      WHEN $1 >= 5 THEN NOW() + INTERVAL '15 minutes'
+      ELSE NULL
+    END
+  WHERE id = $2
+  `,
+  [attempts, user.id]
+);
+
+  throw new Error("Invalid credentials");
 }
+
+await pool.query(
+  `
+  UPDATE users
+  SET
+    failed_login_attempts = 0,
+    login_locked_until = NULL
+  WHERE id = $1
+  `,
+  [user.id]
+);
 
 // 👇 DITO ILALAGAY ANG 2FA LOGIC
 if (user.two_factor_enabled) {
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
+ const code = Math.floor(100000 + Math.random() * 900000).toString();
 
-  await pool.query(
-    `
-    UPDATE users
-    SET two_factor_otp = $1,
-        two_factor_otp_expires_at = NOW() + INTERVAL '5 minutes'
-    WHERE id = $2 
-    `,
-    [code, user.id]
-  );
+const hashedCode = crypto
+  .createHmac("sha256", process.env.JWT_SECRET!)
+  .update(code)
+  .digest("hex");
 
-  console.log("2FA CODE:", code);
-return {
+await pool.query(
+  `
+  UPDATE users
+  SET two_factor_otp = $1,
+      two_factor_otp_expires_at = NOW() + INTERVAL '5 minutes'
+  WHERE id = $2
+  `,
+  [hashedCode, user.id]
+);
+
+  // 🔥 SEND EMAIL OTP
+  await sendOTP(user.email, code);
+
+  console.log("OTP generated for user:", user.id);
+
+  return {
     token: null,
+    requires2FA: true,
     user: {
       id: user.id,
       first_name: user.first_name,
-      middle_name: user.middle_name,
       last_name: user.last_name,
       email: user.email,
       StudentId: user.StudentId,
@@ -272,7 +384,7 @@ return {
       two_factor_enabled: true
     }
   };
-  }
+}
 
       const token = jwt.sign(
         {
@@ -303,6 +415,8 @@ return {
   }
 };
     },
+    
+    
     verifyTwoFactor: async (_: any, { identifier, code }: any) => {
   const clean = normalizeIdentifier(identifier);
 
@@ -311,41 +425,149 @@ return {
     : buildEmail(clean);
 
   const res = await pool.query<UserRow>(
-    `
-    SELECT *
-    FROM users
-    WHERE LOWER(email) = LOWER($1)
-       OR "StudentId" = $1
-    `,
-    [value]
-  );
-
-  const user = res.rows[0];
+  `
+  SELECT *
+  FROM users
+  WHERE LOWER(email) = LOWER($1)
+     OR "StudentId" = $2
+  `,
+  [buildEmail(clean), clean]
+);
+  // 3rd. constant user (Mutation verifyTwoFactor)
+  const user = res.rows[0];   // ✅ MOVE THIS UP
+  // 3rd assertUser
   assertUser(user);
 
-  // check OTP
-  if (!user.two_factor_otp || !user.two_factor_otp_expires_at) {
-    throw new Error("No 2FA request found");
-  }
-
-  if (user.two_factor_otp !== code) {
-    throw new Error("Invalid code");
-  }
-
-  if (new Date(user.two_factor_otp_expires_at) < new Date()) {
-    throw new Error("Code expired");
-  }
-
-  // clear OTP
-  await pool.query(
+  // 🚫 NOW SAFE to use user.id
+  const lockCheck = await pool.query(
     `
-    UPDATE users
-    SET two_factor_otp = NULL,
-        two_factor_otp_expires_at = NULL
+    SELECT NOW() < otp_locked_until as locked
+    FROM users
     WHERE id = $1
     `,
     [user.id]
   );
+  // 2nd CHECK LOCK (OTP)
+if (lockCheck.rows[0]?.locked) {
+  const unlockTime = await pool.query(
+    `
+    SELECT
+      EXTRACT(EPOCH FROM (otp_locked_until - NOW()))::int as remaining_seconds
+    FROM users
+    WHERE id = $1
+    `,
+    [user.id]
+  );
+
+  const seconds = Math.max(0, unlockTime.rows[0]?.remaining_seconds || 0);
+
+  const remainingSeconds =
+  unlockTime.rows?.[0]?.remaining_seconds ?? 0;
+
+throw Object.assign(new Error("OTP_LOCKED"), {
+  extensions: {
+    code: "OTP_LOCKED",
+    remainingSeconds,
+    attemptsLeft: Math.max(
+  0,
+  5 - (user.failed_otp_attempts || 0)
+),
+  },
+});
+}
+  // 3rd.Mutation verifyTwoFactor
+
+ // check OTP existence
+if (!user.two_factor_otp || !user.two_factor_otp_expires_at) {
+  throw new Error("No 2FA request found");
+}
+
+// check expiration
+const expiryCheck = await pool.query(
+  `
+  SELECT NOW() < two_factor_otp_expires_at as valid
+  FROM users
+  WHERE id = $1
+  `,
+  [user.id]
+);
+
+if (!expiryCheck.rows[0].valid) {
+  throw new Error("Code expired");
+}
+
+// hash input
+const hashedInput = crypto
+  .createHmac("sha256", process.env.JWT_SECRET!)
+  .update(code)
+  .digest("hex");
+
+// compare OTP
+if (user.two_factor_otp !== hashedInput) {
+  const attempts =
+    (user.failed_otp_attempts || 0) + 1;
+
+  let lockUntil: Date | null = null;
+
+  if (attempts >= 5) {
+    lockUntil = new Date(
+      Date.now() + 15 * 60 * 1000
+    );
+  }
+
+  await pool.query(
+    `
+    UPDATE users
+    SET
+      failed_otp_attempts = $1,
+      otp_locked_until = $2
+    WHERE id = $3
+    `,
+    [attempts, lockUntil, user.id]
+  );
+
+  // 🔥 Backend wins immediately
+  if (lockUntil) {
+    throw Object.assign(
+      new Error("OTP_LOCKED"),
+      {
+        extensions: {
+          code: "OTP_LOCKED",
+          remainingSeconds: 900,
+          attemptsUsed: attempts,
+        },
+      }
+    );
+  }
+
+  throw Object.assign(
+    new Error("INVALID CODE"),
+    {
+      extensions: {
+        code: "INVALID CODE",
+        attemptsUsed: attempts,
+        attemptsLeft: Math.max(
+          0,
+          5 - attempts
+        ),
+      },
+    }
+  );
+}
+
+  // clear OTP + reset failed attempts after success
+await pool.query(
+  `
+  UPDATE users
+  SET
+    two_factor_otp = NULL,
+    two_factor_otp_expires_at = NULL,
+    failed_otp_attempts = 0,
+    otp_locked_until = NULL
+  WHERE id = $1
+  `,
+  [user.id]
+);
 
   const token = jwt.sign(
     { userId: user.id, role: user.role },
@@ -525,7 +747,7 @@ updateUserInformation: async (
   );
 
   const user = existingUser.rows[0];
-
+  // 4th assertUser
   assertUser(user);
 
 // =========================

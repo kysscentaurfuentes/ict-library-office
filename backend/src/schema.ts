@@ -36,6 +36,7 @@ type User {
 
   type AuthPayload {
     token: String
+    requires2FA: Boolean
     user: User
   }
 
@@ -52,11 +53,17 @@ type User {
     success: Boolean
   }
 
+  type OtpStatus {
+  failedAttempts: Int
+  lockedUntil: String
+}
+
   type Query {
-    hello: String
-    me: User
-    routerDevices: [Device]
-  }
+  hello: String
+  me: User
+  routerDevices: [Device]
+  checkOtpStatus(identifier: String!): OtpStatus
+}
 
   type Mutation {
   

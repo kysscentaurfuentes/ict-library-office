@@ -1,6 +1,6 @@
 // frontend/src/components/AuthForm.tsx
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import './AuthForm.css';
@@ -8,6 +8,8 @@ import './AuthForm.css';
 type Props = {
   title: string;
   buttonText: string;
+  isLocked?: boolean;
+  lockCountdown?: number;
 
 onSubmit: (
   firstName: string,
@@ -130,6 +132,8 @@ export default function AuthForm({
   loading,
   error: backendError,
   mode = 'login',
+  isLocked = false,
+  lockCountdown = 0,
 }: Props) {
   const navigate = useNavigate();
 
@@ -145,8 +149,9 @@ export default function AuthForm({
   const [lastName, setLastName] =
     useState<string>('');
 
-const [identifier, setIdentifier] =
-  useState<string>('');
+const [identifier, setIdentifier] = useState<string>(() => {
+  return localStorage.getItem('savedIdentifier') || '';
+});
 
 const [identifierType, setIdentifierType] =
   useState<
@@ -197,11 +202,25 @@ const [identifierType, setIdentifierType] =
   const [schoolIdImage, setSchoolIdImage] =
     useState<File | null>(null);
 
+    useEffect(() => {
+  if (identifier) {
+    localStorage.setItem('savedIdentifier', identifier);
+  } else {
+    localStorage.removeItem('savedIdentifier');
+  }
+}, [identifier]);
+
    const handleIdentifierChange = (
   e: React.ChangeEvent<HTMLInputElement>
 ): void => {
 
   let value = e.target.value;
+
+   if (!value.trim()) {
+    setIdentifier('');
+    setIdentifierType('');
+    return;
+  }
 
   // Already complete Student ID? Lock it.
   if (
@@ -1280,9 +1299,10 @@ const renderInput = (
             <button
               type="submit"
               disabled={
-                loading ||
-                !isFormValid
-              }
+                 loading ||
+                 isLocked ||
+                 !isFormValid
+                }
               style={{
                 width: '100%',
                 height: '52px',
@@ -1329,9 +1349,11 @@ const renderInput = (
                   '0 4px 14px rgba(139,92,246,0.25)';
               }}
             >
-              {loading
-                ? 'Processing...'
-                : buttonText}
+              {isLocked
+  ? `Try again in ${lockCountdown}s`
+  : loading
+    ? 'Signing in...'
+    : buttonText}
             </button>
           </>
         )}
