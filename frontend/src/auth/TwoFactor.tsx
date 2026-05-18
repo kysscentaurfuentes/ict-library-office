@@ -96,6 +96,41 @@ const getAttemptColor = (attempts: number) => {
   return "#a855f7"; // PURPLE (5+ critical)
 };
 
+const formatCooldown = (
+  totalSeconds: number
+) => {
+  const hours = Math.floor(
+    totalSeconds / 3600
+  );
+
+  const minutes = Math.floor(
+    (totalSeconds % 3600) / 60
+  );
+
+  const seconds =
+    totalSeconds % 60;
+
+  const parts = [];
+
+  if (hours > 0) {
+    parts.push(
+      `${hours} hour${hours > 1 ? "s" : ""}`
+    );
+  }
+
+  if (minutes > 0 || hours > 0) {
+    parts.push(
+      `${minutes} minute${minutes > 1 ? "s" : ""}`
+    );
+  }
+
+  parts.push(
+    `${seconds} second${seconds > 1 ? "s" : ""}`
+  );
+
+  return parts.join(", ");
+};
+
   const [verifyTwoFactor] =
     useMutation<VerifyResponse, VerifyVars>(VERIFY_2FA);
 
@@ -154,106 +189,123 @@ useEffect(() => {
 useEffect(() => {
   let mounted = true;
 
-  const syncOtp = async () => {
-    const identifier =
-      localStorage.getItem("pendingIdentifier");
+ const syncOtp = async () => {
+  const identifier =
+    localStorage.getItem("pendingIdentifier");
 
-    if (!identifier) {
-      if (mounted) {
-        setCheckingLock(false);
-      }
-      return;
+  console.log("========== OTP SYNC START ==========");
+  console.log("LOCAL pendingIdentifier:", identifier);
+  console.log("LOCAL pendingEmail:", pendingEmail);
+
+  if (!identifier) {
+    console.log("NO IDENTIFIER FOUND");
+    
+    if (mounted) {
+      setOtpAttempts(0);
+      setIsLocked(false);
+      setCooldown(0);
+      setLockMessage("");
+      setCheckingLock(false);
     }
 
-    try {
-      const { data } = await client.query({
-        query: CHECK_OTP_STATUS,
-        variables: { identifier },
-        fetchPolicy: "network-only",
-      });
+    return;
+  }
 
-      if (!mounted) return;
+  try {
+    setCheckingLock(true);
 
-      const otp = data?.checkOtpStatus;
+    const { data } = await client.query({
+      query: CHECK_OTP_STATUS,
+      variables: { identifier },
+      fetchPolicy: "network-only",
+    });
 
-     const attempts =
-  otp?.failedAttempts ?? 0;
+    console.log("RAW BACKEND OTP DATA:", data);
 
-const lockUntilRaw =
-  otp?.lockedUntil || null;
+    const otp =
+      data?.checkOtpStatus;
+
+    const attempts =
+      otp?.failedAttempts ?? 0;
+
+    const lockUntilRaw =
+      otp?.lockedUntil || null;
+
+    console.log("DB failedAttempts:", attempts);
+    console.log("DB lockedUntil raw:", lockUntilRaw);
 
 const lockUntil =
-  lockUntilRaw
+  lockUntilRaw != null
     ? Number(lockUntilRaw)
-    : null;
+    : null; 
 
-const isStillLocked =
-  attempts >= 5 &&
-  lockUntil !== null &&
-  lockUntil > Date.now();
+    console.log("PARSED lockUntil:", lockUntil);
+    console.log("CURRENT Date.now():", Date.now());
 
-console.log("OTP DB CHECK:", {
-  attempts,
-  lockUntilRaw,
-  parsed: lockUntil,
-  now: Date.now(),
-  isStillLocked,
-});
+    const remainingSeconds =
+      lockUntil
+        ? Math.max(
+            0,
+            Math.floor(
+              (lockUntil - Date.now()) / 1000
+            )
+          )
+        : 0;
 
-      setOtpAttempts(
-        Math.min(attempts, 5)
+    console.log("CALCULATED remainingSeconds:", remainingSeconds);
+
+    const stillLocked =
+      attempts >= 5 &&
+      remainingSeconds > 0;
+
+    console.log("FINAL stillLocked:", stillLocked);
+
+    setOtpAttempts(Math.min(attempts, 5));
+
+    if (stillLocked) {
+      console.log("UI LOCK ACTIVATED");
+
+      setIsLocked(true);
+      setCooldown(remainingSeconds);
+      setBackendRemainingSeconds(remainingSeconds);
+      setLockMessage(
+        "Too many attempts. Try again later."
       );
 
-      if (isStillLocked) {
-        const seconds = Math.max(
-  0,
-  Math.floor(
-    ((lockUntil as number) - Date.now()) / 1000
-  )
-);
+      setShowSupportModal(true);
 
-        setIsLocked(true);
+      clearOtpInputs();
 
-        setCooldown(seconds);
+    } else {
+      console.log("UI LOCK REMOVED");
 
-        setBackendRemainingSeconds(
-          seconds
-        );
-
-        setLockMessage(
-          "Too many attempts. Try again later."
-        );
-
-        setShowSupportModal(true);
-
-        clearOtpInputs();
-      } else {
-        setIsLocked(false);
-
-        setCooldown(0);
-
-        setBackendRemainingSeconds(0);
-
-        setLockMessage("");
-      }
-    } catch (err) {
-      console.log(
-        "OTP sync error:",
-        err
-      );
-    } finally {
-      if (mounted) {
-        setCheckingLock(false);
-      }
+      setIsLocked(false);
+      setCooldown(0);
+      setBackendRemainingSeconds(0);
+      setLockMessage("");
     }
-  };
+
+  } catch (err) {
+    console.log("OTP SYNC ERROR:", err);
+  } finally {
+    console.log("========== OTP SYNC END ==========");
+
+    if (mounted) {
+      setCheckingLock(false);
+    }
+  }
+};
 
   syncOtp();
 
   return () => {
     mounted = false;
   };
-}, [client]);
+
+}, [
+  client,
+  pendingEmail // important pag ibang user
+]);
 
   // 4
  useEffect(() => {
@@ -266,14 +318,27 @@ console.log("OTP DB CHECK:", {
     timeLeft -= 1;
     setCooldown(timeLeft);
 
-    if (timeLeft <= 0) {
-      clearInterval(interval);
+ if (timeLeft <= 0) {
+  clearInterval(interval);
 
-      setIsLocked(false);
-      setOtpAttempts(0);
-      setLockMessage("");
-      setBackendRemainingSeconds(0);
-    }
+  setIsLocked(false);
+  setLockMessage("");
+  setBackendRemainingSeconds(0);
+
+  // re-sync from backend instead of forcing 0
+  const identifier = localStorage.getItem("pendingIdentifier");
+
+  if (identifier) {
+    client.query({
+      query: CHECK_OTP_STATUS,
+      variables: { identifier },
+      fetchPolicy: "network-only",
+    }).then(({ data }) => {
+      const attempts = data?.checkOtpStatus?.failedAttempts ?? 0;
+      setOtpAttempts(Math.min(attempts, 5));
+    });
+  }
+}
   }, 1000);
 
   return () => clearInterval(interval);
@@ -547,7 +612,7 @@ if (checkingLock) {
               }}
             >
               {cooldown > 0
-                ? `Try again in ${cooldown}s`
+                ? `Try again in ${formatCooldown(cooldown)}`
                 : "Try Again"}
             </button>
           </>
@@ -622,34 +687,51 @@ if (checkingLock) {
   Attempts: {otpAttempts} / 5
 </p>
 
-        <button
-          onClick={handleVerify}
-          disabled={
-  loading ||
-  isLocked ||
-  checkingLock
-}
-          style={{
-            width: "100%",
-            height: "52px",
-            border: "none",
-            borderRadius: "7px",
-            background:
-              "linear-gradient(90deg,#6366f1,#8b5cf6)",
-            color: "#fff",
-            fontSize: "1rem",
-            fontWeight: 700,
-            cursor: "pointer",
-          }}
-        >
-          {isLocked
-            ? "Locked"
-            : loading
-            ? "Verifying..."
-            : "Verify"}
-        </button>
+{/* Warning before lock */}
+{otpAttempts >= 3 && (
+  <p
+    style={{
+      textAlign: "center",
+      margin: "2px 0 6px 0",
+      fontSize: "0.78rem",
+      color: "#facc15",
+      fontWeight: 600,
+      lineHeight: 1.4,
+    }}
+  >
+    Warning: Reaching 5 failed attempts will lock OTP verification
+    for 8 hours.
+  </p>
+)}
 
-        <p
+<button
+  onClick={handleVerify}
+  disabled={
+    loading ||
+    isLocked ||
+    checkingLock
+  }
+  style={{
+    width: "100%",
+    height: "52px",
+    border: "none",
+    borderRadius: "7px",
+    background:
+      "linear-gradient(90deg,#6366f1,#8b5cf6)",
+    color: "#fff",
+    fontSize: "1rem",
+    fontWeight: 700,
+    cursor: "pointer",
+  }}
+>
+  {isLocked
+    ? "Locked"
+    : loading
+    ? "Verifying..."
+    : "Verify"}
+</button>
+
+<p
   style={{
     color: "rgba(255,255,255,0.78)",
     textAlign: "center",
@@ -662,6 +744,8 @@ if (checkingLock) {
   Enter the 6-digit code sent to your
   <br />
   <strong>{pendingEmail || "@carsu.edu.ph email"}</strong>
+
+  
 </p>
 
         {error && (

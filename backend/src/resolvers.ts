@@ -159,6 +159,12 @@ export const resolvers = {
       const user = result.rows[0];
 
       assertUser(user);
+      console.log("CHECK OTP STATUS USER:", {
+  email: user.email,
+  failed_otp_attempts: user.failed_otp_attempts,
+  otp_locked_until: user.otp_locked_until,
+  serverNow: new Date().toISOString()
+});
 
       return {
         failedAttempts:
@@ -313,16 +319,18 @@ if (lockCheck.rows[0]?.locked) {
 
   const lockUntil =
     attempts >= 5
-      ? "NOW() + INTERVAL '15 minutes'"
+    // TIME TEMPORARY
+      ? "NOW() + INTERVAL '30 seconds'"
       : "NULL";
 
+      // TIME TEMPORARY '30 SECONDS'
   await pool.query(
   `
   UPDATE users
   SET
     failed_login_attempts = $1,
     login_locked_until = CASE
-      WHEN $1 >= 5 THEN NOW() + INTERVAL '15 minutes'
+      WHEN $1 >= 5 THEN NOW() + INTERVAL '30 seconds'
       ELSE NULL
     END
   WHERE id = $2
@@ -508,11 +516,10 @@ if (user.two_factor_otp !== hashedInput) {
     (user.failed_otp_attempts || 0) + 1;
 
   let lockUntil: Date | null = null;
-
+  // TIME TEMPORARY
+  const LOCK_DURATION_MS = 8 * 60 * 60 * 1000;
   if (attempts >= 5) {
-    lockUntil = new Date(
-      Date.now() + 15 * 60 * 1000
-    );
+    lockUntil = new Date(Date.now() + LOCK_DURATION_MS);
   }
 
   await pool.query(
@@ -533,7 +540,10 @@ if (user.two_factor_otp !== hashedInput) {
       {
         extensions: {
           code: "OTP_LOCKED",
-          remainingSeconds: 900,
+          // TIME TEMPORARY
+          remainingSeconds: Math.floor(
+  (lockUntil.getTime() - Date.now()) / 1000
+),
           attemptsUsed: attempts,
         },
       }
