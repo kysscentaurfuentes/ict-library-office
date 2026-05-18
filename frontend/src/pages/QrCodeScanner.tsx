@@ -304,7 +304,7 @@ export default function QrCodeScanner() {
             borderRadius: 28,
             background: "rgba(255,255,255,0.05)",
             backdropFilter: "blur(15px)",
-            border: "1px solid rgba(255,255,255,0.08)",
+            border: "1px solid rgba(255,255,255,0.06)",
             transition: "0.4s ease",
             boxShadow: isHovered
               ? "0 0 60px rgba(59,130,246,0.2)"
