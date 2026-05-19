@@ -201,7 +201,67 @@ if (result.user?.two_factor_enabled && !result.token) {
 
   const message =
     err?.message || '';
+    const errorCode =
+  err?.graphQLErrors?.[0]
+    ?.extensions?.code;
 
+if (
+  errorCode ===
+  "ACCOUNT_PENDING"
+) {
+
+  const pendingEmail =
+    err?.graphQLErrors?.[0]
+      ?.extensions?.email || '';
+
+  const pendingStudentId =
+    err?.graphQLErrors?.[0]
+      ?.extensions?.studentId || '';
+
+  localStorage.setItem(
+    'pendingEmail',
+    pendingEmail
+  );
+
+  localStorage.setItem(
+    'pendingIdentifier',
+    pendingStudentId
+  );
+
+  window.location.hash =
+    "#/pending-approval";
+
+  return;
+}
+
+if (
+  errorCode ===
+  "ACCOUNT_REJECTED"
+) {
+
+  const rejectedEmail =
+    err?.graphQLErrors?.[0]
+      ?.extensions?.email || '';
+
+  const rejectedStudentId =
+    err?.graphQLErrors?.[0]
+      ?.extensions?.studentId || '';
+
+  localStorage.setItem(
+    'rejectedEmail',
+    rejectedEmail
+  );
+
+  localStorage.setItem(
+    'rejectedStudentId',
+    rejectedStudentId
+  );
+
+  window.location.hash =
+    '#/rejected-approval';
+
+  return;
+}
   if (
   message.includes(
     'Too many login attempts'

@@ -37,6 +37,12 @@ const SCHOOL_IDS_DIR =
     "school-ids"
   );
 
+  const TEMP_SCHOOL_IDS_DIR =
+  path.join(
+    UPLOADS_DIR,
+    "temporary school-ids"
+  );
+
 // ==========================
 // 📁 PROFILE PICTURES DIRECTORY
 // ==========================
@@ -52,6 +58,7 @@ const PROFILE_PICTURES_DIR =
 [
   UPLOADS_DIR,
   SCHOOL_IDS_DIR,
+  TEMP_SCHOOL_IDS_DIR,
   PROFILE_PICTURES_DIR,
 ].forEach((dir) => {
 
@@ -136,12 +143,12 @@ const storage =
         // ==========================
         if (
           uploadType ===
-          "school-id"
+          "temporary-school-id"
         ) {
-
+          // 1
           return cb(
             null,
-            SCHOOL_IDS_DIR
+            TEMP_SCHOOL_IDS_DIR
           );
         }
           // backend/src/uploads/school-ids/(DITO)
@@ -153,7 +160,7 @@ const storage =
           uploadType ===
           "profile-picture"
         ) {
-
+          // 2
           return cb(
             null,
             PROFILE_PICTURES_DIR
@@ -163,6 +170,7 @@ const storage =
         // ==========================
         // ❌ INVALID TYPE
         // ==========================
+        // 3
         return cb(
           new Error(
             "Invalid upload type"
@@ -173,7 +181,7 @@ const storage =
       } catch (err) {
 
         console.error(err);
-
+        // 4
         return cb(
           new Error(
             "Failed to determine upload destination"
@@ -245,11 +253,11 @@ const storage =
         // ==========================
         if (
           uploadType ===
-          "school-id"
+          "temporary-school-id"
         ) {
 
           finalFileName =
-            `${safeStudentId}-school-id${ext}`;
+            `${safeStudentId}-temporary-school-id${ext}`;
         }
 
         // ==========================
@@ -268,7 +276,7 @@ const storage =
         // ❌ INVALID TYPE
         // ==========================
         else {
-
+          // 5
           return cb(
             new Error(
               "Invalid upload type"
@@ -328,7 +336,7 @@ const fileFilter:
     // ✅ ALLOW IMAGE FILES
     // ==========================
     if (isAllowed) {
-
+      // 6
       return cb(
         null,
         true
@@ -338,6 +346,7 @@ const fileFilter:
     // ==========================
     // ❌ BLOCK NON-IMAGE FILES
     // ==========================
+    // 7
     return cb(
       new Error(
         "Only image files are allowed (JPG, JPEG, PNG, WEBP, HEIC, AVIF, etc.)"

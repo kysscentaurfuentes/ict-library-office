@@ -64,12 +64,42 @@ type User {
   me: User
   routerDevices: [Device]
   checkOtpStatus(identifier: String!): OtpStatus
-
   pendingUsers: [User]
+
+    checkSignupAvailability(
+    email: String,
+    StudentId: String
+  ): AvailabilityResponse!
 }
 
+type AvailabilityResponse {
+  available: Boolean!
+  field: String!
+}
+
+
+
   type Mutation {
-  
+  requestSignupOTP(
+  first_name: String!
+  middle_name: String
+  last_name: String!
+  email: String!
+  password: String!
+  StudentId: String!
+  course: String!
+  school_id_image: String!
+): Boolean
+
+verifySignupOTP(
+  email: String!
+  code: String!
+): Boolean
+
+resendSignupOTP(
+  email: String!
+): Boolean
+
     login(
       identifier: String!,
       password: String!

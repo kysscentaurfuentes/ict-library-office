@@ -14,11 +14,15 @@ console.log('\nHASH:\n');
 console.log(hash);
 
 // Instructions:
-
 // In backend terminal Run:
 // .\scripts\change-password.bat
-
 // OR
-
 // In backend terminal Run:
 // npm run hash "YOUR_PASSWORD_HERE"
+// COPY THE HASH
+
+// UPDATE IN DATABASE
+// RUN THIS QUERY
+// UPDATE users
+// SET password = 'PASTE_HASH_HERE'
+// WHERE "StudentId" = '000-00000';

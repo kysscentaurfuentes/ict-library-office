@@ -20,6 +20,9 @@ import AdminRoute from '../guards/AdminRoute';
 import SignIn from '../auth/SignIn';
 import SignUp from '../auth/SignUp';
 import TwoFactor from '../auth/TwoFactor';
+import PendingApproval from '../auth/PendingApproval';
+import RejectedApproval from '../auth/RejectedApproval';
+import VerifySignupOTP from "../auth/VerifySignupOTP";
 
 export default function AppRouter() {
   return (
@@ -32,6 +35,9 @@ export default function AppRouter() {
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/two-factor" element={<TwoFactor />} />
+        <Route path="/pending-approval" element={<PendingApproval />} />
+        <Route path="/rejected-approval" element={<RejectedApproval />} />
+        <Route path="/verify-signup-otp" element={<VerifySignupOTP />} />
 
         {/* ✅ ALL MAIN APP PAGES INSIDE LAYOUT */}
         <Route element={<MainLayout />}>
@@ -46,7 +52,6 @@ export default function AppRouter() {
           <Route path="/printer" element={<Printer />} />
           <Route path="/feedback" element={<Feedback />} />
           <Route path="/about" element={<About />} />
-
           {/* ADMIN INSIDE SAME LAYOUT */}
           <Route
             path="/admin"

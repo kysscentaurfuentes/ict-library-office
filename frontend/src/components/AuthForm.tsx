@@ -1,5 +1,4 @@
 // frontend/src/components/AuthForm.tsx
-
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
@@ -11,17 +10,23 @@ type Props = {
   isLocked?: boolean;
   lockCountdown?: number;
 
-onSubmit: (
-  firstName: string,
-  middleName: string,
-  lastName: string,
-  email: string,
-  password: string,
-  course: string,
-  studentId: string,
-  schoolIdImage: File,
-  identifier?: string
-) => Promise<void> | void;
+  emailError?: string;
+  studentIdError?: string;
+
+  setEmailError?: (value: string) => void;
+  setStudentIdError?: (value: string) => void;
+      checkingEmail?: boolean
+  onSubmit: (
+    firstName: string,
+    middleName: string,
+    lastName: string,
+    email: string,
+    password: string,
+    course: string,
+    studentId: string,
+    schoolIdImage: File,
+    identifier?: string,
+  ) => Promise<void> | void;
 
   loading?: boolean;
   error?: string;
@@ -119,10 +124,21 @@ const handleNameChange = (
   value: string,
   setter: (value: string) => void
 ): void => {
+
   const cleanedValue = value
-    .replace(/[^a-zA-Z\s]/g, '')   // letters + spaces lang
-    .replace(/\s{2,}/g, ' ')       // multiple spaces → single space
-    .replace(/^\s+/, '');          // optional: no leading space
+    // letters + spaces only
+    .replace(/[^a-zA-Z\s]/g, '')
+
+    // single spaces only
+    .replace(/\s{2,}/g, ' ')
+
+    // no leading spaces
+    .replace(/^\s+/, '')
+
+    // auto capitalize every word
+    .replace(/\b\w/g, (char) =>
+      char.toUpperCase()
+    );
 
   setter(cleanedValue);
 };
@@ -136,6 +152,11 @@ export default function AuthForm({
   mode = 'login',
   isLocked = false,
   lockCountdown = 0,
+  emailError,
+  studentIdError,
+  setEmailError,
+  setStudentIdError,
+  checkingEmail
 }: Props) {
   const navigate = useNavigate();
 
@@ -533,6 +554,22 @@ const isEmailValid =
         return;
       }
 
+      if (!schoolIdImage) return;
+
+      if (emailError) {
+  setLocalError(
+    "CARSU email already registered."
+  );
+  return;
+}
+
+if (studentIdError) {
+  setLocalError(
+    "Student ID already registered."
+  );
+  return;
+}
+
 await onSubmit(
   firstName,
   middleName,
@@ -541,7 +578,7 @@ await onSubmit(
   password,
   course,
   studentId,
-  schoolIdImage!
+  schoolIdImage
 );
 
 
@@ -751,56 +788,129 @@ const renderInput = (
                   true
                 )}
 
-             <div
-  style={{
-    display: 'flex',
-    flexDirection: 'column',
-  }}
->
-  <label style={labelStyle}>
-    CARSU Email
-  </label>
+                {/* CARSU EMAIL */}
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }}
+                >
+                  <label style={labelStyle}>
+                    CARSU Email
+                  </label>
 
-  <div
-    style={{
-      position: 'relative',
-    }}
-  >
-    <input
-    className="auth-input"
-      type="text"
-      value={email}
-      placeholder="Enter your CARSU email"
-      required
-      style={{
-        ...inputStyle,
-        paddingRight: '150px',
-      }}
-     onChange={(
-  e: React.ChangeEvent<HTMLInputElement>
-): void => {
-  const cleaned =
-    e.target.value.replace(/@/g, '');
+                  {/* INPUT WRAPPER */}
+                  <div
+                    style={{
+                      position: 'relative',
+                    }}
+                  >
+                    <input
+                      className="auth-input"
+                      type="text"
+                      value={email}
+                      placeholder="Enter your CARSU email"
+                      required
+                      style={{
+                        ...inputStyle,
+                        paddingRight: '150px',
+                      }}
+                      onChange={(e) => {
 
-  setEmail(cleaned);
-}}
-    />
+                        let cleaned =
+                          e.target.value;
 
-    <span
-      style={{
-        position: 'absolute',
-        right: '14px',
-        top: '50%',
-        transform: 'translateY(-50%)',
-        color: 'rgba(255,255,255,0.55)',
-        fontSize: '0.9rem',
-        fontWeight: 600,
-      }}
-    >
-      @carsu.edu.ph
-    </span>
-  </div>
-</div>
+                        // remove spaces
+                        cleaned =
+                          cleaned.replace(/\s/g, '');
+
+                        // remove invalid chars
+                        cleaned =
+                          cleaned.replace(
+                            /[^a-zA-Z0-9._+-]/g,
+                            ''
+                          );
+
+                        // prevent double dots
+                        cleaned =
+                          cleaned.replace(
+                            /\.{2,}/g,
+                            '.'
+                          );
+
+                        // prevent starting dot
+                        cleaned =
+                          cleaned.replace(
+                            /^\./,
+                            ''
+                          );
+
+                        // prevent multiple underscores
+                        cleaned =
+                          cleaned.replace(
+                            /_{2,}/g,
+                            '_'
+                          );
+
+                        setEmail(cleaned);
+
+                        if (setEmailError) {
+                          setEmailError('');
+                        }
+                      }}
+                    />
+
+                    <span
+                      style={{
+                        position: 'absolute',
+                        right: '14px',
+                        top: '50%',
+                        transform:
+                          'translateY(-50%)',
+                        color:
+                          'rgba(255,255,255,0.55)',
+                        fontSize: '0.9rem',
+                        fontWeight: 600,
+                        pointerEvents: 'none',
+                      }}
+                    >
+                      @carsu.edu.ph
+                    </span>
+                  </div>
+
+                  {/* RESERVED ERROR SPACE */}
+                  <div
+                    style={{
+                      minHeight: '24px',
+                      marginTop: '6px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      transition: '0.2s ease',
+                    }}
+                  >
+                    {checkingEmail ? (
+                      <p
+                        style={{
+                          color: '#aaa',
+                          fontSize: '0.8rem',
+                          margin: 0,
+                        }}
+                      >
+                        Checking email availability...
+                      </p>
+                    ) : emailError ? (
+                      <p
+                        style={{
+                          color: 'red',
+                          fontSize: '0.85rem',
+                          margin: 0,
+                        }}
+                      >
+                        {emailError}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
 
                 {/* SCHOOL ID UPLOAD */}
 <div
@@ -932,23 +1042,55 @@ const renderInput = (
                   }}
                 >
                   <label style={labelStyle}>
-                    Student ID
-                    (000-00000)
+                    Student ID (000-00000)
                   </label>
 
-                  <input
-                  className="auth-input"
-                    type="text"
-                    inputMode="numeric"
-                    value={studentId}
-                    onChange={
-                      handleStudentIdChange
-                    }
-                    required
-                    maxLength={9}
-                    placeholder="Enter student ID"
-                    style={inputStyle}
-                  />
+                 <input
+  className="auth-input"
+  type="text"
+  inputMode="numeric"
+  value={studentId}
+  onChange={(e) => {
+  let value = e.target.value.replace(/\D/g, '');
+
+  if (value.length > 8) {
+    value = value.slice(0, 8);
+  }
+
+  if (value.length > 3) {
+    value = value.slice(0, 3) + '-' + value.slice(3);
+  }
+
+  setStudentId(value);
+  setStudentIdError?.('');
+}}
+  required
+  maxLength={9}
+  placeholder="Enter student ID"
+  style={inputStyle}
+/>
+
+<div
+  style={{
+    minHeight: '24px',
+    marginTop: '6px',
+    display: 'flex',
+    alignItems: 'center',
+    transition: '0.2s ease',
+  }}
+>
+  {studentIdError && (
+    <p
+      style={{
+        color: 'red',
+        fontSize: '0.85rem',
+        margin: 0,
+      }}
+    >
+      {studentIdError}
+    </p>
+  )}
+</div>
                 </div>
 
                {/* PASSWORD */}
@@ -1107,7 +1249,9 @@ const renderInput = (
               type="submit"
               disabled={
                 loading ||
-                !isFormValid
+                !isFormValid ||
+                !!emailError ||
+                !!studentIdError
               }
               style={{
                 width: '300px',

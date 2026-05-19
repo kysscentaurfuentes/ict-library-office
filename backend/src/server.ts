@@ -159,7 +159,7 @@ app.post(
 console.log("BASE_URL:", BASE_URL);
       return res.json({
   imageUrl:
-    `${BASE_URL}/uploads/school-ids/${fileReq.file.filename}`,
+    `${BASE_URL}/uploads/temporary school-ids/${fileReq.file.filename}`,
 });
     });
   }
@@ -703,6 +703,90 @@ const BASE_URL = process.env.PUBLIC_URL!;
   console.log(`${LOG.cyan}   API Base: http://${LOCAL_IP}:4000${LOG.reset}`);
   console.log("=".repeat(60));
 }
+
+// ==========================
+// 🧹 CLEANUP TEMP SIGNUPS
+// ==========================
+setInterval(async () => {
+
+  try {
+
+    console.log(
+      "🧹 Cleaning expired signup temp files..."
+    );
+
+    const expired =
+      await pool.query(
+        `
+        SELECT
+          school_id_image
+        FROM signup_pending
+        WHERE signup_otp_expires_at < NOW()
+        `
+      );
+
+    for (const row of expired.rows) {
+
+      try {
+
+        const imageUrl =
+          row.school_id_image;
+
+        if (!imageUrl) continue;
+
+        const imageName =
+          path.basename(imageUrl);
+
+        const filePath =
+          path.join(
+            UPLOADS_DIR,
+            "temporary school-ids",
+            imageName
+          );
+
+        if (
+          fs.existsSync(filePath)
+        ) {
+
+          fs.unlinkSync(filePath);
+
+          console.log(
+            "🗑 Deleted temp file:",
+            imageName
+          );
+        }
+
+      } catch (err) {
+
+        console.error(
+          "TEMP FILE DELETE ERROR:",
+          err
+        );
+      }
+    }
+
+    // ==========================
+    // DELETE EXPIRED ROWS
+    // ==========================
+    await pool.query(
+      `
+      DELETE FROM signup_pending
+      WHERE signup_otp_expires_at < NOW()
+      `
+    );
+
+  } catch (err) {
+
+    console.error(
+      "CLEANUP ERROR:",
+      err
+    );
+  }
+
+},
+// DEVELOPMENT
+30 * 1000
+);
 
 // ==========================
 // ▶ RUN

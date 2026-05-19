@@ -5,14 +5,37 @@ import bcrypt from 'bcrypt';
 import dotenv from 'dotenv';
 import { sendOTP } from "./utils/mailer.js";
 import crypto from "crypto";
+import { GraphQLError } from "graphql";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
 dotenv.config();
 
-if (!process.env.JWT_SECRET) {
-  throw new Error("JWT_SECRET missing");
-}
+const __filename =
+  fileURLToPath(import.meta.url);
 
-const SECRET = process.env.JWT_SECRET;
+const __dirname =
+  path.dirname(__filename);
+
+const ROOT_DIR =
+  path.resolve(__dirname, "..");
+
+const TEMP_SCHOOL_IDS_DIR =
+  path.join(
+    ROOT_DIR,
+    "uploads",
+    "temporary school-ids"
+  );
+
+const SCHOOL_IDS_DIR =
+  path.join(
+    ROOT_DIR,
+    "uploads",
+    "school-ids"
+  );
+
+const SECRET = process.env.JWT_SECRET as string;
 
 interface UserRow {
   id: number;
@@ -66,6 +89,28 @@ interface UserRow {
   last_otp_sent_at?: string | null;
 
   account_status?: string;
+}
+
+interface SignupPendingRow {
+  id: number;
+
+  first_name: string;
+  middle_name: string | null;
+  last_name: string;
+
+  email: string;
+  password: string;
+
+  StudentId: string;
+
+  course: string;
+  school_id_image: string;
+
+  signup_otp: string;
+  signup_otp_expires_at: string;
+
+  failed_signup_attempts?: number;
+  signup_locked_until?: string | null;
 }
 
 type Context = {
@@ -134,7 +179,7 @@ function buildEmail(identifier: string) {
 }
 
 export const resolvers = {
-  Query: {
+  Query: { // START OF QUERY
     hello: () => "Backend is working with Router 🚀",
 
     checkOtpStatus: async (
@@ -176,7 +221,7 @@ export const resolvers = {
           user.otp_locked_until
       };
     },
-
+    // ME QUERY
     me: async (
       _: any,
       __: any,
@@ -231,7 +276,9 @@ export const resolvers = {
 
       return user;
     },
+    // END OF ME QUERY
 
+    // ROUTER DEVICES QUERY
     routerDevices: async (_: unknown, __: unknown, context: Context) => {
       requireAuth(context);
 
@@ -248,6 +295,9 @@ export const resolvers = {
 
       return res.rows;
     },
+    // END ROUTER DEVICES QUERY
+
+    // PENDING USERS QUERY
     pendingUsers: async (
   _: any,
   __: any,
@@ -276,9 +326,219 @@ export const resolvers = {
 
   return result.rows;
 },
-  },
+ // END OF PENDING USERS QUERY
 
+ // CHECK SIGNUP AVAILABILITY QUERY
+checkSignupAvailability: async (
+  _: any,
+  {
+    email,
+    StudentId
+  }: {
+    email?: string;
+    StudentId?: string;
+  }
+) => {
+
+  if (email) {
+
+    const existingEmail =
+      await pool.query(
+        `
+        SELECT id
+        FROM users
+        WHERE LOWER(email) = LOWER($1)
+        `,
+        [email.trim().toLowerCase()]
+      );
+
+    return {
+      available:
+        existingEmail.rows.length === 0,
+      field: "email"
+    };
+  }
+
+  if (StudentId) {
+
+    const existingStudentId =
+      await pool.query(
+        `
+        SELECT id
+        FROM users
+        WHERE "StudentId" = $1
+        `,
+        [normalizeStudentId(StudentId)]
+      );
+
+    return {
+      available:
+        existingStudentId.rows.length === 0,
+      field: "StudentId"
+    };
+  }
+
+  throw new Error("Missing input");
+},
+ // END OF CHECK SIGNUP AVAILABILITY QUERY
+  }, // END OF QUERY
+  
+  // START OF MUTATION
    Mutation: {
+    requestSignupOTP: async (
+  _: any,
+  {
+    first_name,
+    middle_name,
+    last_name,
+    email,
+    password,
+    StudentId,
+    course,
+    school_id_image
+  }: any
+) => {
+
+  if (!/^\d{3}-\d{5}$/.test(StudentId)) {
+    throw new Error(
+      "Invalid Student ID format"
+    );
+  }
+
+  const normalizedEmail =
+    email.trim().toLowerCase();
+
+  const normalizedStudentId =
+    normalizeStudentId(StudentId);
+
+  // =========================
+  // VALIDATE DOMAIN
+  // =========================
+  if (
+    !normalizedEmail.endsWith(
+      "@carsu.edu.ph"
+    )
+  ) {
+    throw new GraphQLError(
+      "Only CARSU email is allowed.",
+      {
+        extensions: {
+          code:
+            "INVALID_EMAIL_DOMAIN",
+        },
+      }
+    );
+  }
+
+  // =========================
+  // CHECK REAL USERS
+  // =========================
+  const existingUser =
+    await pool.query(
+      `
+      SELECT id
+      FROM users
+      WHERE LOWER(email) = LOWER($1)
+         OR "StudentId" = $2
+      `,
+      [
+        normalizedEmail,
+        normalizedStudentId
+      ]
+    );
+
+  if (existingUser.rows.length > 0) {
+    throw new Error(
+      "Account already exists"
+    );
+  }
+
+  // =========================
+  // REMOVE OLD PENDING
+  // =========================
+  await pool.query(
+    `
+    DELETE FROM signup_pending
+    WHERE LOWER(email) = LOWER($1)
+       OR "StudentId" = $2
+    `,
+    [
+      normalizedEmail,
+      normalizedStudentId
+    ]
+  );
+
+  // =========================
+  // HASH PASSWORD
+  // =========================
+  const hashedPassword =
+    await bcrypt.hash(password, 10);
+
+  // =========================
+  // GENERATE OTP
+  // =========================
+  const code =
+    Math.floor(
+      100000 +
+      Math.random() * 900000
+    ).toString();
+
+  const hashedOTP = crypto
+    .createHmac(
+      "sha256",
+      process.env.JWT_SECRET!
+    )
+    .update(code)
+    .digest("hex");
+
+  // =========================
+  // SAVE TEMP SIGNUP
+  // =========================
+  await pool.query(
+    `
+    INSERT INTO signup_pending (
+      first_name,
+      middle_name,
+      last_name,
+      email,
+      password,
+      "StudentId",
+      course,
+      school_id_image,
+      signup_otp,
+      signup_otp_expires_at
+    )
+
+    VALUES (
+      $1,$2,$3,$4,$5,
+      $6,$7,$8,$9,
+      NOW() + INTERVAL '5 minutes'
+    )
+    `,
+    [
+      first_name,
+      middle_name,
+      last_name,
+      normalizedEmail,
+      hashedPassword,
+      normalizedStudentId,
+      course,
+      school_id_image,
+      hashedOTP
+    ]
+  );
+
+  // =========================
+  // SEND EMAIL OTP
+  // =========================
+  await sendOTP(
+    normalizedEmail,
+    code
+  );
+
+  return true;
+},
+
     login: async (_: any, { identifier, password }: any) => {
 
     console.log("RAW IDENTIFIER:", identifier);
@@ -321,14 +581,38 @@ export const resolvers = {
     // 2nd assertUser
     assertUser(user);
    if (user.account_status === "PENDING") {
-  throw new Error(
-    "Your account is pending by Admin approval."
+
+  throw new GraphQLError(
+    "Your account is pending by Admin approval.",
+    {
+      extensions: {
+        code: "ACCOUNT_PENDING",
+
+        studentId:
+          user.StudentId,
+
+        email:
+          user.email,
+      },
+    }
   );
 }
 
 if (user.account_status === "REJECTED") {
-  throw new Error(
-    "Your account has been rejected by Admin."
+
+  throw new GraphQLError(
+    "Your account has been rejected by Admin.",
+    {
+      extensions: {
+        code: "ACCOUNT_REJECTED",
+
+        studentId:
+          user.StudentId,
+
+        email:
+          user.email,
+      },
+    }
   );
 }
     // 🚫 Check if account is locked using database time
@@ -463,7 +747,384 @@ await pool.query(
   }
 };
     },
-    
+
+    resendSignupOTP: async (
+  _: any,
+  { email }: any
+) => {
+
+  const normalizedEmail =
+    email.trim().toLowerCase();
+
+      console.log(
+  "RESEND EMAIL:",
+  normalizedEmail
+);
+
+  const result =
+    await pool.query<SignupPendingRow>(
+      `
+      SELECT *
+      FROM signup_pending
+      WHERE LOWER(email) = LOWER($1)
+      `,
+      [normalizedEmail]
+    );
+
+  const pending =
+    result.rows[0];
+
+      console.log(
+  "PENDING SIGNUP:",
+  pending
+);
+
+  if (!pending) {
+    throw new Error(
+      "No pending signup found"
+    );
+  }
+
+  // =========================
+  // GENERATE NEW OTP
+  // =========================
+  const code =
+    Math.floor(
+      100000 +
+      Math.random() * 900000
+    ).toString();
+
+  const hashedOTP = crypto
+    .createHmac(
+      "sha256",
+      process.env.JWT_SECRET!
+    )
+    .update(code)
+    .digest("hex");
+
+  // =========================
+  // UPDATE OTP + RESET TIMER
+  // =========================
+  await pool.query(
+    `
+    UPDATE signup_pending
+    SET
+      signup_otp = $1,
+      signup_otp_expires_at =
+        NOW() + INTERVAL '5 minutes'
+    WHERE id = $2
+    `,
+    [
+      hashedOTP,
+      pending.id
+    ]
+  );
+
+  // =========================
+  // SEND NEW OTP
+  // =========================
+  await sendOTP(
+    normalizedEmail,
+    code
+  );
+
+  return true;
+},
+
+    verifySignupOTP: async (
+  _: any,
+  {
+    email,
+    code
+  }: any
+) => {
+
+  const normalizedEmail =
+    email.trim().toLowerCase();
+
+  // =========================
+  // GET PENDING SIGNUP
+  // =========================
+  const result =
+    await pool.query<SignupPendingRow>(
+      `
+      SELECT *
+      FROM signup_pending
+      WHERE LOWER(email) = LOWER($1)
+      `,
+      [normalizedEmail]
+    );
+
+  const pending =
+    result.rows[0];
+
+      console.log(
+  "PENDING SIGNUP:",
+  pending
+);
+
+  if (!pending) {
+    throw new Error(
+      "No pending signup found"
+    );
+  }
+
+  // =========================
+  // CHECK LOCK
+  // =========================
+  const lockCheck =
+    await pool.query(
+      `
+      SELECT
+        NOW() < signup_locked_until
+        as locked
+      FROM signup_pending
+      WHERE id = $1
+      `,
+      [pending.id]
+    );
+
+  if (lockCheck.rows[0]?.locked) {
+
+    const unlockTime =
+      await pool.query(
+        `
+        SELECT
+        EXTRACT(
+          EPOCH FROM (
+            signup_locked_until - NOW()
+          )
+        )::int as remaining_seconds
+
+        FROM signup_pending
+        WHERE id = $1
+        `,
+        [pending.id]
+      );
+
+    const remainingSeconds =
+      unlockTime.rows?.[0]
+        ?.remaining_seconds || 0;
+
+    throw Object.assign(
+      new Error("SIGNUP_OTP_LOCKED"),
+      {
+        extensions: {
+          code:
+            "SIGNUP_OTP_LOCKED",
+          remainingSeconds,
+        },
+      }
+    );
+  }
+
+  // =========================
+  // CHECK OTP EXISTS
+  // =========================
+  if (
+    !pending.signup_otp ||
+    !pending.signup_otp_expires_at
+  ) {
+    throw new Error(
+      "No signup OTP found"
+    );
+  }
+
+  // =========================
+  // CHECK EXPIRATION
+  // =========================
+  const expiryCheck =
+    await pool.query(
+      `
+      SELECT
+        NOW() <
+        signup_otp_expires_at
+        as valid
+
+      FROM signup_pending
+      WHERE id = $1
+      `,
+      [pending.id]
+    );
+
+  if (!expiryCheck.rows[0]?.valid) {
+    throw new Error(
+      "Signup OTP expired"
+    );
+  }
+
+  // =========================
+  // HASH INPUT OTP
+  // =========================
+  const hashedInput = crypto
+    .createHmac(
+      "sha256",
+      process.env.JWT_SECRET!
+    )
+    .update(code)
+    .digest("hex");
+
+  // =========================
+  // INVALID OTP
+  // =========================
+  if (
+    pending.signup_otp !==
+    hashedInput
+  ) {
+
+    const attempts =
+      (pending.failed_signup_attempts || 0) + 1;
+
+    let lockUntil: Date | null =
+      null;
+
+    if (attempts >= 5) {
+      lockUntil =
+        new Date(
+          Date.now() +
+          15 * 60 * 1000
+        );
+    }
+
+    await pool.query(
+      `
+      UPDATE signup_pending
+      SET
+        failed_signup_attempts = $1,
+        signup_locked_until = $2
+      WHERE id = $3
+      `,
+      [
+        attempts,
+        lockUntil,
+        pending.id
+      ]
+    );
+
+    throw Object.assign(
+      new Error("INVALID_SIGNUP_OTP"),
+      {
+        extensions: {
+          code:
+            "INVALID_SIGNUP_OTP",
+
+          attemptsLeft:
+            Math.max(
+              0,
+              5 - attempts
+            ),
+        },
+      }
+    );
+  }
+
+  // =========================
+  // CREATE REAL ACCOUNT
+  // =========================
+  // =========================
+// MOVE TEMP FILE
+// =========================
+let finalImagePath =
+  pending.school_id_image;
+
+try {
+
+  const imageName =
+    path.basename(
+      pending.school_id_image
+    );
+
+  const oldPath =
+    path.join(
+      TEMP_SCHOOL_IDS_DIR,
+      imageName
+    );
+
+  const cleanedName =
+    imageName.replace(
+      "-temporary-school-id",
+      "-school-id"
+    );
+
+  const newPath =
+    path.join(
+      SCHOOL_IDS_DIR,
+      cleanedName
+    );
+
+  if (fs.existsSync(oldPath)) {
+
+    fs.renameSync(
+      oldPath,
+      newPath
+    );
+
+    const BASE_URL =
+      process.env.PUBLIC_URL;
+
+    finalImagePath =
+`${BASE_URL}/uploads/school-ids/${cleanedName}`;
+  }
+
+} catch (err) {
+
+  console.error(
+    "FAILED TO MOVE SCHOOL ID:",
+    err
+  );
+
+  throw new Error(
+    "Failed to finalize school ID"
+  );
+}
+
+  await pool.query(
+    `
+    INSERT INTO users (
+      first_name,
+      middle_name,
+      last_name,
+      email,
+      password,
+      "StudentId",
+      course,
+      school_id_image,
+      role,
+      account_status
+    )
+
+    VALUES (
+      $1,$2,$3,$4,$5,
+      $6,$7,$8,$9,$10
+    )
+    `,
+    [
+      pending.first_name,
+      pending.middle_name,
+      pending.last_name,
+      pending.email,
+      pending.password,
+      pending.StudentId,
+      pending.course,
+      finalImagePath,
+      "Student",
+      "PENDING"
+    ]
+  );
+
+  // =========================
+  // DELETE TEMP SIGNUP
+  // =========================
+  await pool.query(
+    `
+    DELETE FROM signup_pending
+    WHERE id = $1
+    `,
+    [pending.id]
+  );
+
+  return true;
+},
     
     verifyTwoFactor: async (_: any, { identifier, code }: any) => {
   const clean = normalizeIdentifier(identifier);
@@ -648,20 +1309,84 @@ await pool.query(
   throw new Error("Invalid Student ID format");
 }
 
-  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedEmail =
+  email.trim().toLowerCase();
 
-  const existing = await pool.query(
+const normalizedStudentId =
+  normalizeStudentId(StudentId);
+
+// =========================
+// VALIDATE CARSU EMAIL
+// =========================
+if (
+  !normalizedEmail.endsWith(
+    "@carsu.edu.ph"
+  )
+) {
+  throw new GraphQLError(
+  "Only CARSU email is allowed.",
+  {
+    extensions: {
+      code:
+        "INVALID_EMAIL_DOMAIN",
+    },
+  }
+);
+}
+
+// =========================
+// CHECK EMAIL DUPLICATE
+// =========================
+const existingEmail =
+  await pool.query(
     `
-    SELECT * FROM users
+    SELECT id
+    FROM users
     WHERE LOWER(email) = LOWER($1)
-OR "StudentId" = $2
     `,
-    [normalizedEmail, StudentId]
+    [normalizedEmail]
   );
 
-  if (existing.rows.length > 0) {
-    throw new Error("Account already exists");
+if (
+  existingEmail.rows.length > 0
+) {
+  throw new GraphQLError(
+  "CARSU email already registered.",
+  {
+    extensions: {
+      code:
+        "EMAIL_EXISTS",
+    },
   }
+);
+}
+
+// =========================
+// CHECK STUDENT ID DUPLICATE
+// =========================
+const existingStudentId =
+  await pool.query(
+    `
+    SELECT id
+    FROM users
+    WHERE "StudentId" = $1
+    `,
+    [normalizedStudentId]
+  );
+
+if (
+  existingStudentId.rows.length > 0
+) {
+throw new GraphQLError(
+  "Student ID already registered.",
+  {
+    extensions: {
+      code:
+        "STUDENT_ID_EXISTS",
+    },
+  }
+);
+}
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -688,7 +1413,7 @@ OR "StudentId" = $2
       last_name,
       normalizedEmail,
       hashedPassword,
-      StudentId,
+      normalizedStudentId,
       course,
       school_id_image,
       "Student",
