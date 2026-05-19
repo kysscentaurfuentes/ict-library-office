@@ -175,6 +175,24 @@ localStorage.setItem(
   email
 );
 
+const otpExpiry =
+  Date.now() +
+  5 * 60 * 1000;
+
+localStorage.setItem(
+  "signupOtpExpiry",
+  String(otpExpiry)
+);
+
+const resendExpiry =
+  Date.now() +
+  2 * 60 * 1000;
+
+localStorage.setItem(
+  "signupResendExpiry",
+  String(resendExpiry)
+);
+
 alert(
   "OTP sent to your CARSU email."
 );

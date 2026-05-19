@@ -381,6 +381,45 @@ checkSignupAvailability: async (
   throw new Error("Missing input");
 },
  // END OF CHECK SIGNUP AVAILABILITY QUERY
+ checkSignupOtpStatus: async (
+  _: any,
+  { email }: any
+) => {
+
+  const normalizedEmail =
+    email.trim().toLowerCase();
+
+  const result =
+    await pool.query(
+      `
+      SELECT
+        failed_signup_attempts,
+        signup_locked_until
+      FROM signup_pending
+      WHERE LOWER(email) = LOWER($1)
+      `,
+      [normalizedEmail]
+    );
+
+  const pending =
+    result.rows[0];
+
+  if (!pending) {
+
+    return {
+      failedAttempts: 0,
+      lockedUntil: null
+    };
+  }
+
+  return {
+    failedAttempts:
+      pending.failed_signup_attempts || 0,
+
+    lockedUntil:
+      pending.signup_locked_until
+  };
+},
   }, // END OF QUERY
   
   // START OF MUTATION
@@ -1021,6 +1060,16 @@ await pool.query(
   // =========================
   // CREATE REAL ACCOUNT
   // =========================
+  await pool.query(
+  `
+  UPDATE signup_pending
+  SET
+    failed_signup_attempts = 0,
+    signup_locked_until = NULL
+  WHERE id = $1
+  `,
+  [pending.id]
+);
   // =========================
 // MOVE TEMP FILE
 // =========================

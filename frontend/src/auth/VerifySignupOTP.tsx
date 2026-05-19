@@ -1,5 +1,8 @@
 import { gql } from "@apollo/client/core";
-import { useMutation } from "@apollo/client/react";
+import {
+  useMutation,
+  useApolloClient
+} from "@apollo/client/react";
 import {
 useEffect,
 useRef,
@@ -29,6 +32,19 @@ mutation ResendSignupOTP(
 }
 `;
 
+const CHECK_SIGNUP_OTP_STATUS = gql`
+query CheckSignupOtpStatus(
+  $email: String!
+) {
+  checkSignupOtpStatus(
+    email: $email
+  ) {
+    failedAttempts
+    lockedUntil
+  }
+}
+`;
+
 type VerifyResponse = {
   verifySignupOTP: boolean;
 };
@@ -42,6 +58,9 @@ export default function VerifySignupOTP() {
 
   const currentBackground =
     useDynamicBackground();
+
+    const client =
+  useApolloClient();
 
   const [
     verifySignupOTP,
@@ -74,6 +93,21 @@ const inputRefs =
 const [shake, setShake] =
   useState(false);
 
+  const [
+  signupAttempts,
+  setSignupAttempts
+] = useState(0);
+
+const [
+  isLocked,
+  setIsLocked
+] = useState(false);
+
+const [
+  checkingLock,
+  setCheckingLock
+] = useState(true);
+
   const [error, setError] =
     useState("");
 
@@ -82,34 +116,151 @@ const [shake, setShake] =
   setLockSecondsLeft
 ] = useState(0);
 
-  const [secondsLeft, setSecondsLeft] =
-  useState(5 * 60);
-  
-  const [
+ const [
+  secondsLeft,
+  setSecondsLeft
+] = useState(0);
+
+const [
   resendSecondsLeft,
   setResendSecondsLeft
-] = useState(2 * 60);
+] = useState(0);
+
+const getAttemptColor = (
+  attempts: number
+) => {
+
+  if (attempts === 0)
+    return "#22c55e";
+
+  if (attempts === 1)
+    return "#3b82f6";
+
+  if (attempts === 2)
+    return "#facc15";
+
+  if (attempts === 3)
+    return "#f97316";
+
+  if (attempts === 4)
+    return "#ef4444";
+
+  return "#a855f7";
+};
 
   const email =
     localStorage.getItem(
       "pendingSignupEmail"
     ) || "";
-
 useEffect(() => {
+
+  // OTP EXPIRY
+  const storedOtpExpiry =
+    localStorage.getItem(
+      "signupOtpExpiry"
+    );
+
+  if (storedOtpExpiry) {
+
+    const remaining =
+      Math.floor(
+        (
+          Number(storedOtpExpiry) -
+          Date.now()
+        ) / 1000
+      );
+
+    setSecondsLeft(
+      remaining > 0
+        ? remaining
+        : 0
+    );
+
+  } else {
+
+    const newExpiry =
+      Date.now() +
+      5 * 60 * 1000;
+
+    localStorage.setItem(
+      "signupOtpExpiry",
+      String(newExpiry)
+    );
+
+    setSecondsLeft(
+      5 * 60
+    );
+  }
+
+  // RESEND EXPIRY
+  const storedResendExpiry =
+    localStorage.getItem(
+      "signupResendExpiry"
+    );
+
+  if (storedResendExpiry) {
+
+    const remaining =
+      Math.floor(
+        (
+          Number(
+            storedResendExpiry
+          ) - Date.now()
+        ) / 1000
+      );
+
+    setResendSecondsLeft(
+      remaining > 0
+        ? remaining
+        : 0
+    );
+
+  } else {
+
+    const newExpiry =
+      Date.now() +
+      2 * 60 * 1000;
+
+    localStorage.setItem(
+      "signupResendExpiry",
+      String(newExpiry)
+    );
+
+    setResendSecondsLeft(
+      2 * 60
+    );
+  }
+
+}, []);
+useEffect(() => {
+
   const interval =
     setInterval(() => {
 
-      setSecondsLeft(prev => {
+      const expiry =
+        Number(
+          localStorage.getItem(
+            "signupOtpExpiry"
+          )
+        );
 
-        if (prev <= 1) {
+      if (!expiry) {
+        return;
+      }
 
-          clearInterval(interval);
+      const remaining =
+        Math.floor(
+          (
+            expiry -
+            Date.now()
+          ) / 1000
+        );
 
-          return 0;
-        }
-
-        return prev - 1;
-      });
+      setSecondsLeft(
+        remaining > 0
+          ? remaining
+          : 0
+      );
 
     }, 1000);
 
@@ -118,27 +269,48 @@ useEffect(() => {
 
 }, []);
 
-    useEffect(() => {
+  useEffect(() => {
 
-  const interval = setInterval(() => {
+  const interval =
+    setInterval(() => {
 
-    setResendSecondsLeft(prev => {
+      const expiry =
+        Number(
+          localStorage.getItem(
+            "signupResendExpiry"
+          )
+        );
 
-      if (prev <= 0) {
-        return 0;
+      if (!expiry) {
+        return;
       }
 
-      return prev - 1;
-    });
+      const remaining =
+        Math.floor(
+          (
+            expiry -
+            Date.now()
+          ) / 1000
+        );
 
-  }, 1000);
+      setResendSecondsLeft(
+        remaining > 0
+          ? remaining
+          : 0
+      );
 
-  return () => clearInterval(interval);
+    }, 1000);
+
+  return () =>
+    clearInterval(interval);
 
 }, []);
 useEffect(() => {
 
   if (lockSecondsLeft <= 0) {
+
+    setIsLocked(false);
+
     return;
   }
 
@@ -154,6 +326,8 @@ useEffect(() => {
               interval
             );
 
+            setIsLocked(false);
+
             return 0;
           }
 
@@ -167,6 +341,84 @@ useEffect(() => {
     clearInterval(interval);
 
 }, [lockSecondsLeft]);
+
+useEffect(() => {
+
+  const syncSignupOtp =
+    async () => {
+
+    try {
+
+      const { data } =
+        await client.query({
+          query:
+            CHECK_SIGNUP_OTP_STATUS,
+
+          variables: {
+            email
+          },
+
+          fetchPolicy:
+            "network-only",
+        });
+
+      const otp =
+        data?.checkSignupOtpStatus;
+
+      const attempts =
+        otp?.failedAttempts || 0;
+
+      setSignupAttempts(
+        Math.min(attempts, 5)
+      );
+
+      const lockUntil =
+        otp?.lockedUntil
+          ? new Date(
+              otp.lockedUntil
+            ).getTime()
+          : 0;
+
+      const remaining =
+        Math.max(
+          0,
+          Math.floor(
+            (
+              lockUntil -
+              Date.now()
+            ) / 1000
+          )
+        );
+
+      if (
+        attempts >= 5 &&
+        remaining > 0
+      ) {
+
+        setIsLocked(true);
+
+        setLockSecondsLeft(
+          remaining
+        );
+
+      } else {
+
+        setIsLocked(false);
+      }
+
+    } catch (err) {
+
+      console.error(err);
+
+    } finally {
+
+      setCheckingLock(false);
+    }
+  };
+
+  syncSignupOtp();
+
+}, [client, email]);
 
 const handleResendOTP =
   async () => {
@@ -186,13 +438,31 @@ const handleResendOTP =
       variables: { email }
     });
 
-    setSecondsLeft(
-      5 * 60
-    );
+    const otpExpiry =
+  Date.now() +
+  5 * 60 * 1000;
 
-    setResendSecondsLeft(
-      2 * 60
-    );
+localStorage.setItem(
+  "signupOtpExpiry",
+  String(otpExpiry)
+);
+
+setSecondsLeft(
+  5 * 60
+);
+
+const resendExpiry =
+  Date.now() +
+  2 * 60 * 1000;
+
+localStorage.setItem(
+  "signupResendExpiry",
+  String(resendExpiry)
+);
+
+setResendSecondsLeft(
+  2 * 60
+);
     setLockSecondsLeft(0);
 
     setOtp([
@@ -320,22 +590,31 @@ const handlePaste = (
       setError("");
 
       await verifySignupOTP({
-        variables: {
-          email,
-          code: otp.join("")
-        }
-      });
+  variables: {
+    email,
+    code: otp.join("")
+  }
+});
 
-      localStorage.removeItem(
-        "pendingSignupEmail"
-      );
+localStorage.removeItem(
+  "pendingSignupEmail"
+);
 
-      alert(
-        "Account created successfully. Please wait for Admin approval."
-      );
+// CLEAR OTP TIMERS
+localStorage.removeItem(
+  "signupOtpExpiry"
+);
 
-      window.location.hash =
-        "#/signin";
+localStorage.removeItem(
+  "signupResendExpiry"
+);
+
+alert(
+  "Account created successfully. Please wait for Admin approval."
+);
+
+window.location.hash =
+  "#/signin";
 
     } catch (err: any) {
 
@@ -355,12 +634,48 @@ if (
       ?.extensions
       ?.remainingSeconds || 0;
 
+  setIsLocked(true);
+
+  setSignupAttempts(5);
+    setSecondsLeft(0);
+
+setResendSecondsLeft(0);
+
+localStorage.removeItem(
+  "signupOtpExpiry"
+);
+
+localStorage.removeItem(
+  "signupResendExpiry"
+);
   setLockSecondsLeft(
     remainingSeconds
   );
 
   message =
     "Too many incorrect OTP attempts.";
+}
+
+if (
+  err?.graphQLErrors?.[0]
+    ?.extensions?.code ===
+  "INVALID_SIGNUP_OTP"
+) {
+
+  const attemptsLeft =
+    err?.graphQLErrors?.[0]
+      ?.extensions
+      ?.attemptsLeft ?? 0;
+
+  const usedAttempts =
+    5 - attemptsLeft;
+
+  setSignupAttempts(
+    Math.min(
+      usedAttempts,
+      5
+    )
+  );
 }
 
       setError(message);
@@ -513,26 +828,34 @@ return (
         {email}
       </p>
 
-      <p
-        style={{
-          color:
-            secondsLeft <= 60
-              ? "#fca5a5"
-              : "#86efac",
+    {
+  !isLocked &&
+  lockSecondsLeft <= 0 && (
 
-          textAlign: "center",
-          marginTop: "-5px",
-          fontSize: "0.92rem",
-        }}
-      >
-        OTP expires in{" "}
+    <p
+      style={{
+        color:
+          secondsLeft <= 60
+            ? "#fca5a5"
+            : "#86efac",
 
-        {Math.floor(secondsLeft / 60)}
-        :
-        {String(secondsLeft % 60)
-          .padStart(2, "0")}
-      </p>
+        textAlign: "center",
+        marginTop: "-5px",
+        fontSize: "0.92rem",
+      }}
+    >
+      OTP expires in{" "}
 
+      {Math.floor(secondsLeft / 60)}
+      :
+      {String(secondsLeft % 60)
+        .padStart(2, "0")}
+    </p>
+  )
+}
+{
+  !isLocked &&
+  lockSecondsLeft <= 0 && (
       <button
   onClick={handleResendOTP}
 
@@ -605,7 +928,8 @@ return (
       : "Didn't receive the code? Resend OTP"
   }
 </button>
-
+)
+}
       <div
         style={{
           display: "flex",
@@ -630,7 +954,10 @@ return (
                   inputRefs.current[index] = el;
                 }}
                 disabled={
-  lockSecondsLeft > 0 ||
+  isLocked ||
+  // 1
+  isLocked ||
+lockSecondsLeft > 0 ||
   resendLoading
 }
                 type="text"
@@ -669,8 +996,55 @@ return (
         }
       </div>
 
-        {
-  lockSecondsLeft > 0 && (
+      <p
+  style={{
+    textAlign: "center",
+    margin: "6px 0 0",
+    fontSize: "0.85rem",
+    color:
+      getAttemptColor(
+        signupAttempts
+      ),
+    fontWeight: 600,
+  }}
+>
+  Attempts:
+  {" "}
+  {signupAttempts}
+  {" / 5"}
+</p>
+
+{
+  signupAttempts >= 3 && (
+
+    <p
+      style={{
+        textAlign: "center",
+        margin:
+          "2px 0 6px 0",
+
+        fontSize: "0.78rem",
+
+        color: "#facc15",
+
+        fontWeight: 600,
+
+        lineHeight: 1.4,
+      }}
+    >
+      Warning:
+      Reaching 5 failed attempts
+      will lock OTP verification
+      for 15 minutes.
+    </p>
+  )
+}
+
+       {
+  (
+    isLocked ||
+    lockSecondsLeft > 0
+  ) && (
 
     <div
       style={{
@@ -726,11 +1100,41 @@ return (
       )}
 
       <button
-        onClick={handleVerify}
+  onClick={handleVerify}
+
+  onMouseEnter={(e) => {
+
+    if (
+      !loading &&
+      !resendLoading &&
+      lockSecondsLeft <= 0 &&
+      !otp.some(
+        digit => !digit
+      )
+    ) {
+
+      e.currentTarget.style.filter =
+        "brightness(1.12)";
+
+      e.currentTarget.style.transform =
+        "scale(1.01)";
+    }
+  }}
+
+  onMouseLeave={(e) => {
+
+    e.currentTarget.style.filter =
+      "brightness(1)";
+
+    e.currentTarget.style.transform =
+      "scale(1)";
+  }}
         disabled={
   loading ||
   resendLoading ||
-  lockSecondsLeft > 0 ||
+  //3
+  isLocked ||
+lockSecondsLeft > 0 ||
   otp.some(
     digit => !digit
   )
@@ -748,12 +1152,17 @@ return (
           opacity:
   loading ||
   resendLoading ||
-  lockSecondsLeft > 0 ||
+  //4
+  isLocked ||
+lockSecondsLeft > 0 ||
   otp.some(
     digit => !digit
   )
     ? 0.6
     : 1,
+
+    transition:
+  "all 0.18s ease",
         }}
       >
         {

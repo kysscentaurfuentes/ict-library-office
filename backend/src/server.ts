@@ -716,14 +716,15 @@ setInterval(async () => {
     );
 
     const expired =
-      await pool.query(
-        `
-        SELECT
-          school_id_image
-        FROM signup_pending
-        WHERE signup_otp_expires_at < NOW()
-        `
-      );
+  await pool.query(
+    `
+    SELECT
+      school_id_image
+    FROM signup_pending
+    WHERE created_at <
+    NOW() - INTERVAL '24 hours'
+    `
+  );
 
     for (const row of expired.rows) {
 
@@ -769,11 +770,12 @@ setInterval(async () => {
     // DELETE EXPIRED ROWS
     // ==========================
     await pool.query(
-      `
-      DELETE FROM signup_pending
-      WHERE signup_otp_expires_at < NOW()
-      `
-    );
+  `
+  DELETE FROM signup_pending
+  WHERE created_at <
+  NOW() - INTERVAL '24 hours'
+  `
+);
 
   } catch (err) {
 
@@ -785,7 +787,7 @@ setInterval(async () => {
 
 },
 // DEVELOPMENT
-30 * 1000
+5 * 60 * 1000
 );
 
 // ==========================

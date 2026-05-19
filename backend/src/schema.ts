@@ -63,7 +63,15 @@ type User {
   hello: String
   me: User
   routerDevices: [Device]
-  checkOtpStatus(identifier: String!): OtpStatus
+
+  checkOtpStatus(
+  identifier: String!
+  ): OtpStatus
+
+  checkSignupOtpStatus(
+  email: String!
+): OtpStatus
+
   pendingUsers: [User]
 
     checkSignupAvailability(
