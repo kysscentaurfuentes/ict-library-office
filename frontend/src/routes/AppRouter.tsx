@@ -23,6 +23,9 @@ import TwoFactor from '../auth/TwoFactor';
 import PendingApproval from '../auth/PendingApproval';
 import RejectedApproval from '../auth/RejectedApproval';
 import VerifySignupOTP from "../auth/VerifySignupOTP";
+import ForgotPassword from '../auth/ForgotPassword';
+import VerifyForgotPassword from '../auth/VerifyForgotPassword'
+import ResetForgotPassword from '../auth/ResetForgotPassword'
 
 export default function AppRouter() {
   return (
@@ -38,6 +41,9 @@ export default function AppRouter() {
         <Route path="/pending-approval" element={<PendingApproval />} />
         <Route path="/rejected-approval" element={<RejectedApproval />} />
         <Route path="/verify-signup-otp" element={<VerifySignupOTP />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/forgot-password/verify" element={<VerifyForgotPassword />} />
+        <Route path="/forgot-password/reset" element={<ResetForgotPassword />} />
 
         {/* ✅ ALL MAIN APP PAGES INSIDE LAYOUT */}
         <Route element={<MainLayout />}>

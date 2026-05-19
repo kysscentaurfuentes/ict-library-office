@@ -89,8 +89,16 @@ interface UserRow {
   last_otp_sent_at?: string | null;
 
   account_status?: string;
-}
 
+  forgot_password_otp?: string | null;
+
+forgot_password_otp_expires_at?: string | null;
+
+failed_forgot_attempts?: number;
+
+forgot_locked_until?: string | null;
+
+}
 interface SignupPendingRow {
   id: number;
 
@@ -412,18 +420,388 @@ checkSignupAvailability: async (
     };
   }
 
-  return {
-    failedAttempts:
-      pending.failed_signup_attempts || 0,
+ return {
+  failedAttempts:
+    pending.failed_signup_attempts || 0,
 
-    lockedUntil:
-      pending.signup_locked_until
-  };
+  lockedUntil:
+    pending.signup_locked_until
+      ? new Date(
+          pending.signup_locked_until
+        ).getTime()
+      : null
+};
 },
   }, // END OF QUERY
   
   // START OF MUTATION
    Mutation: {
+    requestForgotPasswordOTP: async (
+  _: any,
+  { identifier }: any
+) => {
+
+  const clean =
+    normalizeIdentifier(identifier);
+
+  const result =
+    await pool.query<UserRow>(
+      `
+      SELECT *
+      FROM users
+      WHERE LOWER(email) = LOWER($1)
+         OR "StudentId" = $2
+      `,
+      [
+        buildEmail(clean),
+        clean
+      ]
+    );
+
+  const user =
+    result.rows[0];
+
+  if (!user) {
+    throw new Error(
+      "Account not found"
+    );
+  }
+
+  // =========================
+  // CHECK LOCK
+  // =========================
+  const lockCheck =
+    await pool.query(
+      `
+      SELECT
+        NOW() < forgot_locked_until
+        AS locked
+      FROM users
+      WHERE id = $1
+      `,
+      [user.id]
+    );
+
+  if (lockCheck.rows[0]?.locked) {
+    throw new Error(
+      "Too many attempts. Try again later."
+    );
+  }
+
+  // =========================
+  // GENERATE OTP
+  // =========================
+  const code =
+    Math.floor(
+      100000 +
+      Math.random() * 900000
+    ).toString();
+
+  const hashedOTP =
+    crypto
+      .createHmac(
+        "sha256",
+        process.env.JWT_SECRET!
+      )
+      .update(code)
+      .digest("hex");
+
+  // =========================
+  // SAVE OTP
+  // =========================
+  await pool.query(
+    `
+    UPDATE users
+    SET
+      forgot_password_otp = $1,
+      forgot_password_otp_expires_at =
+        NOW() + INTERVAL '5 minutes'
+    WHERE id = $2
+    `,
+    [
+      hashedOTP,
+      user.id
+    ]
+  );
+
+  // =========================
+  // SEND EMAIL
+  // =========================
+  await sendOTP(
+    user.email,
+    code
+  );
+
+  return {
+    success: true,
+    message:
+      "OTP sent successfully"
+  };
+},
+verifyForgotPasswordOTP: async (
+  _: any,
+  {
+    identifier,
+    code
+  }: any
+) => {
+
+  const clean =
+    normalizeIdentifier(identifier);
+
+  const result =
+    await pool.query<UserRow>(
+      `
+      SELECT *
+      FROM users
+      WHERE LOWER(email) = LOWER($1)
+         OR "StudentId" = $2
+      `,
+      [
+        buildEmail(clean),
+        clean
+      ]
+    );
+
+  const user =
+    result.rows[0];
+
+  assertUser(user);
+
+  // =========================
+  // CHECK LOCK
+  // =========================
+  const lockCheck =
+    await pool.query(
+      `
+      SELECT
+        NOW() < forgot_locked_until
+        AS locked
+      FROM users
+      WHERE id = $1
+      `,
+      [user.id]
+    );
+
+  if (lockCheck.rows[0]?.locked) {
+    throw new Error(
+      "Forgot password temporarily locked."
+    );
+  }
+
+  // =========================
+  // CHECK OTP EXISTS
+  // =========================
+  if (
+    !user.forgot_password_otp ||
+    !user.forgot_password_otp_expires_at
+  ) {
+    throw new Error(
+      "No reset request found"
+    );
+  }
+
+  // =========================
+  // CHECK EXPIRATION
+  // =========================
+  const expiryCheck =
+    await pool.query(
+      `
+      SELECT
+        NOW() <
+        forgot_password_otp_expires_at
+        AS valid
+      FROM users
+      WHERE id = $1
+      `,
+      [user.id]
+    );
+
+  if (!expiryCheck.rows[0]?.valid) {
+    throw new Error(
+      "OTP expired"
+    );
+  }
+
+  // =========================
+  // HASH INPUT
+  // =========================
+  const hashedInput =
+    crypto
+      .createHmac(
+        "sha256",
+        process.env.JWT_SECRET!
+      )
+      .update(code)
+      .digest("hex");
+
+  // =========================
+  // INVALID OTP
+  // =========================
+  if (
+    user.forgot_password_otp !==
+    hashedInput
+  ) {
+
+    const attempts =
+      (user.failed_forgot_attempts || 0) + 1;
+
+    let lockUntil =
+      null;
+
+    if (attempts >= 5) {
+      lockUntil =
+        new Date(
+          Date.now() +
+          15 * 60 * 1000
+        );
+    }
+
+    await pool.query(
+      `
+      UPDATE users
+      SET
+        failed_forgot_attempts = $1,
+        forgot_locked_until = $2
+      WHERE id = $3
+      `,
+      [
+        attempts,
+        lockUntil,
+        user.id
+      ]
+    );
+
+    throw new Error(
+      "Invalid OTP"
+    );
+  }
+
+  // =========================
+  // RESET FAILED ATTEMPTS
+  // =========================
+  await pool.query(
+    `
+    UPDATE users
+    SET
+      failed_forgot_attempts = 0,
+      forgot_locked_until = NULL
+    WHERE id = $1
+    `,
+    [user.id]
+  );
+
+  return true;
+},
+resetForgotPassword: async (
+  _: any,
+  {
+    identifier,
+    code,
+    newPassword
+  }: any
+) => {
+
+  const clean =
+    normalizeIdentifier(identifier);
+
+  const result =
+    await pool.query<UserRow>(
+      `
+      SELECT *
+      FROM users
+      WHERE LOWER(email) = LOWER($1)
+         OR "StudentId" = $2
+      `,
+      [
+        buildEmail(clean),
+        clean
+      ]
+    );
+
+  const user =
+    result.rows[0];
+
+  assertUser(user);
+
+  // =========================
+  // VERIFY OTP AGAIN
+  // =========================
+  const hashedInput =
+    crypto
+      .createHmac(
+        "sha256",
+        process.env.JWT_SECRET!
+      )
+      .update(code)
+      .digest("hex");
+
+  if (
+    user.forgot_password_otp !==
+    hashedInput
+  ) {
+    throw new Error(
+      "Invalid reset session"
+    );
+  }
+
+  // =========================
+  // CHECK PASSWORD LENGTH
+  // =========================
+  if (
+    newPassword.length < 8
+  ) {
+    throw new Error(
+      "Password must be at least 8 characters"
+    );
+  }
+
+  // =========================
+  // PREVENT SAME PASSWORD
+  // =========================
+  const isSame =
+    await bcrypt.compare(
+      newPassword,
+      user.password
+    );
+
+  if (isSame) {
+    throw new Error(
+      "New password must be different"
+    );
+  }
+
+  // =========================
+  // HASH PASSWORD
+  // =========================
+  const hashedPassword =
+    await bcrypt.hash(
+      newPassword,
+      10
+    );
+
+  // =========================
+  // UPDATE PASSWORD
+  // =========================
+  await pool.query(
+    `
+    UPDATE users
+    SET
+      password = $1,
+      forgot_password_otp = NULL,
+      forgot_password_otp_expires_at = NULL,
+      failed_forgot_attempts = 0,
+      forgot_locked_until = NULL
+    WHERE id = $2
+    `,
+    [
+      hashedPassword,
+      user.id
+    ]
+  );
+
+  return true;
+},
     requestSignupOTP: async (
   _: any,
   {
@@ -1830,5 +2208,107 @@ rejectUser: async (
 
   return true;
 },
+changePassword: async (
+  _: any,
+  {
+    currentPassword,
+    newPassword
+  }: {
+    currentPassword: string;
+    newPassword: string;
   },
-};
+  context: Context
+) => {
+
+  // =========================
+  // REQUIRE LOGIN
+  // =========================
+  const auth =
+    requireAuth(context);
+
+  // =========================
+  // GET USER
+  // =========================
+  const result =
+    await pool.query<UserRow>(
+      `
+      SELECT *
+      FROM users
+      WHERE id = $1
+      `,
+      [auth.userId]
+    );
+
+  const user =
+    result.rows[0];
+
+  assertUser(user);
+
+  // =========================
+  // VERIFY CURRENT PASSWORD
+  // =========================
+  const isValid =
+    await bcrypt.compare(
+      currentPassword,
+      user.password
+    );
+
+  if (!isValid) {
+    throw new Error(
+      "Current password is incorrect"
+    );
+  }
+
+  // =========================
+  // PREVENT SAME PASSWORD
+  // =========================
+  const isSamePassword =
+    await bcrypt.compare(
+      newPassword,
+      user.password
+    );
+
+  if (isSamePassword) {
+    throw new Error(
+      "New password must be different"
+    );
+  }
+
+  // =========================
+  // MIN LENGTH
+  // =========================
+  if (newPassword.length < 8) {
+    throw new Error(
+      "Password must be at least 8 characters"
+    );
+  }
+
+  // =========================
+  // HASH NEW PASSWORD
+  // =========================
+  const hashedPassword =
+    await bcrypt.hash(
+      newPassword,
+      10
+    );
+
+  // =========================
+  // UPDATE PASSWORD
+  // =========================
+  await pool.query(
+    `
+    UPDATE users
+    SET password = $1
+    WHERE id = $2
+    `,
+    [
+      hashedPassword,
+      user.id
+    ]
+  );
+
+  return true;
+},
+
+  }, // END OF MUTATION
+}; // END OF EXPORT CONST RESOLVERS

@@ -152,8 +152,24 @@ const getAttemptColor = (
     localStorage.getItem(
       "pendingSignupEmail"
     ) || "";
-useEffect(() => {
 
+    
+useEffect(() => {
+console.log(
+  "[INIT EFFECT]",
+  {
+    checkingLock,
+    isLocked,
+    storedOtpExpiry:
+      localStorage.getItem(
+        "signupOtpExpiry"
+      ),
+    storedResendExpiry:
+      localStorage.getItem(
+        "signupResendExpiry"
+      ),
+  }
+);
   // OTP EXPIRY
   const storedOtpExpiry =
     localStorage.getItem(
@@ -176,22 +192,24 @@ useEffect(() => {
         : 0
     );
 
-  } else {
+  } else if (
+  !checkingLock &&
+  !isLocked
+) {
 
-    const newExpiry =
-      Date.now() +
-      5 * 60 * 1000;
+  const newExpiry =
+    Date.now() +
+    5 * 60 * 1000;
 
-    localStorage.setItem(
-      "signupOtpExpiry",
-      String(newExpiry)
-    );
+  localStorage.setItem(
+    "signupOtpExpiry",
+    String(newExpiry)
+  );
 
-    setSecondsLeft(
-      5 * 60
-    );
-  }
-
+  setSecondsLeft(
+    5 * 60
+  );
+}
   // RESEND EXPIRY
   const storedResendExpiry =
     localStorage.getItem(
@@ -215,11 +233,14 @@ useEffect(() => {
         : 0
     );
 
-  } else {
+  } else if (
+  !checkingLock &&
+  !isLocked
+) {
 
-    const newExpiry =
-      Date.now() +
-      2 * 60 * 1000;
+  const newExpiry =
+    Date.now() +
+    2 * 60 * 1000;
 
     localStorage.setItem(
       "signupResendExpiry",
@@ -231,7 +252,9 @@ useEffect(() => {
     );
   }
 
-}, []);
+  
+
+}, [checkingLock, isLocked]);
 useEffect(() => {
 
   const interval =
@@ -373,11 +396,9 @@ useEffect(() => {
       );
 
       const lockUntil =
-        otp?.lockedUntil
-          ? new Date(
-              otp.lockedUntil
-            ).getTime()
-          : 0;
+  Number(
+    otp?.lockedUntil || 0
+  );
 
       const remaining =
         Math.max(
@@ -389,11 +410,24 @@ useEffect(() => {
             ) / 1000
           )
         );
-
+console.log(
+  "[SYNC OTP STATUS]",
+  {
+    attempts,
+    lockUntil:
+      otp?.lockedUntil,
+    remaining,
+  }
+);
       if (
         attempts >= 5 &&
         remaining > 0
-      ) {
+      ) {console.log(
+  "[LOCK DETECTED]",
+  {
+    remaining,
+  }
+);
 
         setIsLocked(true);
 
@@ -459,7 +493,13 @@ localStorage.setItem(
   "signupResendExpiry",
   String(resendExpiry)
 );
-
+console.log(
+  "[SIGNUP TIMERS CREATED]",
+  {
+    otpExpiry,
+    resendExpiry,
+  }
+);
 setResendSecondsLeft(
   2 * 60
 );
@@ -536,7 +576,7 @@ const handleKeyDown = (
     if (newOtp[index]) {
 
       newOtp[index] = "";
-        // 2
+        //2
       setOtp(newOtp);
 
     } else if (index > 0) {
@@ -633,7 +673,12 @@ if (
     err?.graphQLErrors?.[0]
       ?.extensions
       ?.remainingSeconds || 0;
-
+console.log(
+  "[LOCK ERROR CAUGHT]",
+  {
+    remainingSeconds,
+  }
+);
   setIsLocked(true);
 
   setSignupAttempts(5);
@@ -828,10 +873,11 @@ return (
         {email}
       </p>
 
-    {
+   {
+  !checkingLock &&
   !isLocked &&
   lockSecondsLeft <= 0 && (
-
+    
     <p
       style={{
         color:
@@ -854,6 +900,7 @@ return (
   )
 }
 {
+    !checkingLock &&
   !isLocked &&
   lockSecondsLeft <= 0 && (
       <button
@@ -954,10 +1001,9 @@ return (
                   inputRefs.current[index] = el;
                 }}
                 disabled={
+  checkingLock ||
   isLocked ||
-  // 1
-  isLocked ||
-lockSecondsLeft > 0 ||
+  lockSecondsLeft > 0 ||
   resendLoading
 }
                 type="text"
@@ -1015,6 +1061,7 @@ lockSecondsLeft > 0 ||
 </p>
 
 {
+    !checkingLock &&
   signupAttempts >= 3 && (
 
     <p
@@ -1033,14 +1080,15 @@ lockSecondsLeft > 0 ||
       }}
     >
       Warning:
-      Reaching 5 failed attempts
+      Reaching 5+ failed attempts
       will lock OTP verification
       for 15 minutes.
     </p>
   )
 }
 
-       {
+{
+  !checkingLock &&
   (
     isLocked ||
     lockSecondsLeft > 0
@@ -1074,13 +1122,18 @@ lockSecondsLeft > 0 ||
       >
         Try again in{" "}
 
-        {Math.floor(
-          lockSecondsLeft / 60
-        )}
-        :
-        {String(
-          lockSecondsLeft % 60
-        ).padStart(2, "0")}
+{Math.floor(
+  lockSecondsLeft / 3600
+)}{" "}
+Hours,{" "}
+
+{Math.floor(
+  (lockSecondsLeft % 3600) / 60
+)}{" "}
+Minutes and{" "}
+
+{lockSecondsLeft % 60}{" "}
+Seconds
       </p>
 
     </div>
@@ -1129,10 +1182,10 @@ lockSecondsLeft > 0 ||
     e.currentTarget.style.transform =
       "scale(1)";
   }}
-        disabled={
+       disabled={
+  checkingLock ||
   loading ||
   resendLoading ||
-  //3
   isLocked ||
 lockSecondsLeft > 0 ||
   otp.some(
@@ -1150,6 +1203,7 @@ lockSecondsLeft > 0 ||
           fontWeight: 700,
           fontSize: "1rem",
           opacity:
+          checkingLock ||
   loading ||
   resendLoading ||
   //4

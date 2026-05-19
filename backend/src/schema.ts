@@ -58,6 +58,10 @@ type User {
   failedAttempts: Int
   lockedUntil: String
 }
+  type ForgotPasswordResponse {
+  success: Boolean!
+  message: String!
+}
 
   type Query {
   hello: String
@@ -84,10 +88,23 @@ type AvailabilityResponse {
   available: Boolean!
   field: String!
 }
-
-
-
   type Mutation {
+
+  requestForgotPasswordOTP(
+  identifier: String!
+): ForgotPasswordResponse
+
+verifyForgotPasswordOTP(
+  identifier: String!
+  code: String!
+): Boolean
+
+resetForgotPassword(
+  identifier: String!
+  code: String!
+  newPassword: String!
+): Boolean
+
   requestSignupOTP(
   first_name: String!
   middle_name: String
@@ -106,6 +123,11 @@ verifySignupOTP(
 
 resendSignupOTP(
   email: String!
+): Boolean
+
+changePassword(
+  currentPassword: String!
+  newPassword: String!
 ): Boolean
 
     login(

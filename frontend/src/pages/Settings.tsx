@@ -41,6 +41,18 @@ query GetMe {
 }
 `;
 
+const CHANGE_PASSWORD = gql`
+mutation ChangePassword(
+  $currentPassword: String!
+  $newPassword: String!
+) {
+  changePassword(
+    currentPassword: $currentPassword
+    newPassword: $newPassword
+  )
+}
+`;
+
 const UPDATE_USER_INFORMATION = gql`
 mutation UpdateUserInformation(
   $phone_number: String!
@@ -195,7 +207,6 @@ const Settings: React.FC = () => {
   // =========================
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean>(false);
-  const [selectedFontSize, setSelectedFontSize] = useState<string>('medium');
   const [notificationSoundVolume, setNotificationSoundVolume] = useState<number>(50);
   const [successMessage, setSuccessMessage] = useState<string>('');
   const [vibrationEnabled, setVibrationEnabled] =
@@ -298,8 +309,6 @@ const Settings: React.FC = () => {
   // Load Saved Settings
   // =========================
   useEffect(() => {
-
-    const savedFontSize = localStorage.getItem('fontSize');
     const savedVolume = localStorage.getItem('notificationVolume');
     const savedTwoFactor = localStorage.getItem('twoFactorEnabled');
     const savedProfilePicture = localStorage.getItem('profilePicture');
@@ -310,12 +319,6 @@ const Settings: React.FC = () => {
       setIsDarkMode(true);
       document.documentElement.classList.add('dark-mode');
       document.body.classList.add('dark-mode');
-    }
-
-    // Font Size
-    if (savedFontSize) {
-      setSelectedFontSize(savedFontSize);
-      applyFontSize(savedFontSize);
     }
 
     // Volume
@@ -540,27 +543,6 @@ const Settings: React.FC = () => {
   // =========================
   // Helpers
   // =========================
-  const applyFontSize = (size: string): void => {
-    let fontSizeValue = '14px';
-
-    switch (size) {
-      case 'small':
-        fontSizeValue = '12px';
-        break;
-
-      case 'large':
-        fontSizeValue = '18px';
-        break;
-
-      default:
-        fontSizeValue = '14px';
-        break;
-    }
-
-    document.documentElement.style.fontSize = fontSizeValue;
-    document.body.style.fontSize = fontSizeValue;
-  };
-
   const validatePhoneNumber = (
     value: string
   ): string => {
@@ -736,18 +718,7 @@ const Settings: React.FC = () => {
     }
   };
 
-  // =========================
-  // Font Size Handler
-  // =========================
-  const handleFontSizeChange = (size: string): void => {
-    setSelectedFontSize(size);
 
-    applyFontSize(size);
-
-    localStorage.setItem('fontSize', size);
-
-    updateSetting('fontSize', size);
-  };
 
   // =========================
   // Volume Handler
@@ -819,6 +790,9 @@ const Settings: React.FC = () => {
   // =========================
   const [updateUserInformationMutation] =
     useMutation(UPDATE_USER_INFORMATION);
+
+    const [changePasswordMutation] =
+  useMutation(CHANGE_PASSWORD);
 
   const saveUserInfo = async (): Promise<void> => {
     try {
@@ -913,30 +887,73 @@ const Settings: React.FC = () => {
   // =========================
   // Update Password
   // =========================
-  const updatePassword = async (): Promise<void> => {
-    if (newPassword !== confirmNewPassword) {
-      alert('Passwords do not match!');
-      return;
-    }
+ const updatePassword = async (): Promise<void> => {
 
-    if (newPassword.length < 6) {
-      alert('Password must be at least 6 characters');
-      return;
-    }
+  if (
+    !currentPassword ||
+    !newPassword ||
+    !confirmNewPassword
+  ) {
+    alert(
+      'Please fill in all fields'
+    );
+    return;
+  }
 
-    await mockApiCall({
-      currentPassword,
-      newPassword,
+  if (
+    newPassword !==
+    confirmNewPassword
+  ) {
+    alert(
+      'Passwords do not match!'
+    );
+    return;
+  }
+
+  if (
+    newPassword.length < 8
+  ) {
+    alert(
+      'Password must be at least 8 characters'
+    );
+    return;
+  }
+
+  try {
+
+    await changePasswordMutation({
+      variables: {
+        currentPassword,
+        newPassword,
+      },
     });
 
-    setSuccessMessage('Password updated successfully!');
+    setSuccessMessage(
+      'Password updated successfully!'
+    );
 
-    setShowChangePasswordModal(false);
+    setShowChangePasswordModal(
+      false
+    );
 
     setCurrentPassword('');
     setNewPassword('');
     setConfirmNewPassword('');
-  };
+
+    setTimeout(() => {
+      setSuccessMessage('');
+    }, 3000);
+
+  } catch (error: any) {
+
+    console.error(error);
+
+    alert(
+      error.message ||
+      'Failed to update password'
+    );
+  }
+};
 
   // =========================
   // Profile Picture Upload
@@ -1789,22 +1806,7 @@ const Settings: React.FC = () => {
             </div>
           </div>
 
-          {/* Accessibility Section */}
-          <div className="section-card">
-            <h3>Accessibility</h3>
-            <div className="form-group">
-              <label htmlFor="fontSize">Font Size</label>
-              <select
-                id="fontSize"
-                value={selectedFontSize}
-                onChange={(e) => handleFontSizeChange(e.target.value)}
-              >
-                <option value="small">Small</option>
-                <option value="medium">Medium</option>
-                <option value="large">Large</option>
-              </select>
-            </div>
-          </div>
+        
 
           {/* Notifications Section */}
           <div className="section-card">

@@ -24,7 +24,6 @@ import helmet from 'helmet';
 import os from 'os';
 import rateLimit from "express-rate-limit";
 import { fileURLToPath } from "url";
-import forgotAccountRoute from './routes/forgotAccount.js';
 import { upload } from "./upload.js";
 import { initSocket } from "./socket.js";
 import { userSockets } from "./socket.js";
@@ -674,8 +673,6 @@ app.use(
     },
   })
 );
-
-app.use(forgotAccountRoute);
 
   // ==========================
   // ▶ START SERVER (listen on all interfaces)
