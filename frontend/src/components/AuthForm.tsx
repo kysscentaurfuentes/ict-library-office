@@ -203,8 +203,12 @@ const [identifierType, setIdentifierType] =
   passwordStrength,
   setPasswordStrength
 ] = useState<
-  'weak' | 'medium' | 'strong'
->('weak');
+  '' |
+  'weak' |
+  'medium' |
+  'strong' |
+  'excellent'
+>('');
 
 const [
   passwordChecks,
@@ -417,25 +421,68 @@ const evaluatePasswordStrength = (
 
   const checks = {
     length: value.length >= 8,
-    uppercase: /[A-Z]/.test(value),
-    lowercase: /[a-z]/.test(value),
-    number: /[0-9]/.test(value),
+
+    uppercase:
+      /[A-Z]/.test(value),
+
+    lowercase:
+      /[a-z]/.test(value),
+
+    number:
+      /[0-9]/.test(value),
+
     special:
       /[!@#$%^&*(),.?":{}|<>]/.test(value),
   };
 
   setPasswordChecks(checks);
 
-  const passedChecks =
-    Object.values(checks).filter(Boolean)
-      .length;
+  // EMPTY
+  if (!value.trim()) {
+    setPasswordStrength('');
+    return;
+  }
 
-  if (passedChecks <= 2) {
+  let passedConditions = 0;
+
+  // 1
+  if (checks.length) {
+    passedConditions++;
+  }
+
+  // 2
+  if (
+    checks.uppercase &&
+    checks.lowercase
+  ) {
+    passedConditions++;
+  }
+
+  // 3
+  if (checks.number) {
+    passedConditions++;
+  }
+
+  // 4
+  if (checks.special) {
+    passedConditions++;
+  }
+
+  // RESULT
+  if (passedConditions === 1) {
     setPasswordStrength('weak');
-  } else if (passedChecks <= 4) {
+  }
+
+  else if (passedConditions === 2) {
     setPasswordStrength('medium');
-  } else {
+  }
+
+  else if (passedConditions === 3) {
     setPasswordStrength('strong');
+  }
+
+  else if (passedConditions === 4) {
+    setPasswordStrength('excellent');
   }
 };
 
@@ -1197,22 +1244,32 @@ textDecoration: 'underline',
       <div
         style={{
           width:
-            passwordStrength === 'weak'
-              ? '33%'
-              : passwordStrength ===
-                'medium'
-              ? '66%'
-              : '100%',
+  passwordStrength === ''
+    ? '0%'
+    : passwordStrength === 'weak'
+    ? '25%'
+    : passwordStrength === 'medium'
+    ? '50%'
+    : passwordStrength === 'strong'
+    ? '75%'
+    : '100%',
 
           height: '100%',
 
-          background:
-            passwordStrength === 'weak'
-              ? '#ef4444'
-              : passwordStrength ===
-                'medium'
-              ? '#facc15'
-              : '#22c55e',
+         background:
+  passwordStrength === 'weak'
+    ? '#ef4444'
+
+    : passwordStrength === 'medium'
+    ? '#facc15'
+
+    : passwordStrength === 'strong'
+    ? '#3b82f6'
+
+    : passwordStrength === 'excellent'
+    ? '#22c55e'
+
+    : 'transparent',
 
           transition:
             'all 0.25s ease',
@@ -1228,30 +1285,45 @@ textDecoration: 'underline',
         fontWeight: 700,
         letterSpacing: '0.3px',
 
-        color:
-          passwordStrength === 'weak'
-            ? '#ef4444'
-            : passwordStrength ===
-              'medium'
-            ? '#facc15'
-            : '#7dffb3',
+      color:
+  passwordStrength === 'weak'
+    ? '#ef4444'
+
+    : passwordStrength === 'medium'
+    ? '#facc15'
+
+    : passwordStrength === 'strong'
+    ? '#60a5fa'
+
+    : passwordStrength === 'excellent'
+    ? '#7dffb3'
+
+    : 'transparent',
       }}
     >
-      {passwordStrength === 'weak'
-        ? 'Weak'
-        : passwordStrength ===
-          'medium'
-        ? 'Medium'
-        : 'Strong'}
+     {passwordStrength === ''
+  ? ''
+
+  : passwordStrength === 'weak'
+  ? 'Weak'
+
+  : passwordStrength === 'medium'
+  ? 'Medium'
+
+  : passwordStrength === 'strong'
+  ? 'Strong'
+
+  : 'Excellent'}
     </span>
 
   </div>
 </div>
 
-  <div
+<div
   style={{
     position: 'relative',
-    height: '52px',
+    display: 'flex',
+    flexDirection: 'column',
   }}
 >
     <input
@@ -1495,7 +1567,7 @@ textDecoration: 'underline',
   !isFormValid ||
   !!emailError ||
   !!studentIdError ||
-  passwordStrength !== 'strong'
+  passwordStrength !== 'excellent'
 }
               style={{
                 width: '300px',
