@@ -148,6 +148,11 @@ const getAttemptColor = (
   return "#a855f7";
 };
 
+const studentId =
+  localStorage.getItem(
+    "pendingSignupStudentId"
+  ) || "";
+
   const email =
     localStorage.getItem(
       "pendingSignupEmail"
@@ -850,6 +855,37 @@ return (
         Enter the 6-digit code sent to your CARSU email.
       </p>
 
+      {studentId && (
+
+  <>
+    <p
+      style={{
+        color:
+          "rgba(255,255,255,0.7)",
+        textAlign: "center",
+        margin: "2px 0 0 0",
+        fontSize: "0.88rem",
+      }}
+    >
+      Registering as:
+    </p>
+
+    <p
+      style={{
+        color: "#93c5fd",
+        textAlign: "center",
+        margin: "-6px 0 2px 0",
+        fontSize: "0.96rem",
+        fontWeight: 600,
+        letterSpacing: "0.5px",
+      }}
+    >
+      {studentId}
+    </p>
+  </>
+
+)}
+
       <p
         style={{
           color: "white",
@@ -1081,8 +1117,7 @@ return (
     >
       Warning:
       Reaching 5+ failed attempts
-      will lock OTP verification
-      for 15 minutes.
+      will lock OTP verification.
     </p>
   )
 }
@@ -1225,7 +1260,45 @@ lockSecondsLeft > 0 ||
           : "Verify OTP"
         }
       </button>
+<button
+  onClick={() => {
 
+    localStorage.removeItem(
+      "signupOtpExpiry"
+    );
+
+    localStorage.removeItem(
+      "signupResendExpiry"
+    );
+
+    window.location.hash =
+      "#/signup";
+  }}
+
+  style={{
+    background: "none",
+    border: "none",
+    color:
+      "rgba(255,255,255,0.72)",
+    cursor: "pointer",
+    fontSize: "0.9rem",
+    marginTop: "-6px",
+    transition:
+      "all 0.18s ease",
+  }}
+
+  onMouseEnter={(e) => {
+    e.currentTarget.style.color =
+      "#ffffff";
+  }}
+
+  onMouseLeave={(e) => {
+    e.currentTarget.style.color =
+      "rgba(255,255,255,0.72)";
+  }}
+>
+  ← Back to Sign Up
+</button>
     </div>
   </div>
 </>

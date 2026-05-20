@@ -85,8 +85,6 @@ useMutation<
   const currentBackground =
     useDynamicBackground();
 
-    
-
 const handleSignup = async (
   firstName: string,
   middleName: string,
@@ -109,6 +107,7 @@ const handleSignup = async (
     // =========================
     // CREATE FORMDATA
     // =========================
+   
     const formData = new FormData();
 
 formData.append(
@@ -173,6 +172,11 @@ formData.append(
 localStorage.setItem(
   "pendingSignupEmail",
   email
+);
+
+localStorage.setItem(
+  "pendingSignupStudentId",
+  studentId
 );
 
 const otpExpiry =
@@ -375,7 +379,6 @@ useEffect(() => {
         alignItems: 'center',
         padding: '40px 20px',
         position: 'relative',
-        overflow: 'hidden',
       }}
     >
       {/* BACKGROUND */}
@@ -426,6 +429,13 @@ useEffect(() => {
   studentIdError={studentIdError}
   setStudentIdError={setStudentIdError}
   checkingEmail={checkingEmail}
+
+
+
+
+
+
+
 />
       </div>
     </div>

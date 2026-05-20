@@ -16,6 +16,15 @@ type Props = {
   setEmailError?: (value: string) => void;
   setStudentIdError?: (value: string) => void;
       checkingEmail?: boolean
+      uploadedPreview?: string | null;
+
+showPreviewModal?: boolean;
+
+setShowPreviewModal?: (
+  value: boolean
+) => void;
+
+uploadSuccessMessage?: string;
   onSubmit: (
     firstName: string,
     middleName: string,
@@ -156,7 +165,8 @@ export default function AuthForm({
   studentIdError,
   setEmailError,
   setStudentIdError,
-  checkingEmail
+  checkingEmail,
+setShowPreviewModal,
 }: Props) {
   const navigate = useNavigate();
 
@@ -189,6 +199,24 @@ const [identifierType, setIdentifierType] =
   const [password, setPassword] =
     useState<string>('');
 
+    const [
+  passwordStrength,
+  setPasswordStrength
+] = useState<
+  'weak' | 'medium' | 'strong'
+>('weak');
+
+const [
+  passwordChecks,
+  setPasswordChecks
+] = useState({
+  length: false,
+  uppercase: false,
+  lowercase: false,
+  number: false,
+  special: false,
+});
+
   const [course, setCourse] =
     useState<string>('');
 
@@ -209,6 +237,21 @@ const [identifierType, setIdentifierType] =
 
   const [schoolIdImage, setSchoolIdImage] =
     useState<File | null>(null);
+
+  const [
+  internalUploadSuccess,
+  setInternalUploadSuccess
+] = useState('');
+
+const [
+  internalPreview,
+  setInternalPreview
+] = useState<string | null>(null);
+
+const [
+  internalPreviewModal,
+  setInternalPreviewModal
+] = useState(false);
 
     useEffect(() => {
   if (identifier) {
@@ -312,36 +355,89 @@ const [identifierType, setIdentifierType] =
 };
 
   const handleSchoolIdUpload = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ): void => {
-    const file =
-      e.target.files?.[0];
+  e: React.ChangeEvent<HTMLInputElement>
+): void => {
 
-    if (!file) {
-      return;
-    }
+  const file =
+    e.target.files?.[0];
 
-    const allowedTypes = [
-      'image/png',
-      'image/jpeg',
-      'image/jpg',
-    ];
+  if (!file) {
+    return;
+  }
 
-    const isAllowed =
-      allowedTypes.includes(file.type);
+  const allowedTypes = [
+    'image/png',
+    'image/jpeg',
+    'image/jpg',
+  ];
 
-    if (!isAllowed) {
-      setLocalError(
-        'Only PNG, JPG, and JPEG files are allowed.'
-      );
+  const isAllowed =
+    allowedTypes.includes(file.type);
 
-      return;
-    }
+  if (!isAllowed) {
 
-    setLocalError('');
+    setLocalError(
+      'Only PNG, JPG, and JPEG files are allowed.'
+    );
 
-    setSchoolIdImage(file);
+    return;
+  }
+
+  setLocalError('');
+
+  setSchoolIdImage(file);
+
+  // =========================
+  // PREVIEW
+  // =========================
+  const previewUrl =
+    URL.createObjectURL(file);
+
+  // SAFE optional calls
+  if (setShowPreviewModal) {
+    // no-op just to use prop safely
+  }
+
+ setInternalPreview(previewUrl);
+
+setInternalUploadSuccess(
+  'ID uploaded successfully'
+);
+
+setTimeout(() => {
+
+  setInternalUploadSuccess('');
+
+}, 3000);
+};
+
+const evaluatePasswordStrength = (
+  value: string
+) => {
+
+  const checks = {
+    length: value.length >= 8,
+    uppercase: /[A-Z]/.test(value),
+    lowercase: /[a-z]/.test(value),
+    number: /[0-9]/.test(value),
+    special:
+      /[!@#$%^&*(),.?":{}|<>]/.test(value),
   };
+
+  setPasswordChecks(checks);
+
+  const passedChecks =
+    Object.values(checks).filter(Boolean)
+      .length;
+
+  if (passedChecks <= 2) {
+    setPasswordStrength('weak');
+  } else if (passedChecks <= 4) {
+    setPasswordStrength('medium');
+  } else {
+    setPasswordStrength('strong');
+  }
+};
 
   const handleStudentIdChange = (
     e: React.ChangeEvent<HTMLInputElement>
@@ -566,9 +662,9 @@ const renderInput = (
         : '520px',
       margin: '0 auto',
       color: 'white',
-      transform: isSignup
-        ? 'translateY(-55px)'
-        : 'translateY(0px)',
+      marginTop: isSignup
+  ? '-55px'
+  : '0px',
       fontFamily:
         '"Poppins", "Segoe UI", sans-serif',
     }}
@@ -701,7 +797,6 @@ const renderInput = (
                   <label style={labelStyle}>
                     CARSU Email
                   </label>
-
                   {/* INPUT WRAPPER */}
                   <div
                     style={{
@@ -769,6 +864,7 @@ const renderInput = (
                         right: '14px',
                         top: '50%',
                         transform:
+                        // 1
                           'translateY(-50%)',
                         color:
                           'rgba(255,255,255,0.55)',
@@ -822,10 +918,42 @@ const renderInput = (
     flexDirection: 'column',
   }}
 >
-  <label style={labelStyle}>
+ <div
+  style={{
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: '8px',
+  }}
+>
+
+  <label
+    style={{
+      ...labelStyle,
+      marginBottom: 0,
+    }}
+  >
     Upload School ID
   </label>
 
+  {internalUploadSuccess && (
+
+    <span
+      style={{
+        color: '#7dffb3',
+        fontSize: '0.78rem',
+        fontWeight: 600,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '4px',
+      }}
+    >
+      ✓ Uploaded Successfully
+    </span>
+
+  )}
+
+</div>
   <label
     htmlFor="school-id-upload"
     style={{
@@ -857,14 +985,39 @@ const renderInput = (
 
   <input
   className="auth-input"
-    id="school-id-upload"
-    type="file"
-    accept=".png,.jpg,.jpeg"
+  id="school-id-upload"
+  type="file"
+  accept=".png,.jpg,.jpeg"
+  style={{
+    display: 'none',
+  }}
+  onChange={handleSchoolIdUpload}
+/>
+
+{internalPreview && (
+
+  <button
+    type="button"
+    onClick={() =>
+  setInternalPreviewModal(true)
+}
     style={{
-      display: 'none',
+      marginTop: '10px',
+      background: 'none',
+      border: 'none',
+      color: '#93c5fd',
+      cursor: 'pointer',
+      fontSize: '0.8rem',
+fontWeight: 600,
+letterSpacing: '0.2px',
+textDecoration: 'underline',
+      padding: 0,
     }}
-    onChange={handleSchoolIdUpload}
-  />
+  >
+    Preview Uploaded ID
+  </button>
+
+)}
 </div>
               </div>
 
@@ -945,7 +1098,7 @@ const renderInput = (
                   }}
                 >
                   <label style={labelStyle}>
-                    Student ID (000-00000)
+                    Student ID (000-00000) Dash is automatic
                   </label>
 
                  <input
@@ -1003,36 +1156,190 @@ const renderInput = (
     flexDirection: 'column',
   }}
 >
-  <label style={labelStyle}>
+<div
+  style={{
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: '8px',
+  }}
+>
+
+<label
+  style={{
+    ...labelStyle,
+    marginBottom: 0,
+    lineHeight: 1,
+  }}
+>
     Password
   </label>
 
   <div
     style={{
-      position: 'relative',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
     }}
   >
+
+    {/* MINI BAR */}
+    <div
+      style={{
+        width: '250px',
+        height: '6px',
+        borderRadius: '999px',
+        background:
+          'rgba(255,255,255,0.12)',
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        style={{
+          width:
+            passwordStrength === 'weak'
+              ? '33%'
+              : passwordStrength ===
+                'medium'
+              ? '66%'
+              : '100%',
+
+          height: '100%',
+
+          background:
+            passwordStrength === 'weak'
+              ? '#ef4444'
+              : passwordStrength ===
+                'medium'
+              ? '#facc15'
+              : '#22c55e',
+
+          transition:
+            'all 0.25s ease',
+        }}
+      />
+    </div>
+
+    {/* STATUS */}
+    <span
+      style={{
+        marginTop: '1px',
+        fontSize: '0.76rem',
+        fontWeight: 700,
+        letterSpacing: '0.3px',
+
+        color:
+          passwordStrength === 'weak'
+            ? '#ef4444'
+            : passwordStrength ===
+              'medium'
+            ? '#facc15'
+            : '#7dffb3',
+      }}
+    >
+      {passwordStrength === 'weak'
+        ? 'Weak'
+        : passwordStrength ===
+          'medium'
+        ? 'Medium'
+        : 'Strong'}
+    </span>
+
+  </div>
+</div>
+
+  <div
+  style={{
+    position: 'relative',
+    height: '52px',
+  }}
+>
     <input
-    className="auth-input"
-      type={
-        showPassword
-          ? 'text'
-          : 'password'
-      }
-      value={password}
-      onChange={(e) =>
-        setPassword(
-          e.target.value
-        )
-      }
-      placeholder="Enter your password"
+  className="auth-input"
+  type={
+    showPassword
+      ? 'text'
+      : 'password'
+  }
+  value={password}
+  placeholder="Enter your password"
+      onChange={(e) => {
+
+  const value =
+    e.target.value;
+
+  setPassword(value);
+
+  evaluatePasswordStrength(value);
+
+}}
       required
       style={{
         ...inputStyle,
         paddingRight: '52px',
       }}
     />
+<div
+  style={{
+    marginTop: '10px',
+    display: 'grid',
+    gridTemplateColumns:
+      '1fr 1fr',
+    gap: '8px 18px',
+    fontSize: '0.78rem',
+    fontWeight: 600,
+  }}
+>
 
+  <span
+    style={{
+      color: passwordChecks.length
+        ? '#7dffb3'
+        : '#ff8b8b',
+    }}
+  >
+    {passwordChecks.length ? '✓' : '✗'} 8+
+    characters
+  </span>
+
+  <span
+    style={{
+      color:
+        passwordChecks.uppercase &&
+        passwordChecks.lowercase
+          ? '#7dffb3'
+          : '#ff8b8b',
+    }}
+  >
+    {passwordChecks.uppercase &&
+    passwordChecks.lowercase
+      ? '✓'
+      : '✗'} Uppercase & lowercase
+  </span>
+
+  <span
+    style={{
+      color: passwordChecks.number
+        ? '#7dffb3'
+        : '#ff8b8b',
+    }}
+  >
+    {passwordChecks.number ? '✓' : '✗'} At
+    least 1 number
+  </span>
+
+  <span
+    style={{
+      color: passwordChecks.special
+        ? '#7dffb3'
+        : '#ff8b8b',
+    }}
+  >
+    {passwordChecks.special ? '✓' : '✗'} At
+    least 1 special character
+  </span>
+
+</div>
     <button
       type="button"
       onClick={() =>
@@ -1042,7 +1349,7 @@ const renderInput = (
       }
       style={{
         position: 'absolute',
-        top: '50%',
+        top: '26px',
         right: '14px',
         transform:
           'translateY(-50%)',
@@ -1069,11 +1376,23 @@ const renderInput = (
 </div>
               </div>
             </div>
+            <div
+  style={{
+    marginTop: '10px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  }}
+>
+
+ 
+
+</div>
 
             {/* NOTE */}
             <div
               style={{
-                marginTop: '22px',
+                marginTop: '52px',
                 display: 'flex',
                 justifyContent:
                   'center',
@@ -1096,6 +1415,27 @@ const renderInput = (
                 account)
               </span>
             </div>
+            <div
+  style={{
+    marginTop: '8px',
+    display: 'flex',
+    justifyContent: 'center',
+  }}
+>
+  <span
+    style={{
+      fontSize: '0.88rem',
+      color: 'rgba(255,255,255,0.72)',
+      textAlign: 'center',
+      fontWeight: 500,
+      lineHeight: 1.5,
+       letterSpacing:
+                    '0.2px',
+    }}
+  >
+    (Note: Your uploaded School ID will serve as proof of identity verification. Please ensure that the image is clear and readable.)
+  </span>
+</div>
 
             {/* TERMS */}
             <div
@@ -1151,11 +1491,12 @@ const renderInput = (
             <button
               type="submit"
               disabled={
-                loading ||
-                !isFormValid ||
-                !!emailError ||
-                !!studentIdError
-              }
+  loading ||
+  !isFormValid ||
+  !!emailError ||
+  !!studentIdError ||
+  passwordStrength !== 'strong'
+}
               style={{
                 width: '300px',
                 height: '52px',
@@ -1196,7 +1537,6 @@ const renderInput = (
   <label style={labelStyle}>
     CARSU Account or Student ID
   </label>
-
   <div
     style={{
       position: 'relative',
@@ -1227,6 +1567,7 @@ const renderInput = (
           right: '14px',
           top: '50%',
           transform:
+          // 3
             'translateY(-50%)',
           color:
             'rgba(255,255,255,0.55)',
@@ -1267,6 +1608,7 @@ const renderInput = (
                       : 'password'
                   }
                   value={password}
+                  placeholder="Enter your password"
                   onChange={(e) =>
                     setPassword(
                       e.target.value
@@ -1293,6 +1635,7 @@ const renderInput = (
                     top: '50%',
                     right: '14px',
                     transform:
+                    // 4
                       'translateY(-50%)',
                     background:
                       'transparent',
@@ -1300,7 +1643,7 @@ const renderInput = (
                     cursor:
                       'pointer',
                     color:
-                      '#4b5563',
+                      '#ffffff',
                   }}
                 >
                   {showPassword ? (
@@ -1469,7 +1812,11 @@ const renderInput = (
       <div
         style={{
           position: 'fixed',
-          inset: 0,
+top: 0,
+left: 0,
+width: '100vw',
+height: '100vh',
+margin: 0,
           background:
             'rgba(0,0,0,0.8)',
           display: 'flex',
@@ -1575,6 +1922,51 @@ const renderInput = (
       </div>
     )}
 
+{internalPreviewModal &&
+  internalPreview && (
+
+  <div
+    onClick={() =>
+      setInternalPreviewModal(false)
+    }
+
+    style={{
+      position: 'fixed',
+      inset: 0,
+      width: '100vw',
+      height: '100vh',
+      background:
+        'rgba(0,0,0,0.88)',
+      backdropFilter: 'blur(10px)',
+      zIndex: 9999,
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      cursor: 'pointer',
+    }}
+  >
+
+    <img
+      src={internalPreview}
+
+      alt="Uploaded School ID"
+
+    style={{
+  maxWidth: '95vw',
+  maxHeight: '95vh',
+  objectFit: 'contain',
+  borderRadius: '14px',
+  boxShadow:
+    '0 0 40px rgba(0,0,0,0.45)',
+  display: 'block',
+}}
+    />
+
+  </div>
+
+)}
+
   </div>
 );
+
 }
