@@ -484,6 +484,7 @@ const evaluatePasswordStrength = (
   else if (passedConditions === 4) {
     setPasswordStrength('excellent');
   }
+ 
 };
 
   const handleStudentIdChange = (
@@ -1201,6 +1202,11 @@ textDecoration: 'underline',
   style={{
     display: 'flex',
     flexDirection: 'column',
+    marginTop: '8px',
+    height: '220px', // LOCKED HEIGHT
+    minHeight: '220px',
+    maxHeight: '220px',
+    overflow: 'hidden',
   }}
 >
 <div
@@ -1222,13 +1228,16 @@ textDecoration: 'underline',
     Password
   </label>
 
-  <div
-    style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px',
-    }}
-  >
+<div
+  style={{
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    height: '20px', // LOCK HEIGHT
+    minHeight: '20px',
+    maxHeight: '20px',
+  }}
+>
 
     {/* MINI BAR */}
     <div
@@ -1280,7 +1289,11 @@ textDecoration: 'underline',
     {/* STATUS */}
     <span
       style={{
-        marginTop: '1px',
+        marginTop: '0px',
+lineHeight: 1,
+display: 'flex',
+alignItems: 'center',
+height: '20px',
         fontSize: '0.76rem',
         fontWeight: 700,
         letterSpacing: '0.3px',
@@ -1324,6 +1337,8 @@ textDecoration: 'underline',
     position: 'relative',
     display: 'flex',
     flexDirection: 'column',
+    flex: 1,
+    justifyContent: 'flex-start',
   }}
 >
     <input
@@ -1354,10 +1369,12 @@ textDecoration: 'underline',
 <div
   style={{
     marginTop: '10px',
+    height: '78px',
+minHeight: '78px',
+maxHeight: '78px',
     display: 'grid',
-    gridTemplateColumns:
-      '1fr 1fr',
-    gap: '8px 18px',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '2px 8px',
     fontSize: '0.78rem',
     fontWeight: 600,
   }}
@@ -1456,15 +1473,11 @@ textDecoration: 'underline',
     gap: '8px',
   }}
 >
-
- 
-
 </div>
-
            {/* SIGNUP REMINDERS */}
 <div
   style={{
-    marginTop: '10px',
+    marginTop: '-60px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
