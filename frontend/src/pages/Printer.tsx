@@ -754,7 +754,6 @@ const Printer: React.FC = () => {
         }
 
         :root {
-          font-size: 14px;
           --bg: #f8fafc;
           --card-bg: #ffffff;
           --text-primary: #1e293b;

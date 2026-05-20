@@ -64,6 +64,8 @@ export default function Sidebar({
 });
 
 const user = useMemo(() => data?.me ?? null, [data?.me]);
+const studentId =
+  localStorage.getItem('studentId') || '';
 const isAdmin = useMemo(() => {
   return user?.role === "Admin";
 }, [user?.role]);
@@ -277,7 +279,17 @@ const finalUrl =
           >
             {user?.role || 'Student'} Portal
           </span>
-
+<div
+  style={{
+    fontSize: '0.8rem',
+    fontWeight: '600',
+    color: '#ffffff',
+    marginTop: '6px',
+    letterSpacing: '0.5px',
+  }}
+>
+  {studentId}
+</div>
         </div>
       </div>
 

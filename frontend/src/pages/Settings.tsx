@@ -1952,7 +1952,6 @@ body,
 }
 
 :root {
-  font-size: 14px;
 
   --bg: #f8fafc;
   --card-bg: #ffffff;
