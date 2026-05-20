@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { gql, useMutation } from '@apollo/client';
-import { useDynamicBackground } from '../hooks/useDynamicBackground';
+
 
 const VERIFY_FORGOT_PASSWORD_OTP =
   gql`
@@ -40,8 +40,7 @@ const navigate =
 const location =
   useLocation();
 
-const currentBackground =
-  useDynamicBackground();
+
 
 const identifier =
   location.state?.identifier;
@@ -189,45 +188,7 @@ const handleResend = async () => {
     );
   }
 };
-
 return (
-
-<div
-  style={{
-    width: '100vw',
-    height: '100vh',
-    position: 'fixed',
-    inset: 0,
-    overflow: 'hidden',
-  }}
->
-
-  {/* BACKGROUND */}
-  <div
-    style={{
-      position: 'absolute',
-      inset: 0,
-      backgroundImage:
-        currentBackground
-          ? `url(${currentBackground})`
-          : 'none',
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-    }}
-  >
-
-    <div
-      style={{
-        position: 'absolute',
-        inset: 0,
-        background:
-          'rgba(0,0,0,0.68)',
-      }}
-    />
-
-  </div>
-
-  {/* CONTENT */}
   <div
     style={{
       position: 'relative',
@@ -244,7 +205,7 @@ return (
     <div
       style={{
         width: '100%',
-        maxWidth: '560px',
+        maxWidth: '520px',
         backdropFilter: 'blur(18px)',
         background:
           'rgba(255,255,255,0.10)',
@@ -274,37 +235,59 @@ return (
           lineHeight: 1.6,
         }}
       >
-        Enter the 6-digit code
-        sent to your CARSU email.
+        Enter the 6-digit OTP sent to your account.
       </p>
 
-      <input
-        type="text"
-        placeholder="Enter OTP"
-        value={code}
-        onChange={(e) =>
-          setCode(
-            e.target.value
-          )
-        }
-        maxLength={6}
-        className="auth-input"
+      {/* OTP INPUT */}
+      <div
         style={{
-          width: '100%',
-          padding: '14px',
-          borderRadius: '12px',
-          border:
-            '1px solid rgba(255,255,255,0.15)',
-          background:
-            'rgba(255,255,255,0.08)',
           marginBottom: '18px',
-          textAlign: 'center',
-          letterSpacing: '8px',
-          fontSize: '20px',
         }}
-      />
+      >
 
+        <label
+          style={{
+            display: 'block',
+            marginBottom: '8px',
+            fontWeight: 600,
+          }}
+        >
+          OTP Code
+        </label>
+
+        <input
+          type="text"
+          maxLength={6}
+          value={code}
+          onChange={(e) =>
+            setCode(
+              e.target.value
+                .replace(/\D/g, '')
+            )
+          }
+          placeholder="Enter 6-digit OTP"
+          className="auth-input"
+          style={{
+            width: '100%',
+            boxSizing: 'border-box',
+            padding: '14px',
+            borderRadius: '12px',
+            border:
+              '1px solid rgba(255,255,255,0.15)',
+            background:
+              'rgba(255,255,255,0.08)',
+            color: 'white',
+            fontSize: '1rem',
+            textAlign: 'center',
+            letterSpacing: '4px',
+          }}
+        />
+
+      </div>
+
+      {/* ERROR */}
       {errorMessage && (
+
         <div
           style={{
             marginBottom: '16px',
@@ -314,9 +297,12 @@ return (
         >
           {errorMessage}
         </div>
+
       )}
 
+      {/* SUCCESS */}
       {successMessage && (
+
         <div
           style={{
             marginBottom: '16px',
@@ -326,8 +312,10 @@ return (
         >
           {successMessage}
         </div>
+
       )}
 
+      {/* VERIFY BUTTON */}
       <button
         onClick={handleVerify}
         disabled={loading}
@@ -338,24 +326,30 @@ return (
           border: 'none',
           cursor: 'pointer',
           fontWeight: 700,
-          marginBottom: '18px',
+          marginBottom: '16px',
         }}
       >
+
         {loading
-          ? 'Verifying...'
+          ? 'Verifying OTP...'
           : 'Verify OTP'}
+
       </button>
 
+      {/* RESEND */}
       <button
         onClick={handleResend}
         disabled={resendCooldown > 0}
         style={{
           width: '100%',
+          padding: '12px',
+          borderRadius: '12px',
+          border:
+            '1px solid rgba(255,255,255,0.15)',
           background: 'transparent',
-          border: 'none',
           color: 'white',
           cursor: 'pointer',
-          marginBottom: '14px',
+          marginBottom: '16px',
         }}
       >
 
@@ -365,6 +359,7 @@ return (
 
       </button>
 
+      {/* BACK */}
       <button
         onClick={() =>
           navigate('/signin')
@@ -381,7 +376,7 @@ return (
       </button>
 
     </div>
+
   </div>
-</div>
 );
   }

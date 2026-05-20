@@ -2,7 +2,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { gql, useMutation } from '@apollo/client';
-import { useDynamicBackground } from '../hooks/useDynamicBackground';
+
+
 
 const REQUEST_FORGOT_PASSWORD_OTP =
   gql`
@@ -25,8 +26,7 @@ export default function ForgotPassword() {
 const navigate =
   useNavigate();
 
-const currentBackground =
-  useDynamicBackground();
+
 
 const [identifier, setIdentifier] =
   useState('');
@@ -240,43 +240,6 @@ const handleSubmit = async () => {
 };
 
   return (
-
-<div
-  style={{
-    width: '100vw',
-    height: '100vh',
-    position: 'fixed',
-    inset: 0,
-    overflow: 'hidden',
-  }}
->
-
-  {/* BACKGROUND */}
-  <div
-    style={{
-      position: 'absolute',
-      inset: 0,
-      backgroundImage:
-        currentBackground
-          ? `url(${currentBackground})`
-          : 'none',
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-    }}
-  >
-
-    <div
-      style={{
-        position: 'absolute',
-        inset: 0,
-        background:
-          'rgba(0,0,0,0.68)',
-      }}
-    />
-
-  </div>
-
-  {/* CONTENT */}
   <div
     style={{
       position: 'relative',
@@ -329,58 +292,59 @@ const handleSubmit = async () => {
       </p>
 
       {/* INPUT */}
-    <div
-  style={{
-    position: 'relative',
-    marginBottom: '18px',
-  }}
->
-  <input
-    type="text"
-    placeholder="Student ID or CARSU Account"
-    value={identifier}
-    onChange={
-      handleIdentifierChange
-    }
-    className="auth-input"
-   style={{
-  width: '100%',
-  height: '52px',
-  boxSizing: 'border-box',
-  padding: '0 16px',
-  paddingRight:
-    identifierType === 'email'
-      ? '150px'
-      : '16px',
-  borderRadius: '12px',
-  border:
-    '1px solid rgba(255,255,255,0.15)',
-  background:
-    'rgba(255,255,255,0.08)',
-  color: '#ffffff',
-}}
-  />
+      <div
+        style={{
+          position: 'relative',
+          marginBottom: '18px',
+        }}
+      >
 
-  {identifierType ===
-    'email' && (
-    <span
-      style={{
-        position: 'absolute',
-        right: '14px',
-        top: '50%',
-        transform:
-          'translateY(-50%)',
-        color:
-          'rgba(255,255,255,0.55)',
-        fontWeight: 600,
-        pointerEvents: 'none',
-      }}
-    >
-      @carsu.edu.ph
-    </span>
-  )}
-</div>
+        <input
+          type="text"
+          placeholder="Student ID or CARSU Account"
+          value={identifier}
+          onChange={
+            handleIdentifierChange
+          }
+          className="auth-input"
+          style={{
+            width: '100%',
+            height: '52px',
+            boxSizing: 'border-box',
+            padding: '0 16px',
+            paddingRight:
+              identifierType === 'email'
+                ? '150px'
+                : '16px',
+            borderRadius: '12px',
+            border:
+              '1px solid rgba(255,255,255,0.15)',
+            background:
+              'rgba(255,255,255,0.08)',
+            color: '#ffffff',
+          }}
+        />
 
+        {identifierType ===
+          'email' && (
+          <span
+            style={{
+              position: 'absolute',
+              right: '14px',
+              top: '50%',
+              transform:
+                'translateY(-50%)',
+              color:
+                'rgba(255,255,255,0.55)',
+              fontWeight: 600,
+              pointerEvents: 'none',
+            }}
+          >
+            @carsu.edu.ph
+          </span>
+        )}
+
+      </div>
 
       {/* ERROR */}
       {errorMessage && (
@@ -451,6 +415,5 @@ const handleSubmit = async () => {
 
     </div>
   </div>
-</div>
 );
 }

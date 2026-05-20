@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { gql, useMutation } from '@apollo/client';
-import { useDynamicBackground } from '../hooks/useDynamicBackground';
+import AuthBackground from '../components/AuthBackground';
 
 const RESET_FORGOT_PASSWORD =
   gql`
@@ -27,8 +27,7 @@ const RESET_FORGOT_PASSWORD =
 const location =
   useLocation();
 
-const currentBackground =
-  useDynamicBackground();
+
 
 const identifier =
   location.state?.identifier;
@@ -238,43 +237,6 @@ const handleReset = async () => {
 
 
     return (
-
-<div
-  style={{
-    width: '100vw',
-    height: '100vh',
-    position: 'fixed',
-    inset: 0,
-    overflow: 'hidden',
-  }}
->
-
-  {/* BACKGROUND */}
-  <div
-    style={{
-      position: 'absolute',
-      inset: 0,
-      backgroundImage:
-        currentBackground
-          ? `url(${currentBackground})`
-          : 'none',
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-    }}
-  >
-
-    <div
-      style={{
-        position: 'absolute',
-        inset: 0,
-        background:
-          'rgba(0,0,0,0.68)',
-      }}
-    />
-
-  </div>
-
-  {/* CONTENT */}
   <div
     style={{
       position: 'relative',
@@ -323,203 +285,203 @@ const handleReset = async () => {
       >
         Create a new secure password.
       </p>
-{/* NEW PASSWORD */}
-<div
-  style={{
-    marginBottom: '16px',
-  }}
->
 
-  <label
-    style={{
-      display: 'block',
-      marginBottom: '8px',
-      fontWeight: 600,
-      color: 'white',
-    }}
-  >
-    New Password
-  </label>
+      {/* NEW PASSWORD */}
+      <div
+        style={{
+          marginBottom: '16px',
+        }}
+      >
 
-  <input
-    type="password"
-    placeholder="Enter new password"
-    value={newPassword}
-    onChange={(e) => {
+        <label
+          style={{
+            display: 'block',
+            marginBottom: '8px',
+            fontWeight: 600,
+            color: 'white',
+          }}
+        >
+          New Password
+        </label>
 
-      const value =
-        e.target.value;
+        <input
+          type="password"
+          placeholder="Enter new password"
+          value={newPassword}
+          onChange={(e) => {
 
-      setNewPassword(value);
+            const value =
+              e.target.value;
 
-      evaluatePasswordStrength(
-        value
-      );
-    }}
-    className="auth-input"
-    style={{
-      width: '100%',
-      boxSizing: 'border-box',
-      padding: '14px',
-      borderRadius: '12px',
-      border:
-        '1px solid rgba(255,255,255,0.15)',
-      background:
-        'rgba(255,255,255,0.08)',
-      color: 'white',
-    }}
-  />
+            setNewPassword(value);
 
-  {/* PASSWORD CHECKS */}
-  <div
-    style={{
-      marginTop: '10px',
-      display: 'grid',
-      gridTemplateColumns:
-        '1fr 1fr',
-      gap: '6px',
-      fontSize: '0.78rem',
-      fontWeight: 600,
-    }}
-  >
+            evaluatePasswordStrength(
+              value
+            );
+          }}
+          className="auth-input"
+          style={{
+            width: '100%',
+            boxSizing: 'border-box',
+            padding: '14px',
+            borderRadius: '12px',
+            border:
+              '1px solid rgba(255,255,255,0.15)',
+            background:
+              'rgba(255,255,255,0.08)',
+            color: 'white',
+          }}
+        />
 
-    <span
-      style={{
-        color:
-          passwordChecks.length
-            ? '#7dffb3'
-            : '#ff8b8b',
-      }}
-    >
-      {passwordChecks.length
-        ? '✓'
-        : '✗'} 8+ characters
-    </span>
+        {/* PASSWORD CHECKS */}
+        <div
+          style={{
+            marginTop: '10px',
+            display: 'grid',
+            gridTemplateColumns:
+              '1fr 1fr',
+            gap: '6px',
+            fontSize: '0.78rem',
+            fontWeight: 600,
+          }}
+        >
 
-    <span
-      style={{
-        color:
-          passwordChecks.uppercase &&
-          passwordChecks.lowercase
-            ? '#7dffb3'
-            : '#ff8b8b',
-      }}
-    >
-      {passwordChecks.uppercase &&
-      passwordChecks.lowercase
-        ? '✓'
-        : '✗'} Uppercase & lowercase
-    </span>
+          <span
+            style={{
+              color:
+                passwordChecks.length
+                  ? '#7dffb3'
+                  : '#ff8b8b',
+            }}
+          >
+            {passwordChecks.length
+              ? '✓'
+              : '✗'} 8+ characters
+          </span>
 
-    <span
-      style={{
-        color:
-          passwordChecks.number
-            ? '#7dffb3'
-            : '#ff8b8b',
-      }}
-    >
-      {passwordChecks.number
-        ? '✓'
-        : '✗'} 1 number
-    </span>
+          <span
+            style={{
+              color:
+                passwordChecks.uppercase &&
+                passwordChecks.lowercase
+                  ? '#7dffb3'
+                  : '#ff8b8b',
+            }}
+          >
+            {passwordChecks.uppercase &&
+            passwordChecks.lowercase
+              ? '✓'
+              : '✗'} Uppercase & lowercase
+          </span>
 
-    <span
-      style={{
-        color:
-          passwordChecks.special
-            ? '#7dffb3'
-            : '#ff8b8b',
-      }}
-    >
-      {passwordChecks.special
-        ? '✓'
-        : '✗'} Special character
-    </span>
+          <span
+            style={{
+              color:
+                passwordChecks.number
+                  ? '#7dffb3'
+                  : '#ff8b8b',
+            }}
+          >
+            {passwordChecks.number
+              ? '✓'
+              : '✗'} 1 number
+          </span>
 
-  </div>
-</div>
+          <span
+            style={{
+              color:
+                passwordChecks.special
+                  ? '#7dffb3'
+                  : '#ff8b8b',
+            }}
+          >
+            {passwordChecks.special
+              ? '✓'
+              : '✗'} Special character
+          </span>
+
+        </div>
+      </div>
 
       {/* CONFIRM PASSWORD */}
-<div
-  style={{
-    marginBottom: '18px',
-  }}
->
+      <div
+        style={{
+          marginBottom: '18px',
+        }}
+      >
 
-  <label
-    style={{
-      display: 'block',
-      marginBottom: '8px',
-      fontWeight: 600,
-      color: 'white',
-    }}
-  >
-    Confirm Password
-  </label>
+        <label
+          style={{
+            display: 'block',
+            marginBottom: '8px',
+            fontWeight: 600,
+            color: 'white',
+          }}
+        >
+          Confirm Password
+        </label>
 
-  <input
-    type="password"
-    placeholder="Confirm password"
-    value={confirmPassword}
-    onChange={(e) =>
-      setConfirmPassword(
-        e.target.value
-      )
-    }
-    className="auth-input"
-    style={{
-      width: '100%',
-      boxSizing: 'border-box',
-      padding: '14px',
-      borderRadius: '12px',
-      border:
-        confirmPassword &&
-        newPassword !==
-          confirmPassword
-          ? '1px solid #ff7b7b'
-          : '1px solid rgba(255,255,255,0.15)',
+        <input
+          type="password"
+          placeholder="Confirm password"
+          value={confirmPassword}
+          onChange={(e) =>
+            setConfirmPassword(
+              e.target.value
+            )
+          }
+          className="auth-input"
+          style={{
+            width: '100%',
+            boxSizing: 'border-box',
+            padding: '14px',
+            borderRadius: '12px',
+            border:
+              confirmPassword &&
+              newPassword !==
+                confirmPassword
+                ? '1px solid #ff7b7b'
+                : '1px solid rgba(255,255,255,0.15)',
 
-      background:
-        'rgba(255,255,255,0.08)',
+            background:
+              'rgba(255,255,255,0.08)',
 
-      color: 'white',
-    }}
-  />
+            color: 'white',
+          }}
+        />
 
-  {confirmPassword &&
-    newPassword !==
-      confirmPassword && (
+        {confirmPassword &&
+          newPassword !==
+            confirmPassword && (
 
-    <div
-      style={{
-        marginTop: '8px',
-        color: '#ff7b7b',
-        fontSize: '0.82rem',
-      }}
-    >
-      Passwords do not match.
-    </div>
+          <div
+            style={{
+              marginTop: '8px',
+              color: '#ff7b7b',
+              fontSize: '0.82rem',
+            }}
+          >
+            Passwords do not match.
+          </div>
 
-  )}
+        )}
 
-  {confirmPassword &&
-    newPassword ===
-      confirmPassword && (
+        {confirmPassword &&
+          newPassword ===
+            confirmPassword && (
 
-    <div
-      style={{
-        marginTop: '8px',
-        color: '#7dffb3',
-        fontSize: '0.82rem',
-      }}
-    >
-      ✓ Passwords match
-    </div>
+          <div
+            style={{
+              marginTop: '8px',
+              color: '#7dffb3',
+              fontSize: '0.82rem',
+            }}
+          >
+            ✓ Passwords match
+          </div>
 
-  )}
-</div>
-
+        )}
+      </div>
 
       {/* ERROR */}
       {errorMessage && (
@@ -555,14 +517,14 @@ const handleReset = async () => {
       <button
         onClick={handleReset}
         disabled={
-  loading ||
-  passwordStrength !==
-    'excellent' ||
-  !newPassword ||
-  !confirmPassword ||
-  newPassword !==
-    confirmPassword
-}
+          loading ||
+          passwordStrength !==
+            'excellent' ||
+          !newPassword ||
+          !confirmPassword ||
+          newPassword !==
+            confirmPassword
+        }
         style={{
           width: '100%',
           padding: '14px',
@@ -597,7 +559,7 @@ const handleReset = async () => {
       </button>
 
     </div>
+
   </div>
-</div>
 );
   }

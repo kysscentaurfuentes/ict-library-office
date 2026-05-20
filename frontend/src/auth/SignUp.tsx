@@ -2,7 +2,7 @@
 import { gql } from '@apollo/client/core';
 import { useMutation } from '@apollo/client/react';
 import AuthForm from '../components/AuthForm';
-import { useDynamicBackground } from '../hooks/useDynamicBackground';
+
 import { ApolloError } from "@apollo/client";
 import { useLazyQuery } from "@apollo/client";
 import { useState, useEffect } from "react";
@@ -82,8 +82,7 @@ useMutation<
     const [emailExists, setEmailExists] = useState<boolean | null>(null);
     const [checkingEmail, setCheckingEmail] = useState(false);
 
-  const currentBackground =
-    useDynamicBackground();
+
 
 const handleSignup = async (
   firstName: string,
@@ -369,42 +368,19 @@ useEffect(() => {
 
 }, [studentId, checkAvailability]);
 
-  return (
+ return (
+
+
     <div
       style={{
-        minHeight: '100vh',
         width: '100%',
+        minHeight: '100vh',
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
         padding: '40px 20px',
-        position: 'relative',
       }}
     >
-      {/* BACKGROUND */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          backgroundImage:
-            currentBackground
-              ? `url(${currentBackground})`
-              : 'none',
-          backgroundSize: 'cover',
-          backgroundPosition:
-            'center',
-        }}
-      />
-
-      {/* DARK OVERLAY */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background:
-            'rgba(0,0,0,0.62)',
-        }}
-      />
 
       {/* CONTENT */}
       <div
@@ -413,31 +389,27 @@ useEffect(() => {
           zIndex: 10,
           width: '100%',
           display: 'flex',
-          justifyContent:
-            'center',
+          justifyContent: 'center',
         }}
       >
-       <AuthForm
-  title="SIGN UP"
-  buttonText="Create Account"
-  onSubmit={handleSignup}
-  loading={loading}
-  error={error?.message}
-  mode="signup"
-  emailError={emailError}
-  setEmailError={setEmailError}
-  studentIdError={studentIdError}
-  setStudentIdError={setStudentIdError}
-  checkingEmail={checkingEmail}
 
+        <AuthForm
+          title="SIGN UP"
+          buttonText="Create Account"
+          onSubmit={handleSignup}
+          loading={loading}
+          error={error?.message}
+          mode="signup"
+          emailError={emailError}
+          setEmailError={setEmailError}
+          studentIdError={studentIdError}
+          setStudentIdError={setStudentIdError}
+          checkingEmail={checkingEmail}
+        />
 
-
-
-
-
-
-/>
       </div>
     </div>
-  );
+
+
+);
 }

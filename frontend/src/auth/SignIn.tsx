@@ -3,7 +3,8 @@ import { gql } from '@apollo/client/core';
 import { useMutation } from '@apollo/client/react';
 import { useState, useEffect } from 'react';
 import AuthForm from '../components/AuthForm';
-import { useDynamicBackground } from '../hooks/useDynamicBackground'; // IMPORTANTE: I-import ang hook
+
+
 
 const SIGNIN = gql`
   mutation Login($identifier: String!, $password: String!) {
@@ -53,7 +54,7 @@ const LOCK_ERROR =
 
 export default function SignIn() {
   const [login, { loading, error }] = useMutation<LoginResponse, LoginVariables>(SIGNIN);
-  const currentBackground = useDynamicBackground(); // GAMITIN ANG HOOK
+
   const [lockMessage, setLockMessage] = useState('');
 const savedLockUntil =
   Number(localStorage.getItem('loginLockUntil')) || 0;
@@ -284,66 +285,40 @@ setLockMessage(LOCK_ERROR);
 };
 
   return (
-    <div style={{ 
-      height: '100vh', 
-      width: '100vw', 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center',
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      overflow: 'hidden'
-    }}>
-      {/* Background Image Container with Dark Overlay */}
+
+
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+      }}
+    >
       <div
         style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundImage: currentBackground ? `url(${currentBackground})` : 'none',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
+          position: 'relative',
+          zIndex: 10,
+          width: '100%',
+          display: 'flex',
+          justifyContent: 'center',
         }}
       >
-        {/* Dark Overlay */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
-          }}
+        <AuthForm
+          title="SIGN IN"
+          buttonText="Login"
+          onSubmit={handleSignin}
+          loading={loading}
+          isLocked={isLocked}
+          lockCountdown={lockCountdown}
+          error={lockMessage || error?.message}
+          mode="login"
         />
       </div>
-
-      {/* Glass/Blur Container */}
-      <div
-  style={{
-    position: 'relative',
-    zIndex: 10,
-    width: '100%',
-    display: 'flex',
-    justifyContent: 'center',
-    padding: '20px',
-  }}
->
-  <AuthForm
-  title="SIGN IN"
-  buttonText="Login"
-  onSubmit={handleSignin}
-  loading={loading}
-  isLocked={isLocked}
-  lockCountdown={lockCountdown}
-  error={lockMessage || error?.message}
-  mode="login"
-/>
-</div>
     </div>
-  );
+
+
+);
 }

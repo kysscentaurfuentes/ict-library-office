@@ -26,6 +26,7 @@ import VerifySignupOTP from "../auth/VerifySignupOTP";
 import ForgotPassword from '../auth/ForgotPassword';
 import VerifyForgotPassword from '../auth/VerifyForgotPasswordOTP'
 import ResetForgotPassword from '../auth/ResetForgotPassword'
+import AuthLayout from '../layouts/AuthLayout';
 
 export default function AppRouter() {
   return (
@@ -34,7 +35,8 @@ export default function AppRouter() {
 
         <Route path="/" element={<Navigate to="/signin" />} />
 
-        {/* AUTH (NO SIDEBAR) */}
+        {/* AUTH PAGES (NO SIDEBAR) */}
+        <Route element={<AuthLayout />}>
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/two-factor" element={<TwoFactor />} />
@@ -44,6 +46,7 @@ export default function AppRouter() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/forgot-password/verify" element={<VerifyForgotPassword />} />
         <Route path="/forgot-password/reset" element={<ResetForgotPassword />} />
+        </Route>
 
         {/* ✅ ALL MAIN APP PAGES INSIDE LAYOUT */}
         <Route element={<MainLayout />}>

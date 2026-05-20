@@ -3,8 +3,7 @@ import { useDynamicBackground } from "../hooks/useDynamicBackground";
 
 export default function PendingApproval() {
 
-  const currentBackground =
-    useDynamicBackground();
+
 
     const pendingIdentifier =
   localStorage.getItem(
@@ -65,19 +64,6 @@ const isStudentId =
   {hourglassAnimation}
 </style>
 
-      {/* BACKGROUND */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          backgroundImage:
-            currentBackground
-              ? `url(${currentBackground})`
-              : 'none',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      />
 
       {/* DARK OVERLAY */}
       <div

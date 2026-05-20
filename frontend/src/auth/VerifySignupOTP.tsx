@@ -50,8 +50,6 @@ type VerifyVariables = {
 
 export default function VerifySignupOTP() {
 
-  const currentBackground =
-    useDynamicBackground();
 
     const client =
   useApolloClient();
@@ -782,19 +780,7 @@ return (
     }}
   >
 
-    {/* BACKGROUND */}
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        backgroundImage:
-          currentBackground
-            ? `url(${currentBackground})`
-            : "none",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
-    />
+    
 
     {/* OVERLAY */}
     <div

@@ -3,8 +3,7 @@ import { useDynamicBackground } from "../hooks/useDynamicBackground";
 
 export default function RejectedApproval() {
 
-  const currentBackground =
-    useDynamicBackground();
+
 
   const rejectedStudentId =
     localStorage.getItem(
@@ -32,20 +31,7 @@ export default function RejectedApproval() {
       }}
     >
 
-      {/* BACKGROUND */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          backgroundImage:
-            currentBackground
-              ? `url(${currentBackground})`
-              : 'none',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      />
-
+   
       {/* DARK OVERLAY */}
       <div
         style={{
