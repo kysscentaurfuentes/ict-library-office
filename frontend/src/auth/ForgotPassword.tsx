@@ -39,6 +39,13 @@ const currentBackground =
 const [identifier, setIdentifier] =
   useState('');
 
+const [identifierType, setIdentifierType] =
+  useState<
+    'studentId' |
+    'email' |
+    ''
+  >('');
+
 const [loading, setLoading] =
   useState(false);
 
@@ -53,6 +60,119 @@ const [successMessage, setSuccessMessage] =
 ] = useMutation(
   REQUEST_FORGOT_PASSWORD_OTP
 );
+
+const handleIdentifierChange = (
+  e: React.ChangeEvent<HTMLInputElement>
+): void => {
+
+  let value = e.target.value;
+
+  // EMPTY
+  if (!value.trim()) {
+    setIdentifier('');
+    setIdentifierType('');
+    return;
+  }
+
+  // LOCK completed student ID
+  if (
+    /^\d{3}-\d{5}$/.test(identifier) &&
+    value.length > identifier.length
+  ) {
+    return;
+  }
+
+  // HAS DASH = STUDENT ID MODE
+  const hasDash =
+    identifier.includes('-') ||
+    value.includes('-');
+
+  if (hasDash) {
+
+    let digits =
+      value.replace(/\D/g, '');
+
+    if (digits.length > 8) {
+      digits = digits.slice(0, 8);
+    }
+
+    if (digits.length > 3) {
+      digits =
+        digits.slice(0, 3) +
+        '-' +
+        digits.slice(3);
+    }
+
+    setIdentifier(digits);
+    setIdentifierType('studentId');
+
+    return;
+  }
+
+  // STARTS WITH NUMBER = STUDENT ID
+  if (/^\d/.test(value)) {
+
+    let digits =
+      value.replace(/\D/g, '');
+
+    if (digits.length > 8) {
+      digits = digits.slice(0, 8);
+    }
+
+    if (digits.length > 3) {
+      digits =
+        digits.slice(0, 3) +
+        '-' +
+        digits.slice(3);
+    }
+
+    setIdentifier(digits);
+
+    if (digits.length >= 1) {
+      setIdentifierType('studentId');
+    } else {
+      setIdentifierType('');
+    }
+
+    return;
+  }
+
+  // EMAIL MODE
+  const cleaned =
+    value
+
+      // remove spaces
+      .replace(/\s/g, '')
+
+      // remove @ and everything after
+      .replace(/@.*/g, '')
+
+      // allow only valid email username chars
+      .replace(
+        /[^a-zA-Z0-9._-]/g,
+        ''
+      )
+
+      // no multiple dots
+      .replace(/\.{2,}/g, '.')
+
+      // no starting dot
+      .replace(/^\./, '')
+
+      // no multiple underscores
+      .replace(/_{2,}/g, '_')
+
+      // no multiple hyphens
+      .replace(/-{2,}/g, '-');
+
+  setIdentifier(cleaned);
+
+  if (cleaned.length >= 1) {
+    setIdentifierType('email');
+  } else {
+    setIdentifierType('');
+  }
+};
 
 const handleSubmit = async () => {
 
@@ -75,7 +195,10 @@ const handleSubmit = async () => {
     const result =
       await requestForgotPasswordOTP({
         variables: {
-          identifier,
+          identifier:
+  identifierType === 'email'
+    ? `${identifier}@carsu.edu.ph`
+    : identifier,
         },
       });
 
@@ -95,7 +218,10 @@ const handleSubmit = async () => {
           '/forgot-password/verify',
           {
             state: {
-              identifier,
+              identifier:
+  identifierType === 'email'
+    ? `${identifier}@carsu.edu.ph`
+    : identifier,
             },
           }
         );
@@ -208,27 +334,58 @@ const handleSubmit = async () => {
       </p>
 
       {/* INPUT */}
-      <input
-        type="text"
-        placeholder="Student ID or CARSU Email"
-        value={identifier}
-        onChange={(e) =>
-          setIdentifier(
-            e.target.value
-          )
-        }
-        className="auth-input"
-        style={{
-          width: '100%',
-          padding: '14px',
-          borderRadius: '12px',
-          border:
-            '1px solid rgba(255,255,255,0.15)',
-          background:
-            'rgba(255,255,255,0.08)',
-          marginBottom: '18px',
-        }}
-      />
+    <div
+  style={{
+    position: 'relative',
+    marginBottom: '18px',
+  }}
+>
+  <input
+    type="text"
+    placeholder="Student ID or CARSU Account"
+    value={identifier}
+    onChange={
+      handleIdentifierChange
+    }
+    className="auth-input"
+   style={{
+  width: '100%',
+  height: '52px',
+  boxSizing: 'border-box',
+  padding: '0 16px',
+  paddingRight:
+    identifierType === 'email'
+      ? '150px'
+      : '16px',
+  borderRadius: '12px',
+  border:
+    '1px solid rgba(255,255,255,0.15)',
+  background:
+    'rgba(255,255,255,0.08)',
+  color: '#ffffff',
+}}
+  />
+
+  {identifierType ===
+    'email' && (
+    <span
+      style={{
+        position: 'absolute',
+        right: '14px',
+        top: '50%',
+        transform:
+          'translateY(-50%)',
+        color:
+          'rgba(255,255,255,0.55)',
+        fontWeight: 600,
+        pointerEvents: 'none',
+      }}
+    >
+      @carsu.edu.ph
+    </span>
+  )}
+</div>
+
 
       {/* ERROR */}
       {errorMessage && (

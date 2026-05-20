@@ -63,6 +63,28 @@ const [errorMessage, setErrorMessage] =
 const [successMessage, setSuccessMessage] =
   useState('');
 
+  const [
+  passwordStrength,
+  setPasswordStrength
+] = useState<
+  '' |
+  'weak' |
+  'medium' |
+  'strong' |
+  'excellent'
+>('');
+
+const [
+  passwordChecks,
+  setPasswordChecks
+] = useState({
+  length: false,
+  uppercase: false,
+  lowercase: false,
+  number: false,
+  special: false,
+});
+
   useEffect(() => {
 
   if (!identifier || !code) {
@@ -81,6 +103,71 @@ const [
 ] = useMutation(
   RESET_FORGOT_PASSWORD
 );
+
+const evaluatePasswordStrength = (
+  value: string
+) => {
+
+  const checks = {
+    length: value.length >= 8,
+
+    uppercase:
+      /[A-Z]/.test(value),
+
+    lowercase:
+      /[a-z]/.test(value),
+
+    number:
+      /[0-9]/.test(value),
+
+    special:
+      /[!@#$%^&*(),.?":{}|<>]/.test(value),
+  };
+
+  setPasswordChecks(checks);
+
+  if (!value.trim()) {
+    setPasswordStrength('');
+    return;
+  }
+
+  let passedConditions = 0;
+
+  if (checks.length) {
+    passedConditions++;
+  }
+
+  if (
+    checks.uppercase &&
+    checks.lowercase
+  ) {
+    passedConditions++;
+  }
+
+  if (checks.number) {
+    passedConditions++;
+  }
+
+  if (checks.special) {
+    passedConditions++;
+  }
+
+  if (passedConditions === 1) {
+    setPasswordStrength('weak');
+  }
+
+  else if (passedConditions === 2) {
+    setPasswordStrength('medium');
+  }
+
+  else if (passedConditions === 3) {
+    setPasswordStrength('strong');
+  }
+
+  else if (passedConditions === 4) {
+    setPasswordStrength('excellent');
+  }
+};
 
 const handleReset = async () => {
 
@@ -159,12 +246,6 @@ const handleReset = async () => {
   }
 };
 
-const passwordStrength =
-  newPassword.length >= 12
-    ? 'Strong'
-    : newPassword.length >= 8
-    ? 'Medium'
-    : 'Weak';
 
     return (
 
@@ -252,70 +333,203 @@ const passwordStrength =
       >
         Create a new secure password.
       </p>
+{/* NEW PASSWORD */}
+<div
+  style={{
+    marginBottom: '16px',
+  }}
+>
 
-      {/* NEW PASSWORD */}
-      <input
-        type="password"
-        placeholder="New Password"
-        value={newPassword}
-        onChange={(e) =>
-          setNewPassword(
-            e.target.value
-          )
-        }
-        className="auth-input"
-        style={{
-          width: '100%',
-          padding: '14px',
-          borderRadius: '12px',
-          border:
-            '1px solid rgba(255,255,255,0.15)',
-          background:
-            'rgba(255,255,255,0.08)',
-          marginBottom: '14px',
-        }}
-      />
+  <label
+    style={{
+      display: 'block',
+      marginBottom: '8px',
+      fontWeight: 600,
+      color: 'white',
+    }}
+  >
+    New Password
+  </label>
 
-      {/* CONFIRM */}
-      <input
-        type="password"
-        placeholder="Confirm Password"
-        value={confirmPassword}
-        onChange={(e) =>
-          setConfirmPassword(
-            e.target.value
-          )
-        }
-        className="auth-input"
-        style={{
-          width: '100%',
-          padding: '14px',
-          borderRadius: '12px',
-          border:
-            '1px solid rgba(255,255,255,0.15)',
-          background:
-            'rgba(255,255,255,0.08)',
-          marginBottom: '10px',
-        }}
-      />
+  <input
+    type="password"
+    placeholder="Enter new password"
+    value={newPassword}
+    onChange={(e) => {
 
-      {/* STRENGTH */}
-      <div
-        style={{
-          marginBottom: '18px',
-          fontSize: '14px',
-          color:
-            passwordStrength === 'Strong'
-              ? '#7dffb3'
-              : passwordStrength === 'Medium'
-              ? '#ffd36b'
-              : '#ff7b7b',
-        }}
-      >
-        Password Strength:
-        {' '}
-        {passwordStrength}
-      </div>
+      const value =
+        e.target.value;
+
+      setNewPassword(value);
+
+      evaluatePasswordStrength(
+        value
+      );
+    }}
+    className="auth-input"
+    style={{
+      width: '100%',
+      boxSizing: 'border-box',
+      padding: '14px',
+      borderRadius: '12px',
+      border:
+        '1px solid rgba(255,255,255,0.15)',
+      background:
+        'rgba(255,255,255,0.08)',
+      color: 'white',
+    }}
+  />
+
+  {/* PASSWORD CHECKS */}
+  <div
+    style={{
+      marginTop: '10px',
+      display: 'grid',
+      gridTemplateColumns:
+        '1fr 1fr',
+      gap: '6px',
+      fontSize: '0.78rem',
+      fontWeight: 600,
+    }}
+  >
+
+    <span
+      style={{
+        color:
+          passwordChecks.length
+            ? '#7dffb3'
+            : '#ff8b8b',
+      }}
+    >
+      {passwordChecks.length
+        ? '✓'
+        : '✗'} 8+ characters
+    </span>
+
+    <span
+      style={{
+        color:
+          passwordChecks.uppercase &&
+          passwordChecks.lowercase
+            ? '#7dffb3'
+            : '#ff8b8b',
+      }}
+    >
+      {passwordChecks.uppercase &&
+      passwordChecks.lowercase
+        ? '✓'
+        : '✗'} Uppercase & lowercase
+    </span>
+
+    <span
+      style={{
+        color:
+          passwordChecks.number
+            ? '#7dffb3'
+            : '#ff8b8b',
+      }}
+    >
+      {passwordChecks.number
+        ? '✓'
+        : '✗'} 1 number
+    </span>
+
+    <span
+      style={{
+        color:
+          passwordChecks.special
+            ? '#7dffb3'
+            : '#ff8b8b',
+      }}
+    >
+      {passwordChecks.special
+        ? '✓'
+        : '✗'} Special character
+    </span>
+
+  </div>
+</div>
+
+      {/* CONFIRM PASSWORD */}
+<div
+  style={{
+    marginBottom: '18px',
+  }}
+>
+
+  <label
+    style={{
+      display: 'block',
+      marginBottom: '8px',
+      fontWeight: 600,
+      color: 'white',
+    }}
+  >
+    Confirm Password
+  </label>
+
+  <input
+    type="password"
+    placeholder="Confirm password"
+    value={confirmPassword}
+    onChange={(e) =>
+      setConfirmPassword(
+        e.target.value
+      )
+    }
+    className="auth-input"
+    style={{
+      width: '100%',
+      boxSizing: 'border-box',
+      padding: '14px',
+      borderRadius: '12px',
+      border:
+        confirmPassword &&
+        newPassword !==
+          confirmPassword
+          ? '1px solid #ff7b7b'
+          : '1px solid rgba(255,255,255,0.15)',
+
+      background:
+        'rgba(255,255,255,0.08)',
+
+      color: 'white',
+    }}
+  />
+
+  {confirmPassword &&
+    newPassword !==
+      confirmPassword && (
+
+    <div
+      style={{
+        marginTop: '8px',
+        color: '#ff7b7b',
+        fontSize: '0.82rem',
+      }}
+    >
+      Passwords do not match.
+    </div>
+
+  )}
+
+  {confirmPassword &&
+    newPassword ===
+      confirmPassword && (
+
+    <div
+      style={{
+        marginTop: '8px',
+        color: '#7dffb3',
+        fontSize: '0.82rem',
+      }}
+    >
+      ✓ Passwords match
+    </div>
+
+  )}
+</div>
+
 
       {/* ERROR */}
       {errorMessage && (
@@ -350,7 +564,15 @@ const passwordStrength =
       {/* BUTTON */}
       <button
         onClick={handleReset}
-        disabled={loading}
+        disabled={
+  loading ||
+  passwordStrength !==
+    'excellent' ||
+  !newPassword ||
+  !confirmPassword ||
+  newPassword !==
+    confirmPassword
+}
         style={{
           width: '100%',
           padding: '14px',
