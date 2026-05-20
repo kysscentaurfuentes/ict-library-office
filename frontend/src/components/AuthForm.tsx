@@ -1461,39 +1461,32 @@ textDecoration: 'underline',
 
 </div>
 
-            {/* NOTE */}
-            <div
-              style={{
-                marginTop: '52px',
-                display: 'flex',
-                justifyContent:
-                  'center',
-              }}
-            >
-              <span
-                style={{
-                  fontSize: '0.88rem',
-                  color:
-                    'rgba(255,255,255,0.82)',
-                  textAlign: 'center',
-                  fontWeight: 500,
-                  letterSpacing:
-                    '0.2px',
-                }}
-              >
-                (Note: Your CARSU email or student ID and
-                password will be used
-                to sign in to your
-                account)
-              </span>
-            </div>
-            <div
+           {/* SIGNUP REMINDERS */}
+<div
   style={{
-    marginTop: '8px',
+    marginTop: '10px',
     display: 'flex',
-    justifyContent: 'center',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '10px',
   }}
 >
+
+  {/* LOGIN NOTE */}
+  <span
+    style={{
+      fontSize: '0.88rem',
+      color: 'rgba(255,255,255,0.82)',
+      textAlign: 'center',
+      fontWeight: 500,
+      letterSpacing: '0.2px',
+      lineHeight: 1.5,
+    }}
+  >
+    • Your CARSU email or Student ID together with your password will be used to sign in to your account.
+  </span>
+
+  {/* SCHOOL ID NOTE */}
   <span
     style={{
       fontSize: '0.88rem',
@@ -1501,12 +1494,26 @@ textDecoration: 'underline',
       textAlign: 'center',
       fontWeight: 500,
       lineHeight: 1.5,
-       letterSpacing:
-                    '0.2px',
+      letterSpacing: '0.2px',
     }}
   >
-    (Note: Your uploaded School ID will serve as proof of identity verification. Please ensure that the image is clear and readable.)
+    • Your uploaded School ID will serve as proof of identity verification. Please ensure that the image is clear and readable.
   </span>
+
+  {/* ADMIN VERIFICATION NOTE */}
+  <span
+    style={{
+      fontSize: '0.88rem',
+      color: '#facc15',
+      textAlign: 'center',
+      fontWeight: 600,
+      lineHeight: 1.5,
+      letterSpacing: '0.2px',
+    }}
+  >
+    • Newly created accounts are subject to admin verification before full access is granted.
+  </span>
+
 </div>
 
             {/* TERMS */}
