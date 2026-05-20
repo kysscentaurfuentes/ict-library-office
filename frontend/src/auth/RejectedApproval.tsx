@@ -1,3 +1,4 @@
+// frontend/src/auth/RejectedApproval.tsx
 import { useDynamicBackground } from "../hooks/useDynamicBackground";
 
 export default function RejectedApproval() {

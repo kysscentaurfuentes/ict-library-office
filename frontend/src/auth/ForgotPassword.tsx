@@ -1,17 +1,8 @@
+// frontend/src/auth/ForgotPassword.tsx
 import { useState } from 'react';
-
-import {
-  useNavigate,
-} from 'react-router-dom';
-
-import {
-  gql,
-  useMutation,
-} from '@apollo/client';
-
-import {
-  useDynamicBackground
-} from '../hooks/useDynamicBackground';
+import { useNavigate } from 'react-router-dom';
+import { gql, useMutation } from '@apollo/client';
+import { useDynamicBackground } from '../hooks/useDynamicBackground';
 
 const REQUEST_FORGOT_PASSWORD_OTP =
   gql`
@@ -24,6 +15,7 @@ const REQUEST_FORGOT_PASSWORD_OTP =
       ) {
         success
         message
+        otpSent
       }
     }
   `;
@@ -208,26 +200,29 @@ const handleSubmit = async () => {
 
     if (response?.success) {
 
-      setSuccessMessage(
-        response.message
+  setSuccessMessage(
+    response.message
+  );
+
+  if (response?.otpSent) {
+
+    setTimeout(() => {
+
+      navigate(
+        '/forgot-password/verify',
+        {
+          state: {
+            identifier:
+              identifierType === 'email'
+                ? `${identifier}@carsu.edu.ph`
+                : identifier,
+          },
+        }
       );
 
-      setTimeout(() => {
-
-        navigate(
-          '/forgot-password/verify',
-          {
-            state: {
-              identifier:
-  identifierType === 'email'
-    ? `${identifier}@carsu.edu.ph`
-    : identifier,
-            },
-          }
-        );
-
-      }, 1200);
-    }
+    }, 1200);
+  }
+}
 
   } catch (error: any) {
 

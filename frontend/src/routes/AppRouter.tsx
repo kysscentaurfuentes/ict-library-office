@@ -24,7 +24,7 @@ import PendingApproval from '../auth/PendingApproval';
 import RejectedApproval from '../auth/RejectedApproval';
 import VerifySignupOTP from "../auth/VerifySignupOTP";
 import ForgotPassword from '../auth/ForgotPassword';
-import VerifyForgotPassword from '../auth/VerifyForgotPassword'
+import VerifyForgotPassword from '../auth/VerifyForgotPasswordOTP'
 import ResetForgotPassword from '../auth/ResetForgotPassword'
 
 export default function AppRouter() {

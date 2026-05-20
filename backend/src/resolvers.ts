@@ -98,6 +98,18 @@ failed_forgot_attempts?: number;
 
 forgot_locked_until?: string | null;
 
+forgot_request_count?: number;
+
+forgot_request_locked_until?: string | null;
+
+forgot_request_last_sent_at?: string | null;
+
+forgot_request_last_ip?: string | null;
+
+failed_change_password_attempts?: number;
+
+change_password_locked_until?: string | null;
+
 }
 interface SignupPendingRow {
   id: number;
@@ -188,6 +200,7 @@ function buildEmail(identifier: string) {
 
 export const resolvers = {
   Query: { // START OF QUERY
+
     hello: () => "Backend is working with Router 🚀",
 
     checkOtpStatus: async (
@@ -432,6 +445,43 @@ checkSignupAvailability: async (
       : null
 };
 },
+checkChangePasswordStatus: async (
+  _: any,
+  __: any,
+  context: Context
+) => {
+
+  const auth =
+    requireAuth(context);
+
+  const result =
+    await pool.query(
+      `
+      SELECT
+        failed_change_password_attempts,
+        change_password_locked_until
+      FROM users
+      WHERE id = $1
+      `,
+      [auth.userId]
+    );
+
+  const row =
+    result.rows[0];
+
+  return {
+    failedAttempts:
+      row
+        ?.failed_change_password_attempts || 0,
+
+   lockedUntil:
+  row?.change_password_locked_until
+    ? new Date(
+        row.change_password_locked_until
+      ).toISOString()
+    : null,
+  };
+},
   }, // END OF QUERY
   
   // START OF MUTATION
@@ -461,11 +511,68 @@ checkSignupAvailability: async (
   const user =
     result.rows[0];
 
-  if (!user) {
-    throw new Error(
-      "Account not found"
-    );
-  }
+if (!user) {
+
+  return {
+    success: true,
+    message:
+      "If the account exists, an OTP has been sent.",
+    otpSent: false
+  };
+}
+
+// RESET EXPIRED REQUEST LOCK
+if (
+  user.forgot_request_locked_until &&
+  new Date(
+    user.forgot_request_locked_until
+  ).getTime() < Date.now()
+) {
+
+  await pool.query(
+    `
+    UPDATE users
+    SET
+      forgot_request_count = 0,
+      forgot_request_locked_until = NULL
+    WHERE id = $1
+    `,
+    [user.id]
+  );
+
+  user.forgot_request_count = 0;
+}
+
+// =========================
+// RESEND COOLDOWN
+// =========================
+const resendCheck =
+  await pool.query(
+    `
+    SELECT
+      NOW() -
+      forgot_request_last_sent_at
+      < INTERVAL '60 seconds'
+      AS too_soon
+
+    FROM users
+    WHERE id = $1
+    `,
+    [user.id]
+  );
+
+if (
+  resendCheck.rows[0]?.too_soon
+) {
+
+return {
+  success: true,
+  message:
+    "If the account exists, an OTP has been sent.",
+  otpSent: true
+};
+}
+
 
   // =========================
   // CHECK LOCK
@@ -532,11 +639,49 @@ checkSignupAvailability: async (
     code
   );
 
-  return {
-    success: true,
-    message:
-      "OTP sent successfully"
-  };
+  // =========================
+// TRACK REQUEST COUNT
+// =========================
+const requestCount =
+  (user.forgot_request_count || 0) + 1;
+
+let requestLockUntil =
+  null;
+
+if (requestCount >= 3) {
+
+  requestLockUntil =
+    new Date(
+      Date.now() +
+      15 * 60 * 1000
+    );
+}
+
+await pool.query(
+  `
+  UPDATE users
+  SET
+    forgot_request_count = $1,
+
+    forgot_request_locked_until = $2,
+
+    forgot_request_last_sent_at = NOW()
+
+  WHERE id = $3
+  `,
+  [
+    requestCount,
+    requestLockUntil,
+    user.id
+  ]
+);
+
+return {
+  success: true,
+  message:
+    "If the account exists, an OTP has been sent.",
+  otpSent: true
+};
 },
 verifyForgotPasswordOTP: async (
   _: any,
@@ -567,6 +712,8 @@ verifyForgotPasswordOTP: async (
     result.rows[0];
 
   assertUser(user);
+
+
 
   // =========================
   // CHECK LOCK
@@ -785,14 +932,20 @@ resetForgotPassword: async (
   // =========================
   await pool.query(
     `
-    UPDATE users
-    SET
-      password = $1,
-      forgot_password_otp = NULL,
-      forgot_password_otp_expires_at = NULL,
-      failed_forgot_attempts = 0,
-      forgot_locked_until = NULL
-    WHERE id = $2
+   UPDATE users
+SET
+  password = $1,
+  forgot_password_otp = NULL,
+  forgot_password_otp_expires_at = NULL,
+
+  failed_forgot_attempts = 0,
+  forgot_locked_until = NULL,
+
+  forgot_request_count = 0,
+  forgot_request_locked_until = NULL,
+  forgot_request_last_sent_at = NULL
+
+WHERE id = $2
     `,
     [
       hashedPassword,
@@ -2243,6 +2396,28 @@ changePassword: async (
     result.rows[0];
 
   assertUser(user);
+  // =========================
+// CHECK LOCK
+// =========================
+const lockCheck =
+  await pool.query(
+    `
+    SELECT
+      NOW() <
+      change_password_locked_until
+      AS locked
+    FROM users
+    WHERE id = $1
+    `,
+    [user.id]
+  );
+
+if (lockCheck.rows[0]?.locked) {
+
+  throw new Error(
+    "Too many incorrect current password attempts. Try again later."
+  );
+}
 
   // =========================
   // VERIFY CURRENT PASSWORD
@@ -2253,11 +2428,46 @@ changePassword: async (
       user.password
     );
 
-  if (!isValid) {
+if (!isValid) {
+
+  const attempts =
+    (user.failed_change_password_attempts || 0) + 1;
+
+  let lockUntil = null;
+
+  if (attempts >= 5) {
+    lockUntil =
+      new Date(
+        Date.now() +
+        15 * 60 * 1000
+      );
+  }
+
+  await pool.query(
+    `
+    UPDATE users
+    SET
+      failed_change_password_attempts = $1,
+      change_password_locked_until = $2
+    WHERE id = $3
+    `,
+    [
+      attempts,
+      lockUntil,
+      user.id
+    ]
+  );
+
+  if (attempts >= 5) {
     throw new Error(
-      "Current password is incorrect"
+      "Too many incorrect current password attempts. Try again later."
     );
   }
+
+  throw new Error(
+    "Current password is incorrect"
+  );
+}
 
   // =========================
   // PREVENT SAME PASSWORD
@@ -2282,6 +2492,19 @@ changePassword: async (
       "Password must be at least 8 characters"
     );
   }
+  // =========================
+// RESET FAILED ATTEMPTS
+// =========================
+await pool.query(
+  `
+  UPDATE users
+  SET
+    failed_change_password_attempts = 0,
+    change_password_locked_until = NULL
+  WHERE id = $1
+  `,
+  [user.id]
+);
 
   // =========================
   // HASH NEW PASSWORD

@@ -1,3 +1,4 @@
+// frontend/src/auth/PendingApproval.tsx
 import { useDynamicBackground } from "../hooks/useDynamicBackground";
 
 export default function PendingApproval() {

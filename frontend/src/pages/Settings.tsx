@@ -4,6 +4,7 @@ import Sidebar from '../components/Sidebar';
 import { gql } from '@apollo/client';
 import { useQuery, useMutation } from '@apollo/client/react';
 import { COURSE_ACRONYMS } from '../utils/courseAcronyms';
+import '../components/AuthForm.css';
 
 const GET_ME = gql`
 query GetMe {
@@ -50,6 +51,15 @@ mutation ChangePassword(
     currentPassword: $currentPassword
     newPassword: $newPassword
   )
+}
+`;
+
+const CHECK_CHANGE_PASSWORD_STATUS = gql`
+query CheckChangePasswordStatus {
+  checkChangePasswordStatus {
+    failedAttempts
+    lockedUntil
+  }
 }
 `;
 
@@ -200,6 +210,16 @@ const Settings: React.FC = () => {
     fetchPolicy: 'no-cache',
   });
 
+  const {
+  data: changePasswordStatusData,
+  refetch:
+    refetchChangePasswordStatus
+} = useQuery(
+  CHECK_CHANGE_PASSWORD_STATUS,
+  {
+    fetchPolicy: 'no-cache',
+  }
+);
   const me = data?.me;
 
   // =========================
@@ -223,6 +243,116 @@ const Settings: React.FC = () => {
   const [confirmNewPassword, setConfirmNewPassword] =
     useState<string>('');
 
+    const [
+  passwordError,
+  setPasswordError
+] = useState('');
+
+const [
+  failedAttempts,
+  setFailedAttempts
+] = useState(0);
+
+const [
+  cooldownSeconds,
+  setCooldownSeconds
+] = useState(0);
+
+const [
+  isUpdatingPassword,
+  setIsUpdatingPassword
+] = useState(false);
+
+    const [
+  passwordStrength,
+  setPasswordStrength
+] = useState<
+  '' |
+  'weak' |
+  'medium' |
+  'strong' |
+  'excellent'
+>('');
+
+const [
+  passwordChecks,
+  setPasswordChecks
+] = useState({
+  length: false,
+  uppercase: false,
+  lowercase: false,
+  number: false,
+  special: false,
+});
+
+const [
+  showCurrentPassword,
+  setShowCurrentPassword
+] = useState(false);
+
+const [
+  showNewPassword,
+  setShowNewPassword
+] = useState(false);
+
+const [
+  showConfirmPassword,
+  setShowConfirmPassword
+] = useState(false);
+const evaluatePasswordStrength = (
+  value: string
+) => {
+
+  const checks = {
+    length: value.length >= 8,
+
+    uppercase:
+      /[A-Z]/.test(value),
+
+    lowercase:
+      /[a-z]/.test(value),
+
+    number:
+      /[0-9]/.test(value),
+
+    special:
+      /[!@#$%^&*(),.?":{}|<>]/.test(value),
+  };
+
+  setPasswordChecks(checks);
+
+  if (!value.trim()) {
+    setPasswordStrength('');
+    return;
+  }
+
+  let passed = 0;
+
+  if (checks.length) passed++;
+  if (
+    checks.uppercase &&
+    checks.lowercase
+  ) passed++;
+
+  if (checks.number) passed++;
+  if (checks.special) passed++;
+
+  if (passed === 1) {
+    setPasswordStrength('weak');
+  }
+
+  else if (passed === 2) {
+    setPasswordStrength('medium');
+  }
+
+  else if (passed === 3) {
+    setPasswordStrength('strong');
+  }
+
+  else if (passed === 4) {
+    setPasswordStrength('excellent');
+  }
+};
   // =========================
   // Student Information State
   // =========================
@@ -539,6 +669,72 @@ const Settings: React.FC = () => {
     );
 
   }, [data]);
+
+  useEffect(() => {
+
+  const status =
+    changePasswordStatusData
+      ?.checkChangePasswordStatus;
+
+  if (!status) return;
+
+  setFailedAttempts(
+    status.failedAttempts || 0
+  );
+
+  // RESET FIRST
+  setCooldownSeconds(0);
+
+  if (status.lockedUntil) {
+
+    console.log(
+      "LOCKED UNTIL:",
+      status.lockedUntil
+    );
+
+    const lockedTime =
+      new Date(
+        status.lockedUntil
+      ).getTime();
+
+    console.log(
+      "LOCKED TIME:",
+      lockedTime
+    );
+
+    const updateCountdown = () => {
+
+      const now =
+        Date.now();
+
+      const diff =
+        Math.floor(
+          (lockedTime - now) / 1000
+        );
+
+      console.log(
+        "COUNTDOWN:",
+        diff
+      );
+
+      setCooldownSeconds(
+        diff > 0 ? diff : 0
+      );
+    };
+
+    updateCountdown();
+
+    const interval =
+      setInterval(
+        updateCountdown,
+        1000
+      );
+
+    return () =>
+      clearInterval(interval);
+  }
+
+}, [changePasswordStatusData]);
 
   // =========================
   // Helpers
@@ -884,11 +1080,15 @@ const Settings: React.FC = () => {
   }
 };
 
+
   // =========================
   // Update Password
   // =========================
  const updatePassword = async (): Promise<void> => {
 
+if (isUpdatingPassword) {
+  return;
+}
   if (
     !currentPassword ||
     !newPassword ||
@@ -899,6 +1099,29 @@ const Settings: React.FC = () => {
     );
     return;
   }
+
+  if (
+  currentPassword ===
+  newPassword
+) {
+  alert(
+    'New password cannot be the same as current password.'
+  );
+  return;
+}
+
+if (
+  !passwordChecks.length ||
+  !passwordChecks.uppercase ||
+  !passwordChecks.lowercase ||
+  !passwordChecks.number ||
+  !passwordChecks.special
+) {
+  alert(
+    'Please create a stronger password.'
+  );
+  return;
+}
 
   if (
     newPassword !==
@@ -918,6 +1141,9 @@ const Settings: React.FC = () => {
     );
     return;
   }
+  setIsUpdatingPassword(true);
+
+setPasswordError('');
 
   try {
 
@@ -946,13 +1172,24 @@ const Settings: React.FC = () => {
 
   } catch (error: any) {
 
-    console.error(error);
+  console.error(error);
 
-    alert(
-      error.message ||
-      'Failed to update password'
-    );
-  }
+  const errorMessage =
+    error?.graphQLErrors?.[0]?.message ||
+    error?.message ||
+    'Failed to update password';
+
+  setPasswordError(
+    errorMessage
+  );
+  const updated =
+  await refetchChangePasswordStatus();
+
+console.log(updated.data);
+} finally {
+
+  setIsUpdatingPassword(false);
+}
 };
 
   // =========================
@@ -1800,7 +2037,8 @@ const Settings: React.FC = () => {
             </div>
             <div className="form-group">
               <label>Account Security</label>
-              <button className="btn-primary" onClick={() => setShowChangePasswordModal(true)}>
+              <button className="btn-primary" 
+              onClick={() => setShowChangePasswordModal(true)}>
                 Change Password
               </button>
             </div>
@@ -1870,28 +2108,312 @@ const Settings: React.FC = () => {
               <div className="modal-content">
                 <h3>Change Password</h3>
                 <div className="form-stack">
-                  <label>Current Password</label>
-                  <input
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                  />
-                  <label>New Password</label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                  />
-                  <label>Confirm Password</label>
-                  <input
-                    type="password"
-                    value={confirmNewPassword}
-                    onChange={(e) => setConfirmNewPassword(e.target.value)}
-                  />
+                 <label>Current Password</label>
+
+<div className="password-wrapper">
+  <input
+    type={
+      showCurrentPassword
+        ? 'text'
+        : 'password'
+    }
+    value={currentPassword}
+   onChange={(e) => {
+
+  setCurrentPassword(
+    e.target.value
+  );
+
+  setPasswordError('');
+}}
+  />
+
+  <button
+    type="button"
+    className="toggle-password"
+    onClick={() =>
+      setShowCurrentPassword(
+        !showCurrentPassword
+      )
+    }
+  >
+    {showCurrentPassword
+      ? 'Hide'
+      : 'Show'}
+  </button>
+</div>
+{passwordError && (
+
+  <small
+    style={{
+      color: '#ef4444',
+      fontWeight: 600,
+      marginTop: '-0.4rem',
+      display: 'block',
+    }}
+  >
+    {passwordError}
+  </small>
+
+)}<div
+  style={{
+    marginTop: '0.65rem',
+    fontWeight: 700,
+    fontSize: '0.82rem',
+
+    color:
+      failedAttempts >= 5
+        ? '#ef4444'
+        : failedAttempts >= 3
+        ? '#f59e0b'
+        : '#22c55e',
+
+    textShadow:
+      failedAttempts >= 5
+        ? '0 0 12px rgba(239,68,68,0.5)'
+        : failedAttempts >= 3
+        ? '0 0 10px rgba(245,158,11,0.4)'
+        : '0 0 8px rgba(34,197,94,0.35)',
+  }}
+>
+  Attempts:
+  {' '}
+  {failedAttempts}/5
+</div>
+{cooldownSeconds > 0 && (
+
+  <div
+    style={{
+      marginTop: '0.5rem',
+      color: '#ef4444',
+      fontWeight: 700,
+      fontSize: '0.82rem',
+    }}
+  >
+    Too many attempts.
+    Try again in {' '}
+
+    {Math.floor(
+      cooldownSeconds / 60
+    )}
+    :
+    {String(
+      cooldownSeconds % 60
+    ).padStart(2, '0')}
+  </div>
+
+)}
+                 <label>New Password</label>
+
+<div className="password-wrapper">
+  <input
+    type={
+      showNewPassword
+        ? 'text'
+        : 'password'
+    }
+    value={newPassword}
+    onChange={(e) => {
+
+      const value =
+        e.target.value;
+
+      setNewPassword(value);
+      setPasswordError('');
+      evaluatePasswordStrength(
+        value
+      );
+    }}
+  />
+
+  <button
+    type="button"
+    className="toggle-password"
+    onClick={() =>
+      setShowNewPassword(
+        !showNewPassword
+      )
+    }
+  >
+    {showNewPassword
+      ? 'Hide'
+      : 'Show'}
+  </button>
+</div>
+<div className="password-checks">
+
+  <span
+    className={
+      passwordChecks.length
+        ? 'valid-check'
+        : 'invalid-check'
+    }
+  >
+    {passwordChecks.length
+      ? '✓'
+      : '✗'} 8+ characters
+  </span>
+
+  <span
+    className={
+      passwordChecks.uppercase &&
+      passwordChecks.lowercase
+        ? 'valid-check'
+        : 'invalid-check'
+    }
+  >
+    {passwordChecks.uppercase &&
+    passwordChecks.lowercase
+      ? '✓'
+      : '✗'} Uppercase & lowercase
+  </span>
+
+  <span
+    className={
+      passwordChecks.number
+        ? 'valid-check'
+        : 'invalid-check'
+    }
+  >
+    {passwordChecks.number
+      ? '✓'
+      : '✗'} Number
+  </span>
+
+  <span
+    className={
+      passwordChecks.special
+        ? 'valid-check'
+        : 'invalid-check'
+    }
+  >
+    {passwordChecks.special
+      ? '✓'
+      : '✗'} Special character
+  </span>
+
+</div>
+            <label>Confirm Password</label>
+
+<div className="password-wrapper">
+  <input
+    type={
+      showConfirmPassword
+        ? 'text'
+        : 'password'
+    }
+    value={confirmNewPassword}
+    onChange={(e) => {
+
+  setConfirmNewPassword(
+    e.target.value
+  );
+
+  setPasswordError('');
+}}
+  />
+
+  <button
+    type="button"
+    className="toggle-password"
+    onClick={() =>
+      setShowConfirmPassword(
+        !showConfirmPassword
+      )
+    }
+  >
+    {showConfirmPassword
+      ? 'Hide'
+      : 'Show'}
+  </button>
+</div>
+{confirmNewPassword && (
+
+  <small
+    style={{
+      color:
+        newPassword ===
+        confirmNewPassword
+          ? '#22c55e'
+          : '#ef4444',
+    }}
+  >
+    {
+      newPassword ===
+      confirmNewPassword
+        ? '✓ Passwords match'
+        : '✗ Passwords do not match'
+    }
+  </small>
+
+)}
                 </div>
                 <div className="modal-actions">
-                  <button className="btn-save" onClick={updatePassword}>Update</button>
-                  <button className="btn-cancel" onClick={() => setShowChangePasswordModal(false)}>Cancel</button>
+                  <button
+  className={
+    failedAttempts < 5 &&
+    currentPassword &&
+    newPassword &&
+    confirmNewPassword &&
+    newPassword ===
+      confirmNewPassword &&
+    currentPassword !==
+      newPassword &&
+    passwordChecks.length &&
+    passwordChecks.uppercase &&
+    passwordChecks.lowercase &&
+    passwordChecks.number &&
+    passwordChecks.special
+      ? 'btn-save'
+      : 'btn-save-disabled'
+  }
+  disabled={
+    failedAttempts >= 5 ||
+    cooldownSeconds > 0 ||
+    isUpdatingPassword ||
+    !currentPassword ||
+    !newPassword ||
+    !confirmNewPassword ||
+    newPassword !==
+      confirmNewPassword ||
+    currentPassword ===
+      newPassword ||
+    !passwordChecks.length ||
+    !passwordChecks.uppercase ||
+    !passwordChecks.lowercase ||
+    !passwordChecks.number ||
+    !passwordChecks.special
+  }
+  onClick={updatePassword}
+>
+  {
+    isUpdatingPassword
+      ? 'Updating...'
+      : 'Update'
+  }
+</button>
+                  <button className="btn-cancel" onClick={() => {
+
+  setShowChangePasswordModal(
+    false
+  );
+
+  setCurrentPassword('');
+  setNewPassword('');
+  setConfirmNewPassword('');
+
+  setPasswordError('');
+
+  setPasswordStrength('');
+
+  setPasswordChecks({
+    length: false,
+    uppercase: false,
+    lowercase: false,
+    number: false,
+    special: false,
+  });
+}}>Cancel</button>
                 </div>
               </div>
             </div>
@@ -2392,6 +2914,63 @@ body.dark-mode {
 
 .btn-save:hover {
   background: var(--success-hover);
+}
+
+.btn-save-disabled {
+  background: #475569;
+  color: #94a3b8;
+
+  padding: 0.6rem 1.2rem;
+
+  border-radius: 8px;
+
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.password-wrapper {
+  position: relative;
+}
+
+.toggle-password {
+  position: absolute;
+
+  right: 10px;
+  top: 50%;
+
+  transform: translateY(-50%);
+
+  border: none;
+  background: transparent;
+
+  cursor: pointer;
+
+  font-size: 0.75rem;
+  font-weight: 700;
+
+  color: var(--primary);
+}
+
+.password-checks {
+  display: grid;
+
+  grid-template-columns:
+    1fr 1fr;
+
+  gap: 0.45rem;
+
+  margin-top: 0.75rem;
+
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.valid-check {
+  color: #22c55e;
+}
+
+.invalid-check {
+  color: #ef4444;
 }
 
 /* CANCEL */

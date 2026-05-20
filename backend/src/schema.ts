@@ -58,9 +58,15 @@ type User {
   failedAttempts: Int
   lockedUntil: String
 }
-  type ForgotPasswordResponse {
+type ForgotPasswordResponse {
   success: Boolean!
   message: String!
+  otpSent: Boolean!
+}
+
+type ChangePasswordStatus {
+  failedAttempts: Int
+  lockedUntil: String
 }
 
   type Query {
@@ -76,6 +82,8 @@ type User {
   email: String!
 ): OtpStatus
 
+  checkChangePasswordStatus: ChangePasswordStatus
+  
   pendingUsers: [User]
 
     checkSignupAvailability(

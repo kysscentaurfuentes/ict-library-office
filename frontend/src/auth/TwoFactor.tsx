@@ -1,14 +1,9 @@
 // frontend/src/auth/TwoFactor.tsx
 import { useEffect, useState, useRef } from "react";
-
 import { useNavigate } from "react-router-dom";
 import { useDynamicBackground } from "../hooks/useDynamicBackground";
 import "../App.css";
-import {
-  gql,
-  useMutation,
-  useApolloClient,
-} from "@apollo/client";
+import { gql, useMutation, useApolloClient } from "@apollo/client";
 
 const VERIFY_2FA = gql`
   mutation VerifyTwoFactor($identifier: String!, $code: String!) {

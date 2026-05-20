@@ -1,18 +1,8 @@
+// frontend/src/auth/VerifyForgotPasswordOTP.tsx
 import { useEffect, useState } from 'react';
-
-import {
-  useLocation,
-  useNavigate,
-} from 'react-router-dom';
-
-import {
-  gql,
-  useMutation,
-} from '@apollo/client';
-
-import {
-  useDynamicBackground
-} from '../hooks/useDynamicBackground';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { gql, useMutation } from '@apollo/client';
+import { useDynamicBackground } from '../hooks/useDynamicBackground';
 
 const VERIFY_FORGOT_PASSWORD_OTP =
   gql`

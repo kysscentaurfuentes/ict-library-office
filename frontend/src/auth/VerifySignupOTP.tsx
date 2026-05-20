@@ -1,13 +1,7 @@
+// frontend/src/auth/VerifySignupOTP.tsx
 import { gql } from "@apollo/client/core";
-import {
-  useMutation,
-  useApolloClient
-} from "@apollo/client/react";
-import {
-useEffect,
-useRef,
-useState
-} from "react";
+import { useMutation, useApolloClient } from "@apollo/client/react";
+import { useEffect, useRef, useState } from "react";
 import { useDynamicBackground } from "../hooks/useDynamicBackground";
 
 const VERIFY_SIGNUP_OTP = gql`
