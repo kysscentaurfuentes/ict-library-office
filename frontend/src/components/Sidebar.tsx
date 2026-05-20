@@ -1,5 +1,6 @@
 // frontend/src/components/Sidebar.tsx
 import { gql, useQuery } from "@apollo/client";
+import React from 'react';
 import {
   useNavigate,
   useLocation,
@@ -25,7 +26,10 @@ import {
   useEffect,
   useMemo,
   useState,
+  useRef,
 } from 'react';
+
+
 
 const ME = gql`
   query {
@@ -34,25 +38,26 @@ const ME = gql`
       last_name
       role
       profile_picture
+      StudentId
     }
   }
 `;
 
-interface SidebarProps {
-  hoveredFromParent?: string | null;
+interface SidebarProps {}
 
-  setHoverFromParent?: (
-    name: string | null
-  ) => void;
-}
-
-export default function Sidebar({
-  hoveredFromParent,
-  setHoverFromParent,
-}: SidebarProps) {
+function Sidebar() {
 
   const navigate = useNavigate();
   const location = useLocation();
+
+const renderCount = useRef(0);
+
+renderCount.current++;
+
+console.log(
+  'SIDEBAR RENDER COUNT:',
+  renderCount.current
+);
 
   // ====================================
   // USER STATE
@@ -168,24 +173,66 @@ const finalUrl =
   // ====================================
   // RENDER
   // ====================================
+const sidebarRef = useRef<HTMLDivElement | null>(null);
 
+useEffect(() => {
+  const checkStyles = () => {
+    if (!sidebarRef.current) return;
+
+    const styles = window.getComputedStyle(sidebarRef.current);
+
+    console.log('======================');
+    console.log('CURRENT PATH:', location.pathname);
+    console.log('FONT SIZE:', styles.fontSize);
+    console.log('FONT FAMILY:', styles.fontFamily);
+    console.log('FONT WEIGHT:', styles.fontWeight);
+    console.log('LINE HEIGHT:', styles.lineHeight);
+    console.log('LETTER SPACING:', styles.letterSpacing);
+    console.log('ZOOM:', document.body.style.zoom);
+    console.log('DEVICE PIXEL RATIO:', window.devicePixelRatio);
+    console.log('WINDOW WIDTH:', window.innerWidth);
+    console.log('BODY WIDTH:', document.body.clientWidth);
+    console.log(
+      'HAS SCROLLBAR:',
+      document.documentElement.scrollHeight >
+        document.documentElement.clientHeight
+    );
+    console.log('======================');
+  };
+
+  checkStyles();
+
+  window.addEventListener('resize', checkStyles);
+
+  return () => {
+    window.removeEventListener('resize', checkStyles);
+  };
+}, [location.pathname]);
   return (
 
-    <div
+   <div
+  ref={sidebarRef}
   style={{
+    
     width: '260px',
     background: '#020617',
     height: '100vh',
-    position: 'fixed',   // 🔥 ADD THIS
-    left: 0,
-    top: 0,
+position: 'sticky',
+top: 0,
+flexShrink: 0,
     display: 'flex',
     flexDirection: 'column',
     borderRight: '2px solid #1e293b',
     boxSizing: 'border-box',
+
+    // ADD THIS
+    fontFamily:
+      'system-ui, "Segoe UI", Roboto, sans-serif',
+
+        WebkitFontSmoothing: 'antialiased',
+  MozOsxFontSmoothing: 'grayscale',
   }}
 >
-
       {/* ==================================== */}
       {/* HEADER */}
       {/* ==================================== */}
@@ -277,6 +324,19 @@ const finalUrl =
           >
             {user?.role || 'Student'} Portal
           </span>
+          {user?.StudentId && (
+  <div
+    style={{
+      marginTop: '4px',
+      fontSize: '0.82rem',
+      fontWeight: 800,
+      color: '#ffffff',
+      letterSpacing: '0.6px',
+    }}
+  >
+    {user.StudentId}
+  </div>
+)}
 
         </div>
       </div>
@@ -302,50 +362,53 @@ const finalUrl =
             location.pathname ===
             item.path;
 
-          const isSyncHighlighted =
-            hoveredFromParent ===
-            item.name;
+            console.log(
+  'RENDERING MENU ITEM:',
+  item.name
+);
+
 
           return (
 
-            <div
-              key={item.name}
+           <div
+  key={item.name}
 
-              onClick={() =>
-                navigate(item.path)
-              }
+  onClick={() =>
+    navigate(item.path)
+  }
 
-              onMouseEnter={() =>
-                setHoverFromParent?.(
-                  item.name
-                )
-              }
+  onMouseEnter={(e) => {
+    if (!isActive) {
+      e.currentTarget.style.background =
+        '#111827';
+    }
+  }}
 
-              onMouseLeave={() =>
-                setHoverFromParent?.(
-                  null
-                )
-              }
+  onMouseLeave={(e) => {
+    if (!isActive) {
+      e.currentTarget.style.background =
+        'transparent';
+    }
+  }}
 
-              style={{
+  style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px',
                 padding: '12px',
                 borderRadius: '8px',
-                transition: '0.2s',
+                transition: 'none',
 
-                background:
-                  isActive ||
-                  isSyncHighlighted
+              background:
+  isActive
                     ? '#1e293b'
                     : 'transparent',
+                  
 
-                color:
-                  isActive ||
-                  isSyncHighlighted
-                    ? '#fff'
-                    : '#888',
+               color:
+  isActive
+    ? '#fff'
+    : '#94a3b8',
 
                 cursor: 'pointer',
               }}
@@ -354,10 +417,9 @@ const finalUrl =
               <div
                 style={{
                   color:
-                    isActive ||
-                    isSyncHighlighted
-                      ? '#60a5fa'
-                      : 'inherit',
+  isActive
+    ? '#60a5fa'
+    : 'inherit',
                 }}
               >
                 {item.icon}
@@ -366,6 +428,7 @@ const finalUrl =
               <span
                 style={{
                   fontSize: '0.85rem',
+fontWeight: 500,
                 }}
               >
                 {item.name}
@@ -388,15 +451,7 @@ const finalUrl =
           navigate('/signin');
         }}
 
-        onMouseEnter={() =>
-          setHoverFromParent?.(
-            'Log Out'
-          )
-        }
 
-        onMouseLeave={() =>
-          setHoverFromParent?.(null)
-        }
 
         style={{
           display: 'flex',
@@ -409,11 +464,7 @@ const finalUrl =
             '1px solid #222',
           cursor: 'pointer',
 
-          background:
-            hoveredFromParent ===
-            'Log Out'
-              ? 'rgba(239,68,68,0.1)'
-              : 'transparent',
+        background: 'transparent',
         }}
       >
 
@@ -432,3 +483,4 @@ const finalUrl =
     </div>
   );
 }
+export default React.memo(Sidebar);

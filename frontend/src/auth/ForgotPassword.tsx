@@ -1,13 +1,7 @@
+// frontend/src/auth/ForgotPassword.tsx
 import { useState } from 'react';
-
-import {
-  useNavigate,
-} from 'react-router-dom';
-
-import {
-  gql,
-  useMutation,
-} from '@apollo/client';
+import { useNavigate, } from 'react-router-dom';
+import { gql, useMutation, } from '@apollo/client';
 
 import {
   useDynamicBackground
@@ -28,8 +22,9 @@ const REQUEST_FORGOT_PASSWORD_OTP =
     }
   `;
 
-
 export default function ForgotPassword() {
+
+  
 const navigate =
   useNavigate();
 
@@ -38,6 +33,14 @@ const currentBackground =
 
 const [identifier, setIdentifier] =
   useState('');
+const [
+  identifierType,
+  setIdentifierType
+] = useState<
+  'studentId' |
+  'email' |
+  ''
+>('');
 
 const [loading, setLoading] =
   useState(false);
@@ -53,6 +56,60 @@ const [successMessage, setSuccessMessage] =
 ] = useMutation(
   REQUEST_FORGOT_PASSWORD_OTP
 );
+
+const handleIdentifierChange = (
+  e: React.ChangeEvent<HTMLInputElement>
+): void => {
+
+  let value = e.target.value;
+
+  if (!value.trim()) {
+
+    setIdentifier('');
+    setIdentifierType('');
+    return;
+  }
+
+  // Student ID mode
+  if (/^\d/.test(value)) {
+
+    let digits =
+      value.replace(/\D/g, '');
+
+    if (digits.length > 8) {
+
+      digits =
+        digits.slice(0, 8);
+    }
+
+    if (digits.length > 3) {
+
+      digits =
+        digits.slice(0, 3) +
+        '-' +
+        digits.slice(3);
+    }
+
+    setIdentifier(digits);
+    setIdentifierType(
+      'studentId'
+    );
+
+    return;
+  }
+
+  // Email mode
+  const cleaned =
+    value
+      .replace(/@.*/g, '')
+      .replace(
+        /[^a-zA-Z0-9._]/g,
+        ''
+      );
+
+  setIdentifier(cleaned);
+  setIdentifierType('email');
+};
 
 const handleSubmit = async () => {
 
@@ -72,12 +129,15 @@ const handleSubmit = async () => {
 
     setLoading(true);
 
-    const result =
-      await requestForgotPasswordOTP({
-        variables: {
-          identifier,
-        },
-      });
+ const result =
+  await requestForgotPasswordOTP({
+    variables: {
+      identifier:
+        identifierType === 'email'
+          ? `${identifier}@carsu.edu.ph`
+          : identifier,
+    },
+  });
 
     const response =
       result.data
@@ -95,8 +155,11 @@ const handleSubmit = async () => {
           '/forgot-password/verify',
           {
             state: {
-              identifier,
-            },
+  identifier:
+    identifierType === 'email'
+      ? `${identifier}@carsu.edu.ph`
+      : identifier,
+},
           }
         );
 
@@ -208,27 +271,84 @@ const handleSubmit = async () => {
       </p>
 
       {/* INPUT */}
-      <input
-        type="text"
-        placeholder="Student ID or CARSU Email"
-        value={identifier}
-        onChange={(e) =>
-          setIdentifier(
-            e.target.value
-          )
-        }
-        className="auth-input"
-        style={{
-          width: '100%',
-          padding: '14px',
-          borderRadius: '12px',
-          border:
-            '1px solid rgba(255,255,255,0.15)',
-          background:
-            'rgba(255,255,255,0.08)',
-          marginBottom: '18px',
-        }}
-      />
+    <div
+  style={{
+    position: 'relative',
+    marginBottom: '18px',
+    width: '100%',
+    overflow: 'hidden',
+  }}
+>
+
+  <input
+    type="text"
+    placeholder="Student ID or CARSU Account"
+    value={identifier}
+    onChange={
+      handleIdentifierChange
+    }
+    onKeyDown={(e) => {
+
+      if (
+        e.key === 'Enter' &&
+        !loading
+      ) {
+        handleSubmit();
+      }
+    }}
+    className="auth-input"
+    style={{
+  width: '100%',
+  padding: '14px',
+
+  paddingRight:
+    identifierType ===
+    'email'
+      ? '150px'
+      : '14px',
+
+  borderRadius: '12px',
+
+  border:
+    '1px solid rgba(255,255,255,0.15)',
+
+  background:
+    'rgba(255,255,255,0.08)',
+
+  color: 'white',
+
+  boxSizing: 'border-box',
+}}
+  />
+
+  {identifierType ===
+    'email' && (
+
+    <span
+      style={{
+        position: 'absolute',
+        right: '18px',
+maxWidth: '130px',
+whiteSpace: 'nowrap',
+overflow: 'hidden',
+textOverflow: 'ellipsis',
+        top: '50%',
+        transform:
+          'translateY(-50%)',
+
+        color:
+          'rgba(255,255,255,0.55)',
+
+        fontWeight: 600,
+        pointerEvents: 'none',
+      }}
+    >
+      @carsu.edu.ph
+    </span>
+
+  )}
+
+</div>
 
       {/* ERROR */}
       {errorMessage && (

@@ -13,10 +13,9 @@
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
-
-  font: 18px/145% var(--sans);
+line-height: 145%;
+font-family: var(--sans);
   letter-spacing: 0.18px;
-  color-scheme: light dark;
   color: var(--text);
   background: var(--bg);
   text-rendering: optimizeLegibility;
@@ -42,17 +41,24 @@
 /* Tinanggal ang lahat ng scrollbars */
 html,
 body {
+  
   margin: 0;
   padding: 0;
   height: 100%;
   width: 100%;
   overflow: hidden;
   box-sizing: border-box;
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+font-size: 18px;
+line-height: 145%;
+-webkit-text-size-adjust: 100%;
+text-size-adjust: 100%;
+scrollbar-gutter: stable;
 }
 
 #root {
   width: 100%;
-  min-height: 100vh;
+  min-height: 100%;
   margin: 0;
   padding: 0;
   display: block;
@@ -77,3 +83,4 @@ h1, h2 {
   width: 100%;
   overflow: hidden;
 }
+

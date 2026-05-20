@@ -88,6 +88,9 @@ const Printer: React.FC = () => {
 
   // Load dark mode preference
   useEffect(() => {
+  console.log('PRINTING SERVICES PAGE RENDER');
+});
+  useEffect(() => {
     const savedDarkMode = localStorage.getItem('darkMode');
     if (savedDarkMode === 'true') {
       setIsDarkMode(true);
@@ -754,7 +757,6 @@ const Printer: React.FC = () => {
         }
 
         :root {
-          font-size: 14px;
           --bg: #f8fafc;
           --card-bg: #ffffff;
           --text-primary: #1e293b;
@@ -776,7 +778,7 @@ const Printer: React.FC = () => {
         .printer-wrapper {
           display: flex;
           width: 100%;
-          min-height: 100vh;
+          min-height: 100%;
           background: var(--bg);
         }
 

@@ -309,6 +309,9 @@ const Settings: React.FC = () => {
   // Load Saved Settings
   // =========================
   useEffect(() => {
+  console.log('SETTINGS PAGE RENDER');
+});
+  useEffect(() => {
     const savedVolume = localStorage.getItem('notificationVolume');
     const savedTwoFactor = localStorage.getItem('twoFactorEnabled');
     const savedProfilePicture = localStorage.getItem('profilePicture');
@@ -1859,7 +1862,6 @@ const Settings: React.FC = () => {
 
           {/* About Section */}
           <div className="about-section">
-            <p>User ID: 211-01850</p>
             <p>Version: 1.0.0</p>
             <p>&copy; 2026 ICT Library Office Sign In.</p>
           </div>
@@ -1952,8 +1954,6 @@ body,
 }
 
 :root {
-  font-size: 14px;
-
   --bg: #f8fafc;
   --card-bg: #ffffff;
 
@@ -2017,7 +2017,7 @@ body.dark-mode {
 .settings-wrapper {
   display: flex;
   width: 100%;
-  min-height: 100vh;
+  min-height: 100%;
   background: var(--bg);
 }
 
@@ -2069,8 +2069,6 @@ body.dark-mode {
 ========================================================= */
 .main-content {
   width: 100%;
-  max-width: 950px;
-  margin: 0 auto;
 }
 
 .settings-title {

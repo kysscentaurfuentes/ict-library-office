@@ -30,6 +30,10 @@ const About: React.FC = () => {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [currentYear, setCurrentYear] = useState<number>(2026);
 
+  useEffect(() => {
+  console.log('ABOUT PAGE RENDER');
+});
+
   // Load dark mode preference
   useEffect(() => {
     const savedDarkMode = localStorage.getItem('darkMode');
@@ -376,7 +380,6 @@ const [imageError, setImageError] = useState(false);
         }
 
         :root {
-          font-size: 14px;
           --bg: #f8fafc;
           --card-bg: #ffffff;
           --text-primary: #1e293b;
@@ -398,7 +401,7 @@ const [imageError, setImageError] = useState(false);
         .about-wrapper {
           display: flex;
           width: 100%;
-          min-height: 100vh;
+          min-height: 100%;
           background: var(--bg);
         }
 

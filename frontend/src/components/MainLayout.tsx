@@ -4,7 +4,6 @@ import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 
 export default function MainLayout() {
-  const [hoveredFromParent, setHoverFromParent] = useState<string | null>(null);
 
   return (
     <div
@@ -13,26 +12,23 @@ export default function MainLayout() {
         minHeight: '100vh',
         width: '100%',
         background: '#0f172a',
-        overflow: 'hidden', // 🔥 IMPORTANT
       }}
     >
       {/* SIDEBAR FIXED */}
-      <Sidebar
-        hoveredFromParent={hoveredFromParent}
-        setHoverFromParent={setHoverFromParent}
-      />
+<Sidebar />
 
       {/* CONTENT AREA */}
       <div
         style={{
-          marginLeft: '260px', // 🔥 IMPORTANT (prevents overlap)
+
           flex: 1,
           height: '100vh',
-          overflowY: 'auto', // ONLY ONE SCROLL
+          overflowY: 'auto',
+scrollbarGutter: 'stable',
           minWidth: 0,
         }}
       >
-        <Outlet context={{ setHoverFromParent }} />
+        <Outlet />
       </div>
     </div>
   );

@@ -9,3 +9,5 @@ Run this when deploying or testing production build:
 npm run build
 npm start
 
+Para bumalik sa pinaka latest na commit 
+git restore .

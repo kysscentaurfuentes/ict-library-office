@@ -68,6 +68,10 @@ const Feedback: React.FC = () => {
   // Max characters
   const MAX_CHARS = 3000;
 
+  useEffect(() => {
+  console.log('FEEDBACK PAGE RENDER');
+});
+
   // Load dark mode preference
   useEffect(() => {
     const savedDarkMode = localStorage.getItem('darkMode');
@@ -587,7 +591,6 @@ const Feedback: React.FC = () => {
         }
 
         :root {
-          font-size: 14px;
           --bg: #f8fafc;
           --card-bg: #ffffff;
           --text-primary: #1e293b;
@@ -609,7 +612,7 @@ const Feedback: React.FC = () => {
         .feedback-wrapper {
           display: flex;
           width: 100%;
-          min-height: 100vh;
+          min-height: 100%;
           background: var(--bg);
         }
 

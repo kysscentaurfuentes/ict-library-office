@@ -38,6 +38,14 @@ const GET_DEVICES = gql`
   }
 `;
 
+const ME = gql`
+  query {
+    me {
+      role
+    }
+  }
+`;
+
 const BLOCK_DEVICE = gql`
   mutation($mac: String!) {
     blockDevice(mac: $mac)
@@ -54,26 +62,15 @@ export default function Router() {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [lastUpdated, setLastUpdated] = useState<string>(new Date().toLocaleTimeString());
-  const [userRole, setUserRole] = useState<string | null>(null);
   const [devices, setDevices] = useState<DeviceState>({});
 
 const navigate = useNavigate();
+  const { data: meData } =
+  useQuery(ME);
 
-useEffect(() => {
-  const checkRole = async () => {
-    const role = localStorage.getItem('role');
+const userRole =
+  meData?.me?.role || '';
 
-    if (role !== 'Admin') {
-      alert('Access Denied: Admin only feature.');
-
-      navigate('/homescreen'); // safer than goBack
-    } else {
-      setUserRole(role);
-    }
-  };
-
-  checkRole();
-}, []);
 
   useEffect(() => {
     const savedDarkMode = localStorage.getItem('darkMode');
@@ -92,12 +89,7 @@ useEffect(() => {
       document.body.classList.remove('dark-mode');
     }
   }, [isDarkMode]);
-
-  useEffect(() => {
-    const role = localStorage.getItem('role');
-    setUserRole(role);
-  }, []);
-
+  
   useEffect(() => {
     const handleStorageChange = () => {
       const savedDarkMode = localStorage.getItem('darkMode');

@@ -257,6 +257,90 @@ const [
   setInternalPreviewModal
 ] = useState(false);
 
+useEffect(() => {
+
+  if (!isSignup) return;
+
+  const signupData = {
+    firstName,
+    middleName,
+    lastName,
+    email,
+    course,
+    studentId,
+    acceptedTerms,
+  };
+
+  localStorage.setItem(
+    'signupDraft',
+    JSON.stringify(signupData)
+  );
+
+}, [
+  firstName,
+  middleName,
+  lastName,
+  email,
+  course,
+  studentId,
+  acceptedTerms,
+  isSignup,
+]);
+
+useEffect(() => {
+
+  if (!isSignup) return;
+
+  const savedDraft =
+    localStorage.getItem(
+      'signupDraft'
+    );
+
+  if (!savedDraft) return;
+
+  try {
+
+    const parsed =
+      JSON.parse(savedDraft);
+
+    setFirstName(
+      parsed.firstName || ''
+    );
+
+    setMiddleName(
+      parsed.middleName || ''
+    );
+
+    setLastName(
+      parsed.lastName || ''
+    );
+
+    setEmail(
+      parsed.email || ''
+    );
+
+    setCourse(
+      parsed.course || ''
+    );
+
+    setStudentId(
+      parsed.studentId || ''
+    );
+
+    setAcceptedTerms(
+      parsed.acceptedTerms || false
+    );
+
+  } catch (err) {
+
+    console.error(
+      'Failed to restore signup draft'
+    );
+
+  }
+
+}, [isSignup]);
+
     useEffect(() => {
   if (identifier) {
     localStorage.setItem('savedIdentifier', identifier);
@@ -617,17 +701,30 @@ if (studentIdError) {
   return;
 }
 
-await onSubmit(
-  firstName,
-  middleName,
-  lastName,
-  `${email}@carsu.edu.ph`,
-  password,
-  course,
-  studentId,
-  schoolIdImage
-);
+try {
 
+  await onSubmit(
+    firstName,
+    middleName,
+    lastName,
+    `${email}@carsu.edu.ph`,
+    password,
+    course,
+    studentId,
+    schoolIdImage
+  );
+
+  localStorage.removeItem(
+    'signupDraft'
+  );
+
+} catch (err) {
+
+  console.error(
+    'Signup failed'
+  );
+
+}
 
     } else {
       const finalLoginValue =
@@ -1146,7 +1243,7 @@ textDecoration: 'underline',
                   }}
                 >
                   <label style={labelStyle}>
-                    Student ID (000-00000) Dash is automatic
+                    Student ID "000-00000" (Dash is automatic)
                   </label>
 
                  <input
@@ -1596,21 +1693,33 @@ maxHeight: '78px',
                   '18px auto 0',
                 border: 'none',
                 borderRadius: '7px',
-                cursor:
-                  loading ||
-                  !isFormValid
-                    ? 'not-allowed'
-                    : 'pointer',
+               cursor:
+  loading ||
+  !isFormValid ||
+  !!emailError ||
+  !!studentIdError ||
+  passwordStrength !== 'excellent'
+    ? 'not-allowed'
+    : 'pointer',
                 background:
-                  'linear-gradient(90deg,#6366f1,#8b5cf6)',
+  loading ||
+  !isFormValid ||
+  !!emailError ||
+  !!studentIdError ||
+  passwordStrength !== 'excellent'
+    ? 'rgba(255,255,255,0.12)'
+    : 'linear-gradient(90deg,#6366f1,#8b5cf6)',
                 color: '#fff',
                 fontSize: '1rem',
                 fontWeight: 700,
-                opacity:
-                  loading ||
-                  !isFormValid
-                    ? 0.6
-                    : 1,
+               opacity:
+  loading ||
+  !isFormValid ||
+  !!emailError ||
+  !!studentIdError ||
+  passwordStrength !== 'excellent'
+    ? 0.6
+    : 1,
               }}
             >
               {loading
