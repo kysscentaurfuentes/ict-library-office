@@ -583,7 +583,8 @@ const securityResult =
 const security =
   securityResult.rows[0];
 
-  
+  const captchaRequired =
+  (security?.request_count || 0) >= 3;
 
 // RESET EXPIRED LOCK
 if (
@@ -597,14 +598,11 @@ if (
     `
     UPDATE forgot_password_security
     SET
-      request_count = 0,
       locked_until = NULL
     WHERE id = $1
     `,
     [security.id]
   );
-
-  security.request_count = 0;
 }
 
 // ACTIVE LOCK
@@ -643,6 +641,7 @@ return {
   maxAttempts: 5,
 
   remainingSeconds,
+  captchaRequired,
 };
 }
 
@@ -682,17 +681,58 @@ if (!security) {
 requestCount =
   (security.request_count || 0) + 1;
 
-  let lockUntil =
-    null;
+let lockUntil = null;
 
-  if (requestCount >= 5) {
+// =========================
+// EXPONENTIAL LOCK
+// DEBUG VALUES (SECONDS)
+// =========================
 
-    lockUntil =
-      new Date(
-        Date.now() +
-        1 * 60 * 1000
-      );
+if (requestCount >= 5) {
+
+  let lockSeconds = 10;
+
+  // DEBUG:
+  // 5th request  = 10 sec
+  // 6th request  = 15 sec
+  // 7th request  = 20 sec
+  // 8th request  = 25 sec
+
+  // PRODUCTION:
+  // 5th request  = 1 min
+  // 6th request  = 5 mins
+  // 7th request  = 15 mins
+  // 8th request  = 1 hour
+
+  switch (requestCount) {
+
+    case 5:
+      lockSeconds = 10;
+      // PRODUCTION = 60
+      break;
+
+    case 6:
+      lockSeconds = 15;
+      // PRODUCTION = 300
+      break;
+
+    case 7:
+      lockSeconds = 20;
+      // PRODUCTION = 900
+      break;
+
+    default:
+      lockSeconds = 25;
+      // PRODUCTION = 3600
+      break;
   }
+
+  lockUntil =
+    new Date(
+      Date.now() +
+      lockSeconds * 1000
+    );
+}
 
   await pool.query(
     `
@@ -755,6 +795,8 @@ return {
   maxAttempts: 5,
 
   remainingSeconds: 0,
+  captchaRequired:
+  requestCount >= 3,
 };
 }
 
@@ -839,6 +881,8 @@ return {
   maxAttempts: 5,
 
   remainingSeconds: 0,
+  captchaRequired:
+  requestCount >= 3,
 };
 },
 verifyForgotPasswordOTP: async (

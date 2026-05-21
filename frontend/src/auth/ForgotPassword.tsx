@@ -13,13 +13,14 @@ const REQUEST_FORGOT_PASSWORD_OTP =
       requestForgotPasswordOTP(
         identifier: $identifier
       ) {
-        success
-        message
-        otpSent
-        locked
-        attempts
-maxAttempts
-remainingSeconds
+  success
+  message
+  otpSent
+  locked
+  attempts
+  maxAttempts
+  remainingSeconds
+  captchaRequired
       }
     }
   `;
@@ -88,6 +89,10 @@ const [errorMessage, setErrorMessage] =
 const [successMessage, setSuccessMessage] =
   useState('');
   
+  const [
+  showCaptcha,
+  setShowCaptcha
+] = useState(false);
 
   const [
   requestForgotPasswordOTP
@@ -161,7 +166,6 @@ useEffect(() => {
 });
 
 }, []);
-
 
 useEffect(() => {
 
@@ -411,6 +415,10 @@ console.log(
     if (response?.success) {
 setSuccessMessage(
   response.message
+);
+
+setShowCaptcha(
+  response?.captchaRequired || false
 );
 
 setAttempts(
@@ -781,6 +789,27 @@ const attemptColor =
   )}
 
 </div>
+
+{showCaptcha && (
+
+  <div
+    style={{
+      marginBottom: '18px',
+      padding: '14px',
+      borderRadius: '12px',
+      background:
+        'rgba(255,255,255,0.08)',
+      textAlign: 'center',
+      color: '#facc15',
+      fontWeight: 600,
+    }}
+  >
+    CAPTCHA REQUIRED
+    <br />
+    Debug Mode Active
+  </div>
+
+)}
 
         {/* BUTTON */}
         <button

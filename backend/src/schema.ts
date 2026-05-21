@@ -58,16 +58,16 @@ type User {
   failedAttempts: Int
   lockedUntil: String
 }
+
 type ForgotPasswordResponse {
   success: Boolean!
   message: String!
   otpSent: Boolean!
   locked: Boolean
-
   attempts: Int
   maxAttempts: Int
-
   remainingSeconds: Int
+  captchaRequired: Boolean!
 }
 
 type ChangePasswordStatus {
