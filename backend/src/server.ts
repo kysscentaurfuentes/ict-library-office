@@ -27,6 +27,7 @@ import { fileURLToPath } from "url";
 import { upload } from "./upload.js";
 import { initSocket } from "./socket.js";
 import { userSockets } from "./socket.js";
+import './agent/cloudSyncAgent.js';
 
 // Setup require for ESM
 const require = createRequire(import.meta.url);
@@ -48,7 +49,8 @@ app.use(cors({
     const isAllowed =
       allowedOrigins.includes(origin) ||
       new URL(origin).hostname === "localhost" || // dev safety
-      new URL(origin).hostname.startsWith("192.168."); // local network safety
+      new URL(origin).hostname.startsWith("192.168.") ||// local network safety
+      new URL(origin).hostname.startsWith("10.");
       
     if (isAllowed) {
       return callback(null, true);

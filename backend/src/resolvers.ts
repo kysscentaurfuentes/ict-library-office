@@ -12,7 +12,6 @@ import { fileURLToPath } from "url";
 import fetch from 'node-fetch';
 dotenv.config();
 
-
 const __filename =
   fileURLToPath(import.meta.url);
 
@@ -132,6 +131,8 @@ interface SignupPendingRow {
 
   failed_signup_attempts?: number;
   signup_locked_until?: string | null;
+  email_verified?: boolean;
+account_status?: string;
 }
 
 type Context = {
@@ -332,23 +333,23 @@ export const resolvers = {
 
   requireAdmin(context);
 
-  const result = await pool.query(
-    `
-    SELECT
-      id,
-      first_name,
-      middle_name,
-      last_name,
-      email,
-      "StudentId",
-      course,
-      school_id_image,
-      account_status
-    FROM users
-    WHERE account_status = 'PENDING'
-    ORDER BY id DESC
-    `
-  );
+const result = await pool.query(
+  `
+  SELECT
+    id,
+    first_name,
+    middle_name,
+    last_name,
+    email,
+    "StudentId",
+    course,
+    school_id_image,
+    account_status
+  FROM signup_pending
+  WHERE email_verified = true
+  ORDER BY id DESC
+  `
+);
 
   return result.rows;
 },
@@ -1345,9 +1346,10 @@ WHERE id = $2
     .update(code)
     .digest("hex");
 
-  // =========================
-  // SAVE TEMP SIGNUP
-  // =========================
+ // =========================
+// SAVE TEMP SIGNUP
+// =========================
+const pendingResult =
   await pool.query(
     `
     INSERT INTO signup_pending (
@@ -1368,7 +1370,10 @@ WHERE id = $2
       $6,$7,$8,$9,
       NOW() + INTERVAL '5 minutes'
     )
-    `,
+
+    RETURNING *
+    `
+    ,
     [
       first_name,
       middle_name,
@@ -1381,6 +1386,28 @@ WHERE id = $2
       hashedOTP
     ]
   );
+
+const pending =
+  pendingResult.rows[0];
+
+// =========================
+// SYNC PENDING SIGNUP
+// =========================
+await pool.query(
+  `
+  INSERT INTO sync_queue (
+    table_name,
+    operation,
+    payload
+  )
+  VALUES ($1,$2,$3)
+  `,
+  [
+    "signup_pending",
+    "insert",
+    JSON.stringify(pending)
+  ]
+);
 
   // =========================
   // SEND EMAIL OTP
@@ -1427,13 +1454,96 @@ WHERE id = $2
 
     console.log("LOGIN VALUE:", value);
 
-   const res = await pool.query<UserRow>(query, [value]);
+const res =
+  await pool.query<UserRow>(
+    query,
+    [value]
+  );
 
-    console.log("LOGIN RESULT:", res.rows);
-    // 2nd. constant user (Mutation Login)
-    const user = res.rows[0];
-    // 2nd assertUser
-    assertUser(user);
+console.log(
+  "LOGIN RESULT:",
+  res.rows
+);
+
+// =========================
+// CHECK PENDING ACCOUNT
+// =========================
+const pendingRes =
+  await pool.query(
+    `
+    SELECT *
+    FROM signup_pending
+    WHERE LOWER(email) = LOWER($1)
+       OR "StudentId" = $2
+    `,
+    [
+      buildEmail(cleanIdentifier),
+      cleanIdentifier
+    ]
+  );
+
+const pendingUser =
+  pendingRes.rows[0];
+
+// =========================
+// PENDING / REJECTED
+// =========================
+if (
+  pendingUser?.email_verified
+) {
+
+  if (
+    pendingUser.account_status ===
+    "PENDING"
+  ) {
+
+    throw new GraphQLError(
+      "Your account is pending by Admin approval.",
+      {
+        extensions: {
+          code:
+            "ACCOUNT_PENDING",
+
+          studentId:
+            pendingUser.StudentId,
+
+          email:
+            pendingUser.email,
+        },
+      }
+    );
+  }
+
+  if (
+    pendingUser.account_status ===
+    "REJECTED"
+  ) {
+
+    throw new GraphQLError(
+      "Your account has been rejected by Admin.",
+      {
+        extensions: {
+          code:
+            "ACCOUNT_REJECTED",
+
+          studentId:
+            pendingUser.StudentId,
+
+          email:
+            pendingUser.email,
+        },
+      }
+    );
+  }
+}
+
+// =========================
+// REAL USER
+// =========================
+const user =
+  res.rows[0];
+
+assertUser(user);
    if (user.account_status === "PENDING") {
 
   throw new GraphQLError(
@@ -1872,20 +1982,23 @@ await pool.query(
     );
   }
 
-  // =========================
-  // CREATE REAL ACCOUNT
-  // =========================
-  await pool.query(
+ // =========================
+// RESET OTP FAILURES
+// =========================
+await pool.query(
   `
   UPDATE signup_pending
   SET
     failed_signup_attempts = 0,
-    signup_locked_until = NULL
+    signup_locked_until = NULL,
+    email_verified = true,
+    account_status = 'PENDING'
   WHERE id = $1
   `,
   [pending.id]
 );
-  // =========================
+
+// =========================
 // MOVE TEMP FILE
 // =========================
 let finalImagePath =
@@ -1928,6 +2041,18 @@ try {
 
     finalImagePath =
 `${BASE_URL}/uploads/school-ids/${cleanedName}`;
+
+    await pool.query(
+      `
+      UPDATE signup_pending
+      SET school_id_image = $1
+      WHERE id = $2
+      `,
+      [
+        finalImagePath,
+        pending.id
+      ]
+    );
   }
 
 } catch (err) {
@@ -1942,52 +2067,31 @@ try {
   );
 }
 
-  await pool.query(
-    `
-    INSERT INTO users (
-      first_name,
-      middle_name,
-      last_name,
-      email,
-      password,
-      "StudentId",
-      course,
-      school_id_image,
-      role,
-      account_status
-    )
+// =========================
+// SYNC PENDING USER
+// =========================
+await pool.query(
+  `
+  INSERT INTO sync_queue (
+    table_name,
+    operation,
+    payload
+  )
+  VALUES ($1,$2,$3)
+  `,
+  [
+    "signup_pending",
+    "update",
+    JSON.stringify({
+      id: pending.id,
+      email_verified: true,
+      account_status: "PENDING",
+      school_id_image: finalImagePath
+    })
+  ]
+);
 
-    VALUES (
-      $1,$2,$3,$4,$5,
-      $6,$7,$8,$9,$10
-    )
-    `,
-    [
-      pending.first_name,
-      pending.middle_name,
-      pending.last_name,
-      pending.email,
-      pending.password,
-      pending.StudentId,
-      pending.course,
-      finalImagePath,
-      "Student",
-      "PENDING"
-    ]
-  );
-
-  // =========================
-  // DELETE TEMP SIGNUP
-  // =========================
-  await pool.query(
-    `
-    DELETE FROM signup_pending
-    WHERE id = $1
-    `,
-    [pending.id]
-  );
-
-  return true;
+return true;
 },
     
     verifyTwoFactor: async (_: any, { identifier, code }: any) => {
@@ -2008,7 +2112,7 @@ try {
 );
   // 3rd. constant user (Mutation verifyTwoFactor)
   const user = res.rows[0];   // ✅ MOVE THIS UP
-  // 3rd assertUser
+  // 2nd assertUser
   assertUser(user);
 
   // 🚫 NOW SAFE to use user.id
@@ -2606,7 +2710,7 @@ WHERE id = $19
 
       return true;
     },
-    approveUser: async (
+ approveUser: async (
   _: any,
   { userId }: { userId: number },
   context: Context
@@ -2614,18 +2718,124 @@ WHERE id = $19
 
   requireAdmin(context);
 
+  // =========================
+  // GET PENDING USER
+  // =========================
+  const pendingResult =
+    await pool.query(
+      `
+      SELECT *
+      FROM signup_pending
+      WHERE id = $1
+      `,
+      [userId]
+    );
+
+  const pending =
+    pendingResult.rows[0];
+
+  if (!pending) {
+    throw new Error(
+      "Pending user not found"
+    );
+  }
+
+  // =========================
+  // INSERT INTO REAL USERS
+  // =========================
+  const userInsertResult =
+    await pool.query(
+      `
+      INSERT INTO users (
+        first_name,
+        middle_name,
+        last_name,
+        email,
+        password,
+        "StudentId",
+        course,
+        school_id_image,
+        role,
+        account_status
+      )
+
+      VALUES (
+        $1,$2,$3,$4,$5,
+        $6,$7,$8,$9,$10
+      )
+
+      RETURNING *
+      `,
+      [
+        pending.first_name,
+        pending.middle_name,
+        pending.last_name,
+        pending.email,
+        pending.password,
+        pending.StudentId,
+        pending.course,
+        pending.school_id_image,
+        "Student",
+        "APPROVED"
+      ]
+    );
+
+  const createdUser =
+    userInsertResult.rows[0];
+
+  // =========================
+  // SYNC REAL USER
+  // =========================
   await pool.query(
     `
-    UPDATE users
-    SET account_status = 'APPROVED'
+    INSERT INTO sync_queue (
+      table_name,
+      operation,
+      payload
+    )
+    VALUES ($1,$2,$3)
+    `,
+    [
+      "users",
+      "insert",
+      JSON.stringify(createdUser)
+    ]
+  );
+
+  // =========================
+  // DELETE PENDING
+  // =========================
+  await pool.query(
+    `
+    DELETE FROM signup_pending
     WHERE id = $1
     `,
     [userId]
   );
 
+  // =========================
+  // SYNC DELETE
+  // =========================
+  await pool.query(
+    `
+    INSERT INTO sync_queue (
+      table_name,
+      operation,
+      payload
+    )
+    VALUES ($1,$2,$3)
+    `,
+    [
+      "signup_pending",
+      "delete",
+      JSON.stringify({
+        id: userId
+      })
+    ]
+  );
+
   return true;
 },
-
 rejectUser: async (
   _: any,
   { userId }: { userId: number },
@@ -2636,15 +2846,35 @@ rejectUser: async (
 
   await pool.query(
     `
-    UPDATE users
+    UPDATE signup_pending
     SET account_status = 'REJECTED'
     WHERE id = $1
     `,
     [userId]
   );
 
+  await pool.query(
+    `
+    INSERT INTO sync_queue (
+      table_name,
+      operation,
+      payload
+    )
+    VALUES ($1,$2,$3)
+    `,
+    [
+      "signup_pending",
+      "update",
+      JSON.stringify({
+        id: userId,
+        account_status: "REJECTED"
+      })
+    ]
+  );
+
   return true;
 },
+
 changePassword: async (
   _: any,
   {

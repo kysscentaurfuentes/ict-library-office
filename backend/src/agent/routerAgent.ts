@@ -1,6 +1,6 @@
-// backend/src/agent.ts
-import { execRouterCommand } from './router.js';
-import { pool } from './db.js';
+// backend/src/agent/routerAgent.ts
+import { execRouterCommand } from '../router.js';
+import { pool } from '../db.js';
 
 function normalizeMac(mac: string) {
   return mac.toLowerCase().replace(/-/g, ':');

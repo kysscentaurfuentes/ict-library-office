@@ -1146,7 +1146,7 @@ textDecoration: 'underline',
                   }}
                 >
                   <label style={labelStyle}>
-                    Student ID (000-00000) Dash is automatic
+                    Student ID "000-00000" (Dash is automatic)
                   </label>
 
                  <input
