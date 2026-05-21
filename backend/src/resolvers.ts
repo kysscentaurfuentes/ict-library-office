@@ -12,6 +12,7 @@ import { fileURLToPath } from "url";
 
 dotenv.config();
 
+
 const __filename =
   fileURLToPath(import.meta.url);
 
@@ -138,6 +139,10 @@ type Context = {
     userId: number;
     role: string;
   } | null;
+
+  ip?: string;
+
+  userAgent?: string;
 };
 
 function assertUser(user: UserRow | undefined): asserts user is UserRow {
@@ -199,7 +204,7 @@ function buildEmail(identifier: string) {
 }
 
 export const resolvers = {
-  Query: { // START OF QUERY
+  Query: { // QUERY START OF QUERY
 
     hello: () => "Backend is working with Router 🚀",
 
@@ -482,20 +487,241 @@ checkChangePasswordStatus: async (
     : null,
   };
 },
+checkForgotPasswordLock: async (
+  _: any,
+  { identifier }: any,
+  context: Context
+) => {
+
+  const ip =
+    context.ip || "unknown";
+
+  const result =
+    await pool.query(
+      `
+      SELECT
+        request_count,
+        locked_until
+      FROM forgot_password_security
+      WHERE ip_address = $1
+      ORDER BY created_at DESC
+      LIMIT 1
+      `,
+      [ip]
+    );
+
+  const security =
+    result.rows[0];
+
+  if (!security) {
+
+    return {
+      locked: false,
+      attempts: 0,
+      remainingSeconds: 0,
+    };
+  }
+
+  const lockedUntil =
+    security.locked_until
+      ? new Date(
+          security.locked_until
+        ).getTime()
+      : 0;
+
+  const remainingSeconds =
+    Math.max(
+      0,
+      Math.floor(
+        (lockedUntil - Date.now()) / 1000
+      )
+    );
+
+  return {
+    locked:
+      remainingSeconds > 0,
+
+    attempts:
+      security.request_count || 0,
+
+    remainingSeconds,
+  };
+},
   }, // END OF QUERY
   
   // START OF MUTATION
    Mutation: {
     requestForgotPasswordOTP: async (
   _: any,
-  { identifier }: any
+  { identifier }: any,
+  context: Context
 ) => {
+const ip =
+  context.ip || "unknown";
 
-  const clean =
-    normalizeIdentifier(identifier);
+const userAgent =
+  context.userAgent || "unknown";
 
-  const result =
-    await pool.query<UserRow>(
+const clean =
+  normalizeIdentifier(identifier);
+
+// =========================
+// IP RATE LIMIT CHECK
+// =========================
+const securityResult =
+  await pool.query(
+    `
+    SELECT *
+    FROM forgot_password_security
+    WHERE ip_address = $1
+    ORDER BY created_at DESC
+    LIMIT 1
+    `,
+    [ip]
+  );
+
+const security =
+  securityResult.rows[0];
+
+  
+
+// RESET EXPIRED LOCK
+if (
+  security?.locked_until &&
+  new Date(
+    security.locked_until
+  ).getTime() < Date.now()
+) {
+
+  await pool.query(
+    `
+    UPDATE forgot_password_security
+    SET
+      request_count = 0,
+      locked_until = NULL
+    WHERE id = $1
+    `,
+    [security.id]
+  );
+
+  security.request_count = 0;
+}
+
+// ACTIVE LOCK
+if (
+  security?.locked_until &&
+  new Date(
+    security.locked_until
+  ).getTime() > Date.now()
+) {
+
+ const remainingSeconds =
+  Math.max(
+    0,
+    Math.floor(
+      (
+        new Date(
+          security.locked_until
+        ).getTime() -
+        Date.now()
+      ) / 1000
+    )
+  );
+
+return {
+  success: true,
+  message:
+    "Too many requests. Try again later.",
+
+  otpSent: false,
+
+  locked: true,
+
+  attempts:
+    security.request_count || 5,
+
+  maxAttempts: 5,
+
+  remainingSeconds,
+};
+}
+
+let requestCount = 1;
+// =========================
+// TRACK IP REQUESTS
+// =========================
+if (!security) {
+
+  await pool.query(
+    `
+    INSERT INTO forgot_password_security (
+      ip_address,
+      identifier,
+      request_count,
+      last_request_at,
+      user_agent
+    )
+
+    VALUES (
+      $1,
+      $2,
+      1,
+      NOW(),
+      $3
+    )
+    `,
+    [
+      ip,
+      clean,
+      userAgent
+    ]
+  );
+
+} else {
+
+requestCount =
+  (security.request_count || 0) + 1;
+
+  let lockUntil =
+    null;
+
+  if (requestCount >= 5) {
+
+    lockUntil =
+      new Date(
+        Date.now() +
+        1 * 60 * 1000
+      );
+  }
+
+  await pool.query(
+    `
+    UPDATE forgot_password_security
+    SET
+      request_count = $1,
+
+      last_request_at = NOW(),
+
+      locked_until = $2,
+
+      identifier = $3,
+
+      user_agent = $4
+
+    WHERE id = $5
+    `,
+    [
+      requestCount,
+      lockUntil,
+      clean,
+      userAgent,
+      security.id
+    ]
+  );
+}
+
+const result =
+  await pool.query<UserRow>(
       `
       SELECT *
       FROM users
@@ -513,66 +739,24 @@ checkChangePasswordStatus: async (
 
 if (!user) {
 
-  return {
-    success: true,
-    message:
-      "If the account exists, an OTP has been sent.",
-    otpSent: false
-  };
-}
-
-// RESET EXPIRED REQUEST LOCK
-if (
-  user.forgot_request_locked_until &&
-  new Date(
-    user.forgot_request_locked_until
-  ).getTime() < Date.now()
-) {
-
-  await pool.query(
-    `
-    UPDATE users
-    SET
-      forgot_request_count = 0,
-      forgot_request_locked_until = NULL
-    WHERE id = $1
-    `,
-    [user.id]
-  );
-
-  user.forgot_request_count = 0;
-}
-
-// =========================
-// RESEND COOLDOWN
-// =========================
-const resendCheck =
-  await pool.query(
-    `
-    SELECT
-      NOW() -
-      forgot_request_last_sent_at
-      < INTERVAL '60 seconds'
-      AS too_soon
-
-    FROM users
-    WHERE id = $1
-    `,
-    [user.id]
-  );
-
-if (
-  resendCheck.rows[0]?.too_soon
-) {
 
 return {
   success: true,
   message:
     "If the account exists, an OTP has been sent.",
-  otpSent: true
+
+  otpSent: false,
+
+  locked: false,
+
+  attempts:
+    requestCount,
+
+  maxAttempts: 5,
+
+  remainingSeconds: 0,
 };
 }
-
 
   // =========================
   // CHECK LOCK
@@ -639,48 +823,22 @@ return {
     code
   );
 
-  // =========================
-// TRACK REQUEST COUNT
-// =========================
-const requestCount =
-  (user.forgot_request_count || 0) + 1;
-
-let requestLockUntil =
-  null;
-
-if (requestCount >= 3) {
-
-  requestLockUntil =
-    new Date(
-      Date.now() +
-      15 * 60 * 1000
-    );
-}
-
-await pool.query(
-  `
-  UPDATE users
-  SET
-    forgot_request_count = $1,
-
-    forgot_request_locked_until = $2,
-
-    forgot_request_last_sent_at = NOW()
-
-  WHERE id = $3
-  `,
-  [
-    requestCount,
-    requestLockUntil,
-    user.id
-  ]
-);
 
 return {
   success: true,
   message:
-    "If the account exists, an OTP has been sent.",
-  otpSent: true
+    "OTP sent successfully.",
+
+  otpSent: true,
+
+  locked: false,
+
+  attempts:
+    requestCount,
+
+  maxAttempts: 5,
+
+  remainingSeconds: 0,
 };
 },
 verifyForgotPasswordOTP: async (
@@ -712,8 +870,6 @@ verifyForgotPasswordOTP: async (
     result.rows[0];
 
   assertUser(user);
-
-
 
   // =========================
   // CHECK LOCK
@@ -800,7 +956,7 @@ verifyForgotPasswordOTP: async (
       lockUntil =
         new Date(
           Date.now() +
-          15 * 60 * 1000
+          1 * 60 * 1000
         );
     }
 
@@ -939,11 +1095,7 @@ SET
   forgot_password_otp_expires_at = NULL,
 
   failed_forgot_attempts = 0,
-  forgot_locked_until = NULL,
-
-  forgot_request_count = 0,
-  forgot_request_locked_until = NULL,
-  forgot_request_last_sent_at = NULL
+  forgot_locked_until = NULL
 
 WHERE id = $2
     `,

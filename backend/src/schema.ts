@@ -62,6 +62,12 @@ type ForgotPasswordResponse {
   success: Boolean!
   message: String!
   otpSent: Boolean!
+  locked: Boolean
+
+  attempts: Int
+  maxAttempts: Int
+
+  remainingSeconds: Int
 }
 
 type ChangePasswordStatus {
@@ -69,24 +75,34 @@ type ChangePasswordStatus {
   lockedUntil: String
 }
 
-  type Query {
+type ForgotPasswordLockStatus {
+  locked: Boolean!
+  attempts: Int!
+  remainingSeconds: Int!
+}
+
+ type Query {
   hello: String
   me: User
   routerDevices: [Device]
 
   checkOtpStatus(
-  identifier: String!
+    identifier: String!
   ): OtpStatus
 
   checkSignupOtpStatus(
-  email: String!
-): OtpStatus
+    email: String!
+  ): OtpStatus
+
+  checkForgotPasswordLock(
+    identifier: String!
+  ): ForgotPasswordLockStatus
 
   checkChangePasswordStatus: ChangePasswordStatus
   
   pendingUsers: [User]
 
-    checkSignupAvailability(
+  checkSignupAvailability(
     email: String,
     StudentId: String
   ): AvailabilityResponse!
