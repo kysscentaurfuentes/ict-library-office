@@ -9,7 +9,7 @@ import { GraphQLError } from "graphql";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-
+import fetch from 'node-fetch';
 dotenv.config();
 
 
@@ -489,7 +489,10 @@ checkChangePasswordStatus: async (
 },
 checkForgotPasswordLock: async (
   _: any,
-  { identifier }: any,
+  {
+  identifier,
+  captchaToken
+}: any,
   context: Context
 ) => {
 
@@ -553,7 +556,10 @@ checkForgotPasswordLock: async (
    Mutation: {
     requestForgotPasswordOTP: async (
   _: any,
-  { identifier }: any,
+  {
+  identifier,
+  captchaToken
+}: any,
   context: Context
 ) => {
 const ip =
@@ -585,6 +591,59 @@ const security =
 
   const captchaRequired =
   (security?.request_count || 0) >= 3;
+
+  // =========================
+// CLOUDFLARE TURNSTILE
+// CAPTCHA VERIFICATION
+// =========================
+
+if (captchaRequired) {
+
+  if (!captchaToken) {
+
+    throw new Error(
+      'CAPTCHA verification required.'
+    );
+  }
+
+  const verifyResponse =
+    await fetch(
+      'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+      {
+        method: 'POST',
+
+        headers: {
+          'Content-Type':
+            'application/json',
+        },
+
+        body: JSON.stringify({
+
+          secret:
+            process.env
+              .TURNSTILE_SECRET_KEY,
+
+          response:
+            captchaToken,
+        }),
+      }
+    );
+
+  const verifyData: any =
+    await verifyResponse.json();
+
+  console.log(
+    'TURNSTILE VERIFY:',
+    verifyData
+  );
+
+  if (!verifyData.success) {
+
+    throw new Error(
+      'CAPTCHA verification failed.'
+    );
+  }
+}
 
 // RESET EXPIRED LOCK
 if (
@@ -758,6 +817,35 @@ if (requestCount >= 5) {
       security.id
     ]
   );
+  if (lockUntil) {
+
+  return {
+    success: true,
+    message:
+      "Too many requests. Try again later.",
+
+    otpSent: false,
+
+    locked: true,
+
+    attempts: requestCount,
+
+    maxAttempts: 5,
+
+    remainingSeconds:
+      Math.max(
+        0,
+        Math.floor(
+          (
+            lockUntil.getTime() -
+            Date.now()
+          ) / 1000
+        )
+      ),
+
+    captchaRequired: true,
+  };
+}
 }
 
 const result =

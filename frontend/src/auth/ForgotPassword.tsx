@@ -2,16 +2,18 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { gql, useMutation, useLazyQuery } from '@apollo/client';
-
+import { Turnstile } from '@marsidev/react-turnstile';
 
 const REQUEST_FORGOT_PASSWORD_OTP =
   gql`
     mutation RequestForgotPasswordOTP(
       $identifier: String!
+      $captchaToken: String
     ) {
 
       requestForgotPasswordOTP(
         identifier: $identifier
+        captchaToken: $captchaToken
       ) {
   success
   message
@@ -53,7 +55,10 @@ export default function ForgotPassword() {
   }
 );
 
-
+const [
+  captchaResetKey,
+  setCaptchaResetKey
+] = useState(0);
 
 const navigate =
   useNavigate();
@@ -94,6 +99,16 @@ const [successMessage, setSuccessMessage] =
   setShowCaptcha
 ] = useState(false);
 
+const [
+  captchaVerified,
+  setCaptchaVerified
+] = useState(false);
+
+const [
+  captchaToken,
+  setCaptchaToken
+] = useState('');
+
   const [
   requestForgotPasswordOTP
 ] = useMutation(
@@ -126,8 +141,12 @@ useEffect(() => {
 
   checkForgotPasswordLock({
   variables: {
-    identifier: savedIdentifier
-  }
+
+  identifier:
+savedIdentifier.includes('@')
+  ? savedIdentifier
+  : savedIdentifier,
+},
 })
 .then((result) => {
 
@@ -360,6 +379,18 @@ const handleSubmit = async () => {
   setErrorMessage('');
   setSuccessMessage('');
 
+  if (
+  showCaptcha &&
+  !captchaVerified
+) {
+
+  setErrorMessage(
+    'Please complete CAPTCHA verification.'
+  );
+
+  return;
+}
+
   if (!identifier.trim()) {
 
     setErrorMessage(
@@ -380,18 +411,24 @@ const handleSubmit = async () => {
 
     const result =
       await requestForgotPasswordOTP({
-        variables: {
-          identifier:
-  identifierType === 'email'
-    ? `${identifier}@carsu.edu.ph`
-    : identifier,
-        },
+     variables: {
+
+  identifier:
+    identifierType === 'email'
+      ? `${identifier}@carsu.edu.ph`
+      : identifier,
+
+  captchaToken,
+},
       });
 
     const response =
       result.data
         ?.requestForgotPasswordOTP;
-
+console.log(
+  'FULL RESPONSE:',
+  JSON.stringify(response, null, 2)
+);
         console.log(
   'FORGOT PASSWORD RESPONSE:',
   response
@@ -447,7 +484,10 @@ if (response?.locked) {
 }
 
   if (response?.otpSent) {
-
+    setCaptchaVerified(false);
+setCaptchaToken('');
+setShowCaptcha(false);
+setCaptchaResetKey(prev => prev + 1);
     setTimeout(() => {
 
       navigate(
@@ -467,6 +507,10 @@ if (response?.locked) {
 }
 
   } catch (error: any) {
+    
+    setCaptchaVerified(false);
+setCaptchaToken('');
+setCaptchaResetKey(prev => prev + 1);
 
     console.error(error);
 
@@ -790,27 +834,60 @@ const attemptColor =
 
 </div>
 
+ {/* =========================
+DEBUG CAPTCHA
+REPLACEABLE WITH
+PRODUCTION TURNSTILE
+========================= */}
+
 {showCaptcha && (
 
   <div
     style={{
       marginBottom: '18px',
-      padding: '14px',
-      borderRadius: '12px',
-      background:
-        'rgba(255,255,255,0.08)',
-      textAlign: 'center',
-      color: '#facc15',
-      fontWeight: 600,
+      display: 'flex',
+      justifyContent: 'center',
     }}
   >
-    CAPTCHA REQUIRED
-    <br />
-    Debug Mode Active
+
+    <Turnstile
+    key={captchaResetKey}
+      siteKey={
+        import.meta.env
+          .VITE_TURNSTILE_SITE_KEY
+      }
+
+     onSuccess={(token) => {
+
+  console.log(
+    'TURNSTILE TOKEN:',
+    token
+  );
+
+  setCaptchaVerified(true);
+
+  setCaptchaToken(token);
+}}
+
+      onError={() => {
+
+        setCaptchaVerified(false);
+        setCaptchaToken('');
+        setErrorMessage(
+          'CAPTCHA verification failed.'
+        );
+      }}
+
+      onExpire={() => {
+
+        setCaptchaVerified(false);
+        setCaptchaToken('');
+      }}
+    />
+
   </div>
 
 )}
-
         {/* BUTTON */}
         <button
           onClick={handleSubmit}

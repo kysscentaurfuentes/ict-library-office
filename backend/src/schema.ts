@@ -67,7 +67,7 @@ type ForgotPasswordResponse {
   attempts: Int
   maxAttempts: Int
   remainingSeconds: Int
-  captchaRequired: Boolean!
+  captchaRequired: Boolean
 }
 
 type ChangePasswordStatus {
@@ -114,8 +114,9 @@ type AvailabilityResponse {
 }
   type Mutation {
 
-  requestForgotPasswordOTP(
+requestForgotPasswordOTP(
   identifier: String!
+  captchaToken: String
 ): ForgotPasswordResponse
 
 verifyForgotPasswordOTP(
