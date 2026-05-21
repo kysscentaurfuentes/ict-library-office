@@ -13,13 +13,37 @@ import { ApolloProvider } from '@apollo/client/react'
 import { setContext } from '@apollo/client/link/context'
 
 // 🔥 Dynamic API URL
-const API_URL =
-  import.meta.env.VITE_API_URL ||
-  import.meta.env.VITE_API_FALLBACK;
-
 // 🔗 HTTP connection
+const PRIMARY =
+  `${import.meta.env.VITE_API_URL}/graphql`;
+
+const FALLBACK =
+  `${import.meta.env.VITE_API_FALLBACK}/graphql`;
+
 const httpLink = new HttpLink({
-  uri: `${API_URL}/graphql`,
+  uri: PRIMARY,
+
+  fetch: async (uri, options) => {
+
+    try {
+
+      return await fetch(
+        uri,
+        options
+      );
+
+    } catch (error) {
+
+      console.warn(
+        'Primary backend offline. Using fallback backend...'
+      );
+
+      return fetch(
+        FALLBACK,
+        options
+      );
+    }
+  },
 });
 
 // 🔐 Auth middleware
