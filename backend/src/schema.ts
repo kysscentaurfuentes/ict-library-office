@@ -82,8 +82,9 @@ type ForgotPasswordLockStatus {
 }
 
 type TwoFactorSetup {
-  secret: String!
-  qrCode: String!
+  secret: String
+  qrCode: String
+  alreadySetup: Boolean
 }
 
  type Query {

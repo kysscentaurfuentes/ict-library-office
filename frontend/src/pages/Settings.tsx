@@ -2043,28 +2043,42 @@ console.log(updated.data);
               <label htmlFor="twoFactorAuth">Enable 2-Step Verification (for added security)</label>
              <input
   type="checkbox"
-  id="twoFactorAuth"
   checked={twoFactorEnabled}
   onChange={async (e) => {
 
-    const value = e.target.checked;
+    const enabled =
+      e.target.checked;
 
-    // ENABLE
-    if (value) {
+    // =========================
+    // ENABLE 2FA
+    // =========================
+    if (enabled) {
 
       try {
 
-        const response =
+        const { data } =
           await setupTwoFactorMutation();
 
-        const qr =
-          response.data
-            .setupTwoFactor
-            .qrCode;
+        // already exists
+        if (
+          data?.setupTwoFactor
+            ?.alreadySetup
+        ) {
 
-        setQrCode(qr);
+          setTwoFactorEnabled(true);
 
-        setShowTwoFactorModal(true);
+          return;
+        }
+
+        // NEW QR
+        setQrCode(
+          data?.setupTwoFactor
+            ?.qrCode || ''
+        );
+
+        setShowTwoFactorModal(
+          true
+        );
 
       } catch (error) {
 
@@ -2075,20 +2089,42 @@ console.log(updated.data);
         );
       }
 
+      return;
     }
 
-    // DISABLE
-    else {
+    // =========================
+    // DISABLE 2FA
+    // =========================
+    const password =
+      prompt(
+        'Enter your password to disable 2FA'
+      );
+
+    if (!password) {
+      return;
+    }
+
+    try {
+
+      await disableTwoFactorMutation({
+        variables: {
+          password
+        }
+      });
 
       setTwoFactorEnabled(false);
 
-      try {
+      alert(
+        '2FA disabled successfully'
+      );
 
+    } catch (error) {
 
-      } catch (error) {
+      console.error(error);
 
-        console.error(error);
-      }
+      alert(
+        'Failed to disable 2FA'
+      );
     }
   }}
 />

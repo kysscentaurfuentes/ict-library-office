@@ -223,12 +223,17 @@ export const resolvers = {
       const result =
         await pool.query<UserRow>(
           `
-          SELECT
-            s.failed_otp_attempts,
-            otp_locked_until
-          FROM users
-          WHERE LOWER(email) = LOWER($1)
-             OR "StudentId" = $2
+  SELECT
+  s.failed_otp_attempts,
+  s.otp_locked_until
+
+FROM users u
+
+LEFT JOIN user_security s
+ON s.user_id = u.id
+
+WHERE LOWER(u.email) = LOWER($1)
+   OR u."StudentId" = $2
           `,
           [buildEmail(clean), clean]
         );
@@ -1041,14 +1046,24 @@ verifyForgotPasswordOTP: async (
   const clean =
     normalizeIdentifier(identifier);
 
-  const result =
-    await pool.query<UserRow>(
-      `
-      SELECT *
-      FROM users
-      WHERE LOWER(email) = LOWER($1)
-         OR "StudentId" = $2
-      `,
+ const result =
+  await pool.query<UserRow>(
+    `
+    SELECT
+
+      u.*,
+
+      s.failed_forgot_attempts,
+      s.forgot_locked_until
+
+    FROM users u
+
+    LEFT JOIN user_security s
+    ON s.user_id = u.id
+
+    WHERE LOWER(u.email) = LOWER($1)
+       OR u."StudentId" = $2
+    `,
       [
         buildEmail(clean),
         clean
@@ -1201,6 +1216,7 @@ WHERE user_id = $1
 
   return true;
 },
+
 resetForgotPassword: async (
   _: any,
   {
@@ -1306,6 +1322,21 @@ const reset =
   // =========================
   // UPDATE PASSWORD
   // =========================
+  await pool.query(
+  `
+  UPDATE users
+  SET password = $1
+  WHERE id = $2
+  `,
+  [
+    hashedPassword,
+    user.id
+  ]
+);
+
+// =========================
+// DELETE RESET SESSION
+// =========================
   await pool.query(
     `
  DELETE FROM password_resets
@@ -2286,10 +2317,19 @@ return true;
 
   const res = await pool.query<UserRow>(
   `
-  SELECT *
-  FROM users
-  WHERE LOWER(email) = LOWER($1)
-     OR "StudentId" = $2
+  SELECT
+  u.*,
+
+  s.failed_otp_attempts,
+  s.otp_locked_until
+
+FROM users u
+
+LEFT JOIN user_security s
+ON s.user_id = u.id
+
+WHERE LOWER(email) = LOWER($1)
+   OR "StudentId" = $2
   `,
   [buildEmail(clean), clean]
 );
@@ -2997,14 +3037,49 @@ return refreshed.rows[0];
 
   assertUser(user);
 
-  // =========================
-  // GENERATE SECRET
-  // =========================
-  const secret =
-    speakeasy.generateSecret({
-      name:
-        `ICT Library Office (${user.email})`,
-    });
+ // =========================
+ // CHECK EXISTING 2FA
+ // =========================
+ const existing2FA =
+  await pool.query(
+    `
+    SELECT
+      secret,
+      enabled,
+      confirmed
+    FROM user_2fa
+    WHERE user_id = $1
+    `,
+    [user.id]
+  );
+
+ const existing =
+  existing2FA.rows[0];
+
+ // =========================
+ // ALREADY HAS SECRET
+ // =========================
+if (
+  existing?.enabled &&
+  existing?.confirmed &&
+  existing?.secret
+) {
+
+  return {
+    alreadySetup: true,
+    qrCode: "",
+    secret: "",
+  };
+}
+
+ // =========================
+ // GENERATE NEW SECRET
+ // =========================
+ const secret =
+  speakeasy.generateSecret({
+    name:
+      `ICT Library Office (${user.email})`,
+  });
 
   // =========================
   // SAVE TEMP SECRET
@@ -3028,7 +3103,7 @@ return refreshed.rows[0];
     user.id,
     secret.base32
   ]
-);
+ );
 
   // =========================
   // GENERATE QR
@@ -3044,13 +3119,13 @@ return refreshed.rows[0];
 
     qrCode,
   };
-},
+ },
 
-confirmTwoFactor: async (
+ confirmTwoFactor: async (
   _: any,
   { code }: any,
   context: Context
-) => {
+ ) => {
 
   const auth =
     requireAuth(context);
@@ -3275,6 +3350,66 @@ disableTwoFactor: async (
   const createdUser =
     userInsertResult.rows[0];
 
+    // =========================
+// CREATE USER PROFILE
+// =========================
+await pool.query(
+  `
+  INSERT INTO user_profile (
+    user_id
+  )
+  VALUES ($1)
+  `,
+  [createdUser.id]
+);
+
+// =========================
+// CREATE USER PREFERENCES
+// =========================
+await pool.query(
+  `
+  INSERT INTO user_preferences (
+    user_id,
+    vibration_enabled,
+    dark_mode
+  )
+  VALUES ($1, $2, $3)
+  `,
+  [
+    createdUser.id,
+    true,
+    false
+  ]
+);
+
+// =========================
+// CREATE USER SECURITY
+// =========================
+await pool.query(
+  `
+  INSERT INTO user_security (
+    user_id
+  )
+  VALUES ($1)
+  `,
+  [createdUser.id]
+);
+
+// =========================
+// CREATE USER 2FA
+// =========================
+await pool.query(
+  `
+  INSERT INTO user_2fa (
+    user_id,
+    enabled,
+    confirmed
+  )
+  VALUES ($1, false, false)
+  `,
+  [createdUser.id]
+);
+
   // =========================
   // SYNC REAL USER
   // =========================
@@ -3389,12 +3524,22 @@ changePassword: async (
   // GET USER
   // =========================
   const result =
-    await pool.query<UserRow>(
-      `
-      SELECT *
-      FROM users
-      WHERE id = $1
-      `,
+  await pool.query<UserRow>(
+    `
+    SELECT
+
+      u.*,
+
+      s.failed_change_password_attempts,
+      s.change_password_locked_until
+
+    FROM users u
+
+    LEFT JOIN user_security s
+    ON s.user_id = u.id
+
+    WHERE u.id = $1
+    `,
       [auth.userId]
     );
 
