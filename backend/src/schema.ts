@@ -196,7 +196,6 @@ changePassword(
    year_level: String
    vibration_enabled: Boolean
    dark_mode: Boolean
-   two_factor_enabled: Boolean
     ): User
 
     blockDevice(

@@ -42,6 +42,16 @@ query GetMe {
 }
 `;
 
+const DISABLE_TWO_FACTOR = gql`
+mutation DisableTwoFactor(
+  $password: String!
+) {
+  disableTwoFactor(
+    password: $password
+  )
+}
+`;
+
 const CHANGE_PASSWORD = gql`
 mutation ChangePassword(
   $currentPassword: String!
@@ -79,7 +89,6 @@ mutation UpdateUserInformation(
   $year_level: String
   $vibration_enabled: Boolean
   $dark_mode: Boolean
-  $two_factor_enabled: Boolean
 ) {
   updateUserInformation(
     phone_number: $phone_number
@@ -97,7 +106,6 @@ mutation UpdateUserInformation(
     year_level: $year_level
     vibration_enabled: $vibration_enabled
     dark_mode: $dark_mode
-    two_factor_enabled: $two_factor_enabled
   ) {
     id
     phone_number
@@ -256,6 +264,8 @@ const [setupTwoFactorMutation] =
 
 const [confirmTwoFactorMutation] =
   useMutation(CONFIRM_TWO_FACTOR);
+  const [disableTwoFactorMutation] =
+  useMutation(DISABLE_TWO_FACTOR);
   const [notificationSoundVolume, setNotificationSoundVolume] = useState<number>(50);
   const [successMessage, setSuccessMessage] = useState<string>('');
   const [vibrationEnabled, setVibrationEnabled] =
@@ -1038,7 +1048,6 @@ const evaluatePasswordStrength = (
           year_level: userInfo.yearLevel || null,
           vibration_enabled: vibrationEnabled || false,
           dark_mode: isDarkMode,
-          two_factor_enabled: twoFactorEnabled,
         },
       });
 
@@ -1095,7 +1104,6 @@ const evaluatePasswordStrength = (
 
         vibration_enabled: vibrationEnabled || false,
         dark_mode: isDarkMode,
-        two_factor_enabled: twoFactorEnabled,
       },
     });
 
@@ -2076,14 +2084,6 @@ console.log(updated.data);
 
       try {
 
-        await updateUserInformationMutation({
-          variables: {
-            phone_number:
-              userInfo.phoneNumber || "",
-
-            two_factor_enabled: false,
-          },
-        });
 
       } catch (error) {
 

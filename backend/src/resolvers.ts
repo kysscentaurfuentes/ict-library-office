@@ -97,10 +97,6 @@ two_factor_backup_codes?: string[] | null;
 
   account_status?: string;
 
-  forgot_password_otp?: string | null;
-
-forgot_password_otp_expires_at?: string | null;
-
 failed_forgot_attempts?: number;
 
 forgot_locked_until?: string | null;
@@ -228,7 +224,7 @@ export const resolvers = {
         await pool.query<UserRow>(
           `
           SELECT
-            failed_otp_attempts,
+            s.failed_otp_attempts,
             otp_locked_until
           FROM users
           WHERE LOWER(email) = LOWER($1)
@@ -268,37 +264,71 @@ export const resolvers = {
       const res =
         await pool.query<UserRow>(
           `
-          SELECT
-            id,
-            first_name,
-            middle_name,
-            last_name,
-            email,
-            "StudentId",
-            course,
-            school_id_image,
-            role,
-            suffix,
-            suffix_locked,
-            phone_number,
-            birthdate,
-            birthdate_locked,
-            age,
-            gender,
-            gender_locked,
-            nationality,
-            nationality_locked,
-            user_classification,
-            student_type,
-            college_department,
-            program,
-            year_level,
-            profile_picture,
-            vibration_enabled,
-            dark_mode,
-            two_factor_enabled
-          FROM users
-          WHERE id = $1
+         SELECT
+  u.id,
+
+  u.first_name,
+  u.middle_name,
+  u.last_name,
+
+  u.email,
+
+  u."StudentId",
+
+  u.course,
+
+  u.school_id_image,
+
+  u.role,
+
+  p.suffix,
+  p.suffix_locked,
+
+  p.phone_number,
+
+  p.birthdate,
+  p.birthdate_locked,
+
+  p.age,
+
+  p.gender,
+  p.gender_locked,
+
+  p.nationality,
+  p.nationality_locked,
+
+  p.user_classification,
+
+  p.student_type,
+
+  p.college_department,
+
+  p.program,
+
+  p.year_level,
+
+  u.profile_picture,
+
+  pref.vibration_enabled,
+
+  pref.dark_mode,
+
+  t.enabled AS two_factor_enabled,
+
+  u.account_status
+
+FROM users u
+
+LEFT JOIN user_profile p
+ON p.user_id = u.id
+
+LEFT JOIN user_preferences pref
+ON pref.user_id = u.id
+
+LEFT JOIN user_2fa t
+ON t.user_id = u.id
+
+WHERE u.id = $1
           `,
           [auth.userId]
         );
@@ -467,33 +497,37 @@ checkChangePasswordStatus: async (
   const auth =
     requireAuth(context);
 
-  const result =
-    await pool.query(
-      `
-      SELECT
-        failed_change_password_attempts,
-        change_password_locked_until
-      FROM users
-      WHERE id = $1
-      `,
-      [auth.userId]
-    );
+const result =
+  await pool.query(
+    `
+    SELECT
+      s.failed_change_password_attempts
+        AS "failedAttempts",
+
+      s.change_password_locked_until
+        AS "lockedUntil"
+
+    FROM user_security s
+
+    WHERE s.user_id = $1
+    `,
+    [auth.userId]
+  );
 
   const row =
     result.rows[0];
 
   return {
-    failedAttempts:
-      row
-        ?.failed_change_password_attempts || 0,
+  failedAttempts:
+    row?.failedAttempts || 0,
 
-   lockedUntil:
-  row?.change_password_locked_until
-    ? new Date(
-        row.change_password_locked_until
-      ).toISOString()
-    : null,
-  };
+  lockedUntil:
+    row?.lockedUntil
+      ? new Date(
+          row.lockedUntil
+        ).toISOString()
+      : null,
+};
 },
 checkForgotPasswordLock: async (
   _: any,
@@ -902,11 +936,11 @@ return {
   const lockCheck =
     await pool.query(
       `
-      SELECT
-        NOW() < forgot_locked_until
-        AS locked
-      FROM users
-      WHERE id = $1
+     SELECT
+  NOW() < s.forgot_locked_until
+  AS locked
+FROM user_security s
+WHERE s.user_id = $1
       `,
       [user.id]
     );
@@ -940,17 +974,32 @@ return {
   // =========================
   await pool.query(
     `
-    UPDATE users
-    SET
-      forgot_password_otp = $1,
-      forgot_password_otp_expires_at =
-        NOW() + INTERVAL '5 minutes'
-    WHERE id = $2
+   INSERT INTO password_resets (
+  user_id,
+  otp_hash,
+  otp_expires_at
+)
+
+VALUES (
+  $1,
+  $2,
+  NOW() + INTERVAL '5 minutes'
+)
+
+ON CONFLICT (user_id)
+
+DO UPDATE SET
+  otp_hash = EXCLUDED.otp_hash,
+
+  otp_expires_at =
+    EXCLUDED.otp_expires_at,
+
+  updated_at = NOW()
     `,
-    [
-      hashedOTP,
-      user.id
-    ]
+   [
+  user.id,
+  hashedOTP
+]
   );
 
   // =========================
@@ -1017,11 +1066,11 @@ verifyForgotPasswordOTP: async (
   const lockCheck =
     await pool.query(
       `
-      SELECT
-        NOW() < forgot_locked_until
-        AS locked
-      FROM users
-      WHERE id = $1
+     SELECT
+  NOW() < s.forgot_locked_until
+  AS locked
+FROM user_security s
+WHERE s.user_id = $1
       `,
       [user.id]
     );
@@ -1035,10 +1084,25 @@ verifyForgotPasswordOTP: async (
   // =========================
   // CHECK OTP EXISTS
   // =========================
-  if (
-    !user.forgot_password_otp ||
-    !user.forgot_password_otp_expires_at
-  ) {
+  const resetResult =
+  await pool.query(
+    `
+    SELECT
+      otp_hash,
+      otp_expires_at
+    FROM password_resets
+    WHERE user_id = $1
+    `,
+    [user.id]
+  );
+
+const reset =
+  resetResult.rows[0];
+
+if (
+  !reset?.otp_hash ||
+  !reset?.otp_expires_at
+) {
     throw new Error(
       "No reset request found"
     );
@@ -1047,18 +1111,17 @@ verifyForgotPasswordOTP: async (
   // =========================
   // CHECK EXPIRATION
   // =========================
-  const expiryCheck =
-    await pool.query(
-      `
-      SELECT
-        NOW() <
-        forgot_password_otp_expires_at
-        AS valid
-      FROM users
-      WHERE id = $1
-      `,
-      [user.id]
-    );
+ const expiryCheck =
+  await pool.query(
+    `
+    SELECT
+      NOW() < otp_expires_at
+      AS valid
+    FROM password_resets
+    WHERE user_id = $1
+    `,
+    [user.id]
+  );
 
   if (!expiryCheck.rows[0]?.valid) {
     throw new Error(
@@ -1082,9 +1145,9 @@ verifyForgotPasswordOTP: async (
   // INVALID OTP
   // =========================
   if (
-    user.forgot_password_otp !==
-    hashedInput
-  ) {
+  reset.otp_hash !==
+  hashedInput
+) {
 
     const attempts =
       (user.failed_forgot_attempts || 0) + 1;
@@ -1102,11 +1165,12 @@ verifyForgotPasswordOTP: async (
 
     await pool.query(
       `
-      UPDATE users
-      SET
-        failed_forgot_attempts = $1,
-        forgot_locked_until = $2
-      WHERE id = $3
+ UPDATE user_security
+SET
+  failed_forgot_attempts = $1,
+  forgot_locked_until = $2,
+  updated_at = NOW()
+WHERE user_id = $3
       `,
       [
         attempts,
@@ -1125,11 +1189,12 @@ verifyForgotPasswordOTP: async (
   // =========================
   await pool.query(
     `
-    UPDATE users
-    SET
-      failed_forgot_attempts = 0,
-      forgot_locked_until = NULL
-    WHERE id = $1
+   UPDATE user_security
+SET
+  failed_forgot_attempts = 0,
+  forgot_locked_until = NULL,
+  updated_at = NOW()
+WHERE user_id = $1
     `,
     [user.id]
   );
@@ -1179,10 +1244,25 @@ resetForgotPassword: async (
       .update(code)
       .digest("hex");
 
+      const resetResult =
+  await pool.query(
+    `
+    SELECT
+      otp_hash,
+      otp_expires_at
+    FROM password_resets
+    WHERE user_id = $1
+    `,
+    [user.id]
+  );
+
+const reset =
+  resetResult.rows[0];
+
   if (
-    user.forgot_password_otp !==
-    hashedInput
-  ) {
+  reset.otp_hash !==
+  hashedInput
+) {
     throw new Error(
       "Invalid reset session"
     );
@@ -1228,22 +1308,23 @@ resetForgotPassword: async (
   // =========================
   await pool.query(
     `
-   UPDATE users
-SET
-  password = $1,
-  forgot_password_otp = NULL,
-  forgot_password_otp_expires_at = NULL,
-
-  failed_forgot_attempts = 0,
-  forgot_locked_until = NULL
-
-WHERE id = $2
+ DELETE FROM password_resets
+WHERE user_id = $1
     `,
-    [
-      hashedPassword,
-      user.id
-    ]
+   [user.id]
   );
+
+  await pool.query(
+  `
+  UPDATE user_security
+  SET
+    failed_forgot_attempts = 0,
+    forgot_locked_until = NULL,
+    updated_at = NOW()
+  WHERE user_id = $1
+  `,
+  [user.id]
+);
 
   return true;
 },
@@ -1442,19 +1523,113 @@ await pool.query(
 
    if (isStudentId(cleanIdentifier)) {
 
-    query = `
-      SELECT * FROM users
-      WHERE TRIM("StudentId") = TRIM($1)
-    `;
+   query = `
+  SELECT
+
+    u.id,
+
+    password,
+
+    "StudentId",
+
+    role,
+
+    course,
+
+    email,
+
+    first_name,
+    middle_name,
+    last_name,
+
+    school_id_image,
+
+    profile_picture,
+
+    account_status,
+
+    s.failed_login_attempts,
+    s.login_locked_until,
+
+    s.failed_otp_attempts,
+    s.otp_locked_until,
+
+    t.enabled AS two_factor_enabled,
+
+t.secret AS two_factor_secret,
+
+t.temp_secret AS two_factor_temp_secret,
+
+t.confirmed AS two_factor_confirmed,
+
+t.backup_codes AS two_factor_backup_codes
+
+FROM users u
+
+LEFT JOIN user_security s
+ON s.user_id = u.id
+
+LEFT JOIN user_2fa t
+ON t.user_id = u.id
+
+WHERE TRIM(u."StudentId") = TRIM($1)
+`;
 
     value = cleanIdentifier;
 
     } else {
 
     query = `
-      SELECT * FROM users
-      WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))
-    `;
+  SELECT
+
+    u.id,
+
+    password,
+
+    "StudentId",
+
+    role,
+
+    course,
+
+    email,
+
+    first_name,
+    middle_name,
+    last_name,
+
+    school_id_image,
+
+    profile_picture,
+
+    account_status,
+
+    s.failed_login_attempts,
+    s.login_locked_until,
+
+    s.failed_otp_attempts,
+    s.otp_locked_until,
+
+t.enabled AS two_factor_enabled,
+
+t.secret AS two_factor_secret,
+
+t.temp_secret AS two_factor_temp_secret,
+
+t.confirmed AS two_factor_confirmed,
+
+t.backup_codes AS two_factor_backup_codes
+
+FROM users u
+
+LEFT JOIN user_security s
+ON s.user_id = u.id
+
+LEFT JOIN user_2fa t
+ON t.user_id = u.id
+
+WHERE LOWER(TRIM(u.email)) = LOWER(TRIM($1))
+`;
 
     value = buildEmail(cleanIdentifier);
     }
@@ -1589,9 +1764,11 @@ if (user.account_status === "REJECTED") {
     // 🚫 Check if account is locked using database time
 const lockCheck = await pool.query(
   `
-  SELECT NOW() < login_locked_until as locked
-  FROM users
-  WHERE id = $1
+  SELECT
+  NOW() < s.login_locked_until
+  AS locked
+FROM user_security s
+WHERE s.user_id = $1
   `,
   [user.id]
 );
@@ -1619,34 +1796,43 @@ if (lockCheck.rows[0]?.locked) {
       : "NULL";
 
       // TIME TEMPORARY '30 SECONDS'
-  await pool.query(
+await pool.query(
   `
-  UPDATE users
+  UPDATE user_security
   SET
     failed_login_attempts = $1,
+
     login_locked_until = CASE
-      WHEN $1 >= 5 THEN NOW() + INTERVAL '30 seconds'
+      WHEN $1 >= 5
+      THEN NOW() + INTERVAL '30 seconds'
       ELSE NULL
-    END
-  WHERE id = $2
+    END,
+
+    updated_at = NOW()
+
+  WHERE user_id = $2
   `,
-  [attempts, user.id]
+  [
+    attempts,
+    user.id
+  ]
 );
 
   throw new Error("Invalid credentials");
 }
 
+
 await pool.query(
   `
-  UPDATE users
+  UPDATE user_security
   SET
     failed_login_attempts = 0,
-    login_locked_until = NULL
-  WHERE id = $1
+    login_locked_until = NULL,
+    updated_at = NOW()
+  WHERE user_id = $1
   `,
   [user.id]
 );
-
 // 👇 DITO ILALAGAY ANG 2FA LOGIC
 if (
   user.two_factor_enabled &&
@@ -2115,9 +2301,11 @@ return true;
   // 🚫 NOW SAFE to use user.id
   const lockCheck = await pool.query(
     `
-    SELECT NOW() < otp_locked_until as locked
-    FROM users
-    WHERE id = $1
+   SELECT
+  NOW() < s.otp_locked_until
+  AS locked
+FROM user_security s
+WHERE s.user_id = $1
     `,
     [user.id]
   );
@@ -2125,10 +2313,14 @@ return true;
 if (lockCheck.rows[0]?.locked) {
   const unlockTime = await pool.query(
     `
-    SELECT
-      EXTRACT(EPOCH FROM (otp_locked_until - NOW()))::int as remaining_seconds
-    FROM users
-    WHERE id = $1
+   SELECT
+  EXTRACT(
+    EPOCH FROM (
+      s.otp_locked_until - NOW()
+    )
+  )::int AS remaining_seconds
+FROM user_security s
+WHERE s.user_id = $1
     `,
     [user.id]
   );
@@ -2191,11 +2383,12 @@ if (!verified) {
 
   await pool.query(
     `
-    UPDATE users
-    SET
-      failed_otp_attempts = $1,
-      otp_locked_until = $2
-    WHERE id = $3
+    UPDATE user_security
+SET
+  failed_otp_attempts = $1,
+  otp_locked_until = $2,
+  updated_at = NOW()
+WHERE user_id = $3
     `,
     [
       attempts,
@@ -2226,11 +2419,12 @@ if (!verified) {
 // RESET FAILED ATTEMPTS
 await pool.query(
   `
-  UPDATE users
-  SET
-    failed_otp_attempts = 0,
-    otp_locked_until = NULL
-  WHERE id = $1
+  UPDATE user_security
+SET
+  failed_otp_attempts = 0,
+  otp_locked_until = NULL,
+  updated_at = NOW()
+WHERE user_id = $1
   `,
   [user.id]
 );
@@ -2519,88 +2713,169 @@ if (
   finalNationalityLocked = true;
 }
 
-  const updated = await pool.query<UserRow>(
+ await pool.query(
+  `
+  UPDATE user_profile
+  SET
+    phone_number = $1,
+
+    suffix = $2,
+    suffix_locked = $3,
+
+    birthdate = $4,
+    birthdate_locked = $5,
+
+    age = $6,
+
+    gender = $7,
+    gender_locked = $8,
+
+    nationality = $9,
+    nationality_locked = $10,
+
+    user_classification = $11,
+
+    student_type = $12,
+
+    college_department = $13,
+
+    program = $14,
+
+    year_level = $15,
+
+    updated_at = NOW()
+
+  WHERE user_id = $16
+  `,
+  [
+    phone_number,
+
+    finalSuffix,
+    finalLocked,
+
+    finalBirthdate,
+    finalBirthdateLocked,
+
+    age,
+
+    finalGender,
+    finalGenderLocked,
+
+    finalNationality,
+    finalNationalityLocked,
+
+    user_classification,
+
+    student_type,
+
+    college_department,
+
+    program,
+
+    year_level,
+
+    auth.userId
+  ]
+);
+
+await pool.query(
+  `
+  UPDATE user_preferences
+  SET
+    vibration_enabled = $1,
+
+    dark_mode = $2,
+
+    updated_at = NOW()
+
+  WHERE user_id = $3
+  `,
+  [
+    vibration_enabled
+      ?? user.vibration_enabled,
+
+    dark_mode
+      ?? user.dark_mode,
+
+    auth.userId
+  ]
+);
+
+const refreshed =
+  await pool.query<UserRow>(
     `
-    UPDATE users
-SET
-  phone_number = $1,
-  suffix = $2,
-  suffix_locked = $3,
-  birthdate = $4,
-  birthdate_locked = $5,
-  age = $6,
-  gender = $7,
-  gender_locked = $8,
-  nationality = $9,
-  nationality_locked = $10,
-  user_classification = $11,
-  student_type = $12,
-  college_department = $13,
-  program = $14,
-  year_level = $15,
-  vibration_enabled = $16,
-  dark_mode = $17,
-  two_factor_enabled = $18
+    SELECT
 
-WHERE id = $19
-    RETURNING
-      id,
-      first_name,
-      middle_name,
-      last_name,
-      email,
-      "StudentId",
-      course,
-      school_id_image,
-      role,
-      suffix,
-      suffix_locked,
-      phone_number,
-      birthdate,
-      birthdate_locked,
-      age,
-      gender,
-      gender_locked,
-      nationality,
-      nationality_locked,
-      user_classification,
-      student_type,
-      college_department,
-      program,
-      year_level,
-      vibration_enabled,
-      dark_mode,
-      two_factor_enabled
+      u.id,
+
+      u.first_name,
+      u.middle_name,
+      u.last_name,
+
+      u.email,
+
+      u."StudentId",
+
+      u.course,
+
+      u.school_id_image,
+
+      u.role,
+
+      p.phone_number,
+
+      p.suffix,
+      p.suffix_locked,
+
+      p.birthdate,
+      p.birthdate_locked,
+
+      p.age,
+
+      p.gender,
+      p.gender_locked,
+
+      p.nationality,
+      p.nationality_locked,
+
+      p.user_classification,
+
+      p.student_type,
+
+      p.college_department,
+
+      p.program,
+
+      p.year_level,
+
+      u.profile_picture,
+
+      pref.vibration_enabled,
+
+      pref.dark_mode,
+
+      t.enabled
+        AS two_factor_enabled,
+
+      u.account_status
+
+    FROM users u
+
+    LEFT JOIN user_profile p
+    ON p.user_id = u.id
+
+    LEFT JOIN user_preferences pref
+    ON pref.user_id = u.id
+
+    LEFT JOIN user_2fa t
+    ON t.user_id = u.id
+
+    WHERE u.id = $1
     `,
-    [
-  phone_number,
-  finalSuffix,
-  finalLocked,
-
-  finalBirthdate,
-  finalBirthdateLocked,
-
-  age,
-
-  finalGender,
-  finalGenderLocked,
-
-  finalNationality,
-  finalNationalityLocked,
-
-  user_classification,
-  student_type,
-  college_department,
-  program,
-  year_level,
-  vibration_enabled ?? user.vibration_enabled,
-  dark_mode ?? user.dark_mode,
-  two_factor_enabled ?? user.two_factor_enabled,
-  auth.userId
-]
+    [auth.userId]
   );
 
-  return updated.rows[0];
+return refreshed.rows[0];
 },
 
     renameDevice: async (
@@ -2734,18 +3009,26 @@ WHERE id = $19
   // =========================
   // SAVE TEMP SECRET
   // =========================
+
   await pool.query(
-    `
-    UPDATE users
-    SET
-      two_factor_temp_secret = $1
-    WHERE id = $2
-    `,
-    [
-      secret.base32,
-      user.id
-    ]
-  );
+  `
+  INSERT INTO user_2fa (
+    user_id,
+    temp_secret,
+    updated_at
+  )
+  VALUES ($1, $2, NOW())
+
+  ON CONFLICT (user_id)
+  DO UPDATE SET
+    temp_secret = EXCLUDED.temp_secret,
+    updated_at = NOW()
+  `,
+  [
+    user.id,
+    secret.base32
+  ]
+);
 
   // =========================
   // GENERATE QR
@@ -2775,9 +3058,19 @@ confirmTwoFactor: async (
   const result =
     await pool.query<UserRow>(
       `
-      SELECT *
-      FROM users
-      WHERE id = $1
+      SELECT
+
+  u.*,
+
+  t.temp_secret
+    AS two_factor_temp_secret
+
+FROM users u
+
+LEFT JOIN user_2fa t
+ON t.user_id = u.id
+
+WHERE u.id = $1
       `,
       [auth.userId]
     );
@@ -2831,28 +3124,26 @@ confirmTwoFactor: async (
   // =========================
   // ACTIVATE REAL 2FA
   // =========================
+  
+
   await pool.query(
-    `
-    UPDATE users
-    SET
-      two_factor_secret = $1,
-
-      two_factor_temp_secret = NULL,
-
-      two_factor_enabled = true,
-
-      two_factor_confirmed = true,
-
-      two_factor_backup_codes = $2
-
-    WHERE id = $3
-    `,
-    [
-      user.two_factor_temp_secret,
-      backupCodes,
-      user.id
-    ]
-  );
+  `
+  UPDATE user_2fa
+SET
+  enabled = true,
+  confirmed = true,
+  secret = $1,
+  temp_secret = NULL,
+  backup_codes = $2,
+  updated_at = NOW()
+WHERE user_id = $3
+  `,
+ [
+  user.two_factor_temp_secret,
+  backupCodes,
+  user.id
+]
+);
 
   return true;
 },
@@ -2894,23 +3185,19 @@ disableTwoFactor: async (
   }
 
   await pool.query(
-    `
-    UPDATE users
-    SET
-      two_factor_enabled = false,
-
-      two_factor_secret = NULL,
-
-      two_factor_temp_secret = NULL,
-
-      two_factor_confirmed = false,
-
-      two_factor_backup_codes = NULL
-
-    WHERE id = $1
-    `,
-    [user.id]
-  );
+  `
+  UPDATE user_2fa
+  SET
+    enabled = false,
+    confirmed = false,
+    secret = NULL,
+    temp_secret = NULL,
+    backup_codes = NULL,
+    updated_at = NOW()
+  WHERE user_id = $1
+  `,
+  [user.id]
+);
 
   return true;
 },
@@ -3122,11 +3409,11 @@ const lockCheck =
   await pool.query(
     `
     SELECT
-      NOW() <
-      change_password_locked_until
-      AS locked
-    FROM users
-    WHERE id = $1
+  NOW() <
+  s.change_password_locked_until
+  AS locked
+FROM user_security s
+WHERE s.user_id = $1
     `,
     [user.id]
   );
@@ -3164,11 +3451,12 @@ if (!isValid) {
 
   await pool.query(
     `
-    UPDATE users
-    SET
-      failed_change_password_attempts = $1,
-      change_password_locked_until = $2
-    WHERE id = $3
+    UPDATE user_security
+SET
+  failed_change_password_attempts = $1,
+  change_password_locked_until = $2,
+  updated_at = NOW()
+WHERE user_id = $3
     `,
     [
       attempts,
@@ -3216,11 +3504,12 @@ if (!isValid) {
 // =========================
 await pool.query(
   `
-  UPDATE users
-  SET
-    failed_change_password_attempts = 0,
-    change_password_locked_until = NULL
-  WHERE id = $1
+  UPDATE user_security
+SET
+  failed_change_password_attempts = 0,
+  change_password_locked_until = NULL,
+  updated_at = NOW()
+WHERE user_id = $1
   `,
   [user.id]
 );
