@@ -2321,15 +2321,24 @@ return true;
   u.*,
 
   s.failed_otp_attempts,
-  s.otp_locked_until
+  s.otp_locked_until,
+
+  t.secret
+    AS two_factor_secret,
+
+  t.enabled
+    AS two_factor_enabled
 
 FROM users u
 
 LEFT JOIN user_security s
 ON s.user_id = u.id
 
-WHERE LOWER(email) = LOWER($1)
-   OR "StudentId" = $2
+LEFT JOIN user_2fa t
+ON t.user_id = u.id
+
+WHERE LOWER(u.email) = LOWER($1)
+   OR u."StudentId" = $2
   `,
   [buildEmail(clean), clean]
 );

@@ -47,8 +47,8 @@ const columns =
     VALUES (
       ${placeholders.join(',')}
     )
-    ON CONFLICT (id)
-    DO NOTHING
+    ON CONFLICT (email)
+DO NOTHING
     `,
     values
   );
