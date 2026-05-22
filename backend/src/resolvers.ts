@@ -9,6 +9,8 @@ import { GraphQLError } from "graphql";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import speakeasy from "speakeasy";
+import QRCode from "qrcode";
 import fetch from 'node-fetch';
 dotenv.config();
 
@@ -79,6 +81,11 @@ interface UserRow {
   two_factor_enabled?: boolean;
   two_factor_otp?: string | null;
   two_factor_otp_expires_at?: string | null;
+
+  two_factor_secret?: string | null;
+two_factor_temp_secret?: string | null;
+two_factor_confirmed?: boolean;
+two_factor_backup_codes?: string[] | null;
 
   failed_login_attempts?: number;
   login_locked_until?: string | null;
@@ -1641,32 +1648,16 @@ await pool.query(
 );
 
 // 👇 DITO ILALAGAY ANG 2FA LOGIC
-if (user.two_factor_enabled) {
- const code = Math.floor(100000 + Math.random() * 900000).toString();
-
-const hashedCode = crypto
-  .createHmac("sha256", process.env.JWT_SECRET!)
-  .update(code)
-  .digest("hex");
-
-await pool.query(
-  `
-  UPDATE users
-  SET two_factor_otp = $1,
-      two_factor_otp_expires_at = NOW() + INTERVAL '5 minutes'
-  WHERE id = $2
-  `,
-  [hashedCode, user.id]
-);
-
-  // 🔥 SEND EMAIL OTP
-  await sendOTP(user.email, code);
-
-  console.log("OTP generated for user:", user.id);
+if (
+  user.two_factor_enabled &&
+  user.two_factor_secret
+) {
 
   return {
     token: null,
+
     requires2FA: true,
+
     user: {
       id: user.id,
       first_name: user.first_name,
@@ -1674,9 +1665,15 @@ await pool.query(
       email: user.email,
       StudentId: user.StudentId,
       role: user.role,
-      profile_picture: user.profile_picture,
-      vibration_enabled: user.vibration_enabled,
-      dark_mode: user.dark_mode,
+      profile_picture:
+        user.profile_picture,
+
+      vibration_enabled:
+        user.vibration_enabled,
+
+      dark_mode:
+        user.dark_mode,
+
       two_factor_enabled: true
     }
   };
@@ -2155,40 +2152,41 @@ throw Object.assign(new Error("OTP_LOCKED"), {
   // 3rd.Mutation verifyTwoFactor
 
  // check OTP existence
-if (!user.two_factor_otp || !user.two_factor_otp_expires_at) {
-  throw new Error("No 2FA request found");
+if (
+  !user.two_factor_secret
+) {
+  throw new Error(
+    "2FA not configured"
+  );
 }
 
-// check expiration
-const expiryCheck = await pool.query(
-  `
-  SELECT NOW() < two_factor_otp_expires_at as valid
-  FROM users
-  WHERE id = $1
-  `,
-  [user.id]
-);
+const verified =
+  speakeasy.totp.verify({
+    secret:
+      user.two_factor_secret,
 
-if (!expiryCheck.rows[0].valid) {
-  throw new Error("Code expired");
-}
+    encoding: "base32",
 
-// hash input
-const hashedInput = crypto
-  .createHmac("sha256", process.env.JWT_SECRET!)
-  .update(code)
-  .digest("hex");
+    token: code,
 
-// compare OTP
-if (user.two_factor_otp !== hashedInput) {
+    window: 1,
+  });
+
+if (!verified) {
+
   const attempts =
     (user.failed_otp_attempts || 0) + 1;
 
-  let lockUntil: Date | null = null;
-  // TIME TEMPORARY
-  const LOCK_DURATION_MS = 8 * 60 * 60 * 1000;
+  let lockUntil: Date | null =
+    null;
+
   if (attempts >= 5) {
-    lockUntil = new Date(Date.now() + LOCK_DURATION_MS);
+
+    lockUntil =
+      new Date(
+        Date.now() +
+        8 * 60 * 60 * 1000
+      );
   }
 
   await pool.query(
@@ -2199,48 +2197,37 @@ if (user.two_factor_otp !== hashedInput) {
       otp_locked_until = $2
     WHERE id = $3
     `,
-    [attempts, lockUntil, user.id]
+    [
+      attempts,
+      lockUntil,
+      user.id
+    ]
   );
 
-  // 🔥 Backend wins immediately
-  if (lockUntil) {
-    throw Object.assign(
-      new Error("OTP_LOCKED"),
-      {
-        extensions: {
-          code: "OTP_LOCKED",
-          // TIME TEMPORARY
-          remainingSeconds: Math.floor(
-  (lockUntil.getTime() - Date.now()) / 1000
-),
-          attemptsUsed: attempts,
-        },
-      }
-    );
-  }
-
   throw Object.assign(
-    new Error("INVALID CODE"),
+    new Error(
+      "Invalid authenticator code"
+    ),
     {
       extensions: {
-        code: "INVALID CODE",
-        attemptsUsed: attempts,
-        attemptsLeft: Math.max(
-          0,
-          5 - attempts
-        ),
+        code:
+          "INVALID_AUTHENTICATOR_CODE",
+
+        attemptsLeft:
+          Math.max(
+            0,
+            5 - attempts
+          ),
       },
     }
   );
 }
 
-  // clear OTP + reset failed attempts after success
+// RESET FAILED ATTEMPTS
 await pool.query(
   `
   UPDATE users
   SET
-    two_factor_otp = NULL,
-    two_factor_otp_expires_at = NULL,
     failed_otp_attempts = 0,
     otp_locked_until = NULL
   WHERE id = $1
@@ -2710,6 +2697,224 @@ WHERE id = $19
 
       return true;
     },
+
+    setupTwoFactor: async (
+  _: any,
+  __: any,
+  context: Context
+) => {
+
+  const auth =
+    requireAuth(context);
+
+  const result =
+    await pool.query<UserRow>(
+      `
+      SELECT *
+      FROM users
+      WHERE id = $1
+      `,
+      [auth.userId]
+    );
+
+  const user =
+    result.rows[0];
+
+  assertUser(user);
+
+  // =========================
+  // GENERATE SECRET
+  // =========================
+  const secret =
+    speakeasy.generateSecret({
+      name:
+        `ICT Library Office (${user.email})`,
+    });
+
+  // =========================
+  // SAVE TEMP SECRET
+  // =========================
+  await pool.query(
+    `
+    UPDATE users
+    SET
+      two_factor_temp_secret = $1
+    WHERE id = $2
+    `,
+    [
+      secret.base32,
+      user.id
+    ]
+  );
+
+  // =========================
+  // GENERATE QR
+  // =========================
+  const qrCode =
+    await QRCode.toDataURL(
+      secret.otpauth_url || ""
+    );
+
+  return {
+    secret:
+      secret.base32,
+
+    qrCode,
+  };
+},
+
+confirmTwoFactor: async (
+  _: any,
+  { code }: any,
+  context: Context
+) => {
+
+  const auth =
+    requireAuth(context);
+
+  const result =
+    await pool.query<UserRow>(
+      `
+      SELECT *
+      FROM users
+      WHERE id = $1
+      `,
+      [auth.userId]
+    );
+
+  const user =
+    result.rows[0];
+
+  assertUser(user);
+
+  if (
+    !user.two_factor_temp_secret
+  ) {
+    throw new Error(
+      "No pending 2FA setup found"
+    );
+  }
+
+  // =========================
+  // VERIFY TOTP
+  // =========================
+  const verified =
+    speakeasy.totp.verify({
+      secret:
+        user.two_factor_temp_secret,
+
+      encoding: "base32",
+
+      token: code,
+
+      window: 1,
+    });
+
+  if (!verified) {
+    throw new Error(
+      "Invalid authenticator code"
+    );
+  }
+
+  // =========================
+  // GENERATE BACKUP CODES
+  // =========================
+  const backupCodes =
+    Array.from(
+      { length: 5 },
+      () =>
+        crypto
+          .randomBytes(4)
+          .toString("hex")
+    );
+
+  // =========================
+  // ACTIVATE REAL 2FA
+  // =========================
+  await pool.query(
+    `
+    UPDATE users
+    SET
+      two_factor_secret = $1,
+
+      two_factor_temp_secret = NULL,
+
+      two_factor_enabled = true,
+
+      two_factor_confirmed = true,
+
+      two_factor_backup_codes = $2
+
+    WHERE id = $3
+    `,
+    [
+      user.two_factor_temp_secret,
+      backupCodes,
+      user.id
+    ]
+  );
+
+  return true;
+},
+
+disableTwoFactor: async (
+  _: any,
+  { password }: any,
+  context: Context
+) => {
+
+  const auth =
+    requireAuth(context);
+
+  const result =
+    await pool.query<UserRow>(
+      `
+      SELECT *
+      FROM users
+      WHERE id = $1
+      `,
+      [auth.userId]
+    );
+
+  const user =
+    result.rows[0];
+
+  assertUser(user);
+
+  const validPassword =
+    await bcrypt.compare(
+      password,
+      user.password
+    );
+
+  if (!validPassword) {
+    throw new Error(
+      "Invalid password"
+    );
+  }
+
+  await pool.query(
+    `
+    UPDATE users
+    SET
+      two_factor_enabled = false,
+
+      two_factor_secret = NULL,
+
+      two_factor_temp_secret = NULL,
+
+      two_factor_confirmed = false,
+
+      two_factor_backup_codes = NULL
+
+    WHERE id = $1
+    `,
+    [user.id]
+  );
+
+  return true;
+},
+
  approveUser: async (
   _: any,
   { userId }: { userId: number },

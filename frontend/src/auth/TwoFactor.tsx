@@ -735,12 +735,21 @@ if (checkingLock) {
     lineHeight: 1.6,
   }}
 >
-  Check your CARSU email account for your OTP code.
-  Enter the 6-digit code sent to your
-  <br />
-  <strong>{pendingEmail || "@carsu.edu.ph email"}</strong>
+  Open your authenticator application
+  and enter the current 6-digit
+  verification code linked to your account.
 
-  
+  <br />
+
+  <span
+    style={{
+      opacity: 0.72,
+      fontSize: "0.8rem",
+    }}
+  >
+    Examples: Microsoft Authenticator,
+    Google Authenticator, Authy
+  </span>
 </p>
 
         {error && (

@@ -81,6 +81,11 @@ type ForgotPasswordLockStatus {
   remainingSeconds: Int!
 }
 
+type TwoFactorSetup {
+  secret: String!
+  qrCode: String!
+}
+
  type Query {
   hello: String
   me: User
@@ -211,6 +216,17 @@ changePassword(
       identifier: String!
       code: String!
       ): AuthPayload
+
+      setupTwoFactor: TwoFactorSetup
+
+confirmTwoFactor(
+  code: String!
+): Boolean
+
+disableTwoFactor(
+  password: String!
+): Boolean
+
         approveUser(userId: Int!): Boolean
   rejectUser(userId: Int!): Boolean
   }

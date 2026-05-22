@@ -109,6 +109,21 @@ mutation UpdateUserInformation(
 }
 `;
 
+const SETUP_TWO_FACTOR = gql`
+mutation SetupTwoFactor {
+  setupTwoFactor {
+    secret
+    qrCode
+  }
+}
+`;
+
+const CONFIRM_TWO_FACTOR = gql`
+mutation ConfirmTwoFactor($code: String!) {
+  confirmTwoFactor(code: $code)
+}
+`;
+
 interface LinkedAccount {
   id: string;
   provider: string;
@@ -227,6 +242,20 @@ const Settings: React.FC = () => {
   // =========================
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean>(false);
+  const [showTwoFactorModal, setShowTwoFactorModal] =
+  useState(false);
+
+const [qrCode, setQrCode] =
+  useState('');
+
+const [twoFactorCode, setTwoFactorCode] =
+  useState('');
+
+const [setupTwoFactorMutation] =
+  useMutation(SETUP_TWO_FACTOR);
+
+const [confirmTwoFactorMutation] =
+  useMutation(CONFIRM_TWO_FACTOR);
   const [notificationSoundVolume, setNotificationSoundVolume] = useState<number>(50);
   const [successMessage, setSuccessMessage] = useState<string>('');
   const [vibrationEnabled, setVibrationEnabled] =
@@ -2004,36 +2033,65 @@ console.log(updated.data);
             <h3>Security</h3>
             <div className="form-group">
               <label htmlFor="twoFactorAuth">Enable 2-Step Verification (for added security)</label>
-              <input
-                type="checkbox"
-                id="twoFactorAuth"
-                checked={twoFactorEnabled}
-                onChange={async (e) => {
-  const value = e.target.checked;
+             <input
+  type="checkbox"
+  id="twoFactorAuth"
+  checked={twoFactorEnabled}
+  onChange={async (e) => {
 
-  setTwoFactorEnabled(value);
+    const value = e.target.checked;
 
-  try {
-    await updateUserInformationMutation({
-      variables: {
-        phone_number: userInfo.phoneNumber || "",
-        two_factor_enabled: value,
-      },
-    });
+    // ENABLE
+    if (value) {
 
-    console.log(
-      "2-Step Verification saved to database:",
-      value
-    );
+      try {
 
-  } catch (error) {
-    console.error(
-      "Failed to save 2-Step Verification:",
-      error
-    );
-  }
-}}
-              />
+        const response =
+          await setupTwoFactorMutation();
+
+        const qr =
+          response.data
+            .setupTwoFactor
+            .qrCode;
+
+        setQrCode(qr);
+
+        setShowTwoFactorModal(true);
+
+      } catch (error) {
+
+        console.error(error);
+
+        alert(
+          'Failed to setup 2FA'
+        );
+      }
+
+    }
+
+    // DISABLE
+    else {
+
+      setTwoFactorEnabled(false);
+
+      try {
+
+        await updateUserInformationMutation({
+          variables: {
+            phone_number:
+              userInfo.phoneNumber || "",
+
+            two_factor_enabled: false,
+          },
+        });
+
+      } catch (error) {
+
+        console.error(error);
+      }
+    }
+  }}
+/>
             </div>
             <div className="form-group">
               <label>Account Security</label>
@@ -2112,6 +2170,7 @@ console.log(updated.data);
 
 <div className="password-wrapper">
   <input
+  className="auth-input"
     type={
       showCurrentPassword
         ? 'text'
@@ -2127,6 +2186,7 @@ console.log(updated.data);
   setPasswordError('');
 }}
   />
+  
 
   <button
     type="button"
@@ -2161,19 +2221,36 @@ console.log(updated.data);
     fontWeight: 700,
     fontSize: '0.82rem',
 
-    color:
-      failedAttempts >= 5
-        ? '#ef4444'
-        : failedAttempts >= 3
-        ? '#f59e0b'
-        : '#22c55e',
+color:
+  failedAttempts === 0
+    ? '#22c55e' // green
+    : failedAttempts === 1
+    ? '#3b82f6' // blue
+    : failedAttempts === 2
+    ? '#eab308' // yellow
+    : failedAttempts === 3
+    ? '#f97316' // orange
+    : failedAttempts === 4
+    ? '#ef4444' // red
+    : '#a855f7', // violet
 
-    textShadow:
-      failedAttempts >= 5
-        ? '0 0 12px rgba(239,68,68,0.5)'
-        : failedAttempts >= 3
-        ? '0 0 10px rgba(245,158,11,0.4)'
-        : '0 0 8px rgba(34,197,94,0.35)',
+textShadow:
+  failedAttempts === 0
+    ? '0 0 8px rgba(34,197,94,0.45)'
+
+    : failedAttempts === 1
+    ? '0 0 8px rgba(59,130,246,0.45)'
+
+    : failedAttempts === 2
+    ? '0 0 10px rgba(234,179,8,0.45)'
+
+    : failedAttempts === 3
+    ? '0 0 10px rgba(249,115,22,0.5)'
+
+    : failedAttempts === 4
+    ? '0 0 12px rgba(239,68,68,0.55)'
+
+    : '0 0 16px rgba(168,85,247,0.8)',
   }}
 >
   Attempts:
@@ -2418,6 +2495,159 @@ console.log(updated.data);
               </div>
             </div>
           )}
+
+          {/* Two Factor Modal */}
+{showTwoFactorModal && (
+  <div className="modal-overlay">
+    <div className="modal-content">
+
+      <h3>
+        Setup 2-Step Verification
+      </h3>
+
+      <p
+        style={{
+          marginBottom: '1rem',
+        }}
+      >
+        Scan this QR code using:
+      </p>
+
+      <ul
+        style={{
+          marginBottom: '1rem',
+          paddingLeft: '1.25rem',
+        }}
+      >
+<li>Microsoft Authenticator</li>
+<li>Google Authenticator</li>
+<li>Authy</li>
+<li>Other compatible authenticator apps</li>
+      </ul>
+
+      {qrCode && (
+        <img
+          src={qrCode}
+          alt="2FA QR Code"
+          style={{
+            width: '220px',
+            display: 'block',
+            margin: '0 auto 1rem',
+            borderRadius: '12px',
+          }}
+        />
+      )}
+
+    <input
+  type="text"
+  placeholder="Enter 6-digit code"
+  value={twoFactorCode}
+  maxLength={6}
+  inputMode="numeric"
+  pattern="[0-9]*"
+  onChange={(e) => {
+
+    // numbers only
+    const cleaned =
+      e.target.value.replace(/\D/g, '');
+
+    // max 6 digits only
+    setTwoFactorCode(
+      cleaned.slice(0, 6)
+    );
+  }}
+/>
+
+      <div className="modal-actions">
+
+        <button
+  className={
+    twoFactorCode.length === 6
+      ? 'btn-save'
+      : 'btn-save-disabled'
+  }
+  disabled={
+    twoFactorCode.length !== 6
+  }
+          onClick={async () => {
+
+  try {
+
+    // STRICT VALIDATION
+    if (
+      !/^\d{6}$/.test(
+        twoFactorCode
+      )
+    ) {
+
+      alert(
+        'Authenticator code must be exactly 6 numbers.'
+      );
+
+      return;
+    }
+
+    const result =
+      await confirmTwoFactorMutation({
+        variables: {
+          code:
+            twoFactorCode,
+        },
+      });
+
+    if (
+      result.data
+        .confirmTwoFactor
+    ) {
+
+      setTwoFactorEnabled(
+        true
+      );
+
+      setShowTwoFactorModal(
+        false
+      );
+
+      setTwoFactorCode('');
+
+      alert(
+        '2FA Enabled Successfully'
+      );
+    }
+
+  } catch (error) {
+
+    console.error(error);
+
+    alert(
+      'Invalid authenticator code'
+    );
+  }
+}}
+        >
+          Confirm
+        </button>
+
+        <button
+          className="btn-cancel"
+          onClick={() => {
+
+            setShowTwoFactorModal(
+              false
+            );
+
+            setTwoFactorCode('');
+
+            setQrCode('');
+          }}
+        >
+          Cancel
+        </button>
+
+      </div>
+    </div>
+  </div>
+)}
 
           {/* Link New Account Modal */}
           {showLinkModal && (
@@ -2718,15 +2948,31 @@ body.dark-mode {
   color: var(--text-primary);
 }
 
-.form-stack input:focus,
-.form-stack select:focus,
-.form-field input:focus,
-.form-field select:focus,
-.modal-content input:focus,
-.modal-content select:focus {
-  border-color: var(--primary);
-  box-shadow:
-    0 0 0 3px rgba(59, 130, 246, 0.15);
+.form-stack input:focus-visible,
+.form-stack select:focus-visible,
+.form-field input:focus-visible,
+.form-field select:focus-visible,
+.modal-content input:focus-visible,
+.modal-content select:focus-visible {
+
+.form-stack input:focus:not(:focus-visible),
+.form-field input:focus:not(:focus-visible),
+.modal-content input:focus:not(:focus-visible) {
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+
+  outline: none;
+
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    transform 0.15s ease;
+
+  transform:
+    translateY(-1px);
 }
 
 /* =========================================================
@@ -2926,6 +3172,21 @@ body.dark-mode {
 
   cursor: not-allowed;
   opacity: 0.7;
+}
+
+.password-wrapper input:focus-visible {
+  border: 1px solid rgba(139,92,246,0.95) !important;
+
+  background:
+    rgba(139,92,246,0.08) !important;
+
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.04),
+    0 0 0 3px rgba(139,92,246,0.15),
+    0 0 18px rgba(139,92,246,0.35),
+    0 4px 18px rgba(0,0,0,0.28);
+
+  transform: translateY(-1px);
 }
 
 .password-wrapper {
