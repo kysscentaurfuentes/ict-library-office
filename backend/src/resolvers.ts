@@ -597,6 +597,96 @@ checkForgotPasswordLock: async (
     remainingSeconds,
   };
 },
+
+checkForgotPasswordOtpStatus: async (
+  _: any,
+  { identifier }: any
+) => {
+
+  const clean =
+    normalizeIdentifier(identifier);
+
+  const result =
+    await pool.query(
+      `
+      SELECT
+        s.failed_forgot_attempts,
+        s.forgot_locked_until,
+
+        p.otp_expires_at
+
+      FROM users u
+
+      LEFT JOIN user_security s
+      ON s.user_id = u.id
+
+      LEFT JOIN password_resets p
+      ON p.user_id = u.id
+
+      WHERE LOWER(u.email) = LOWER($1)
+         OR u."StudentId" = $2
+      `,
+      [
+        buildEmail(clean),
+        clean
+      ]
+    );
+
+  const row =
+    result.rows[0];
+
+  if (!row) {
+
+    return {
+      failedAttempts: 0,
+      locked: false,
+      remainingSeconds: 0,
+      expiresInSeconds: 0,
+    };
+  }
+
+  const lockedUntil =
+    row.forgot_locked_until
+      ? new Date(
+          row.forgot_locked_until
+        ).getTime()
+      : 0;
+
+  const otpExpires =
+    row.otp_expires_at
+      ? new Date(
+          row.otp_expires_at
+        ).getTime()
+      : 0;
+
+  const remainingSeconds =
+    Math.max(
+      0,
+      Math.floor(
+        (lockedUntil - Date.now()) / 1000
+      )
+    );
+
+  const expiresInSeconds =
+    Math.max(
+      0,
+      Math.floor(
+        (otpExpires - Date.now()) / 1000
+      )
+    );
+
+  return {
+    failedAttempts:
+      row.failed_forgot_attempts || 0,
+
+    locked:
+      remainingSeconds > 0,
+
+    remainingSeconds,
+
+    expiresInSeconds,
+  };
+},
   }, // END OF QUERY
   
   // START OF MUTATION
@@ -636,8 +726,14 @@ const securityResult =
 const security =
   securityResult.rows[0];
 
-  const captchaRequired =
-  (security?.request_count || 0) >= 3;
+  const currentCount =
+  security?.request_count || 0;
+
+const nextCount =
+  currentCount + 1;
+
+const captchaRequired =
+  nextCount >= 3;
 
   // =========================
 // CLOUDFLARE TURNSTILE
@@ -648,9 +744,23 @@ if (captchaRequired) {
 
   if (!captchaToken) {
 
-    throw new Error(
-      'CAPTCHA verification required.'
-    );
+  return {
+  success: false,
+  message:
+    'CAPTCHA verification required.',
+
+  otpSent: false,
+
+  locked: false,
+
+  attempts: nextCount,
+
+  maxAttempts: 5,
+
+  remainingSeconds: 0,
+
+  captchaRequired: true,
+};
   }
 
   const verifyResponse =
@@ -975,37 +1085,62 @@ WHERE s.user_id = $1
       .digest("hex");
 
   // =========================
-  // SAVE OTP
-  // =========================
+// SAVE OTP
+// =========================
+const resetInsert =
   await pool.query(
     `
-   INSERT INTO password_resets (
-  user_id,
-  otp_hash,
-  otp_expires_at
-)
+    INSERT INTO password_resets (
+      user_id,
+      otp_hash,
+      otp_expires_at
+    )
 
-VALUES (
-  $1,
-  $2,
-  NOW() + INTERVAL '5 minutes'
-)
+    VALUES (
+      $1,
+      $2,
+      NOW() + INTERVAL '5 minutes'
+    )
 
-ON CONFLICT (user_id)
+    ON CONFLICT (user_id)
 
-DO UPDATE SET
-  otp_hash = EXCLUDED.otp_hash,
+    DO UPDATE SET
+      otp_hash = EXCLUDED.otp_hash,
 
-  otp_expires_at =
-    EXCLUDED.otp_expires_at,
+      otp_expires_at =
+        EXCLUDED.otp_expires_at,
 
-  updated_at = NOW()
+      updated_at = NOW()
+
+    RETURNING *
     `,
-   [
-  user.id,
-  hashedOTP
-]
+    [
+      user.id,
+      hashedOTP
+    ]
   );
+
+const resetRow =
+  resetInsert.rows[0];
+
+// =========================
+// SYNC PASSWORD RESET
+// =========================
+await pool.query(
+  `
+  INSERT INTO sync_queue (
+    table_name,
+    operation,
+    payload
+  )
+  VALUES ($1,$2,$3)
+  `,
+  [
+    "password_resets",
+    "update",
+    JSON.stringify(resetRow)
+  ]
+);
 
   // =========================
   // SEND EMAIL
@@ -1138,11 +1273,20 @@ if (
     [user.id]
   );
 
-  if (!expiryCheck.rows[0]?.valid) {
-    throw new Error(
-      "OTP expired"
-    );
-  }
+ if (!expiryCheck.rows[0]?.valid) {
+
+  await pool.query(
+    `
+    DELETE FROM password_resets
+    WHERE user_id = $1
+    `,
+    [user.id]
+  );
+
+  throw new Error(
+    "OTP expired"
+  );
+}
 
   // =========================
   // HASH INPUT

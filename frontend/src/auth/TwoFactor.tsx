@@ -407,7 +407,63 @@ const ext = gqlError?.extensions;
     return;
   }
 
-  if (ext?.code === "INVALID CODE") {
+ if (
+  ext?.code ===
+  "INVALID_AUTHENTICATOR_CODE"
+) {
+
+  console.log(
+    "INVALID OTP DETECTED"
+  );
+
+  setError(
+    "Invalid authenticator code"
+  );
+
+  // SHAKE
+  setShake(true);
+
+  setTimeout(() => {
+    setShake(false);
+  }, 400);
+
+  // CLEAR OTP
+  clearOtpInputs();
+
+  const identifier =
+    localStorage.getItem(
+      "pendingIdentifier"
+    );
+
+  if (!identifier) return;
+
+  const { data } =
+    await client.query({
+      query: CHECK_OTP_STATUS,
+      variables: { identifier },
+      fetchPolicy: "network-only",
+    });
+
+  const dbAttempts =
+    data?.checkOtpStatus
+      ?.failedAttempts ?? 0;
+
+  setOtpAttempts(
+    Math.min(dbAttempts, 5)
+  );
+
+  return;
+}
+
+setCode(
+  Array(6).fill("")
+);
+
+setActiveIndex(0);
+
+setTimeout(() => {
+  inputRefs.current[0]?.focus();
+}, 50); {
   console.log("INVALID OTP DETECTED");
 
   // SHAKE
@@ -628,6 +684,38 @@ if (checkingLock) {
 >
   ← Back to Sign In
 </button>
+
+<p
+  style={{
+    textAlign: "center",
+    color: "rgba(255,255,255,0.75)",
+    fontSize: "0.9rem",
+    margin: "0 0 6px 0",
+    wordBreak: "break-word",
+  }}
+>
+  Student ID:
+  {" "}
+  <strong>
+    {localStorage.getItem("pendingIdentifier")}
+  </strong>
+</p>
+
+<p
+  style={{
+    textAlign: "center",
+    color: "rgba(255,255,255,0.75)",
+    fontSize: "0.85rem",
+    margin: "0 0 18px 0",
+    wordBreak: "break-word",
+  }}
+>
+  Email:
+  {" "}
+  <strong>
+    {pendingEmail}
+  </strong>
+</p>
 
         {/* OTP BOXES */}
 <div

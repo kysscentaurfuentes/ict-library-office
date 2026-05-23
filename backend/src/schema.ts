@@ -70,6 +70,8 @@ type ForgotPasswordResponse {
   captchaRequired: Boolean
 }
 
+
+
 type ChangePasswordStatus {
   failedAttempts: Int
   lockedUntil: String
@@ -85,6 +87,13 @@ type TwoFactorSetup {
   secret: String
   qrCode: String
   alreadySetup: Boolean
+}
+
+type ForgotPasswordOtpStatus {
+  failedAttempts: Int!
+  locked: Boolean!
+  remainingSeconds: Int!
+  expiresInSeconds: Int!
 }
 
  type Query {
@@ -104,7 +113,12 @@ type TwoFactorSetup {
     identifier: String!
   ): ForgotPasswordLockStatus
 
-  checkChangePasswordStatus: ChangePasswordStatus
+checkForgotPasswordOtpStatus(
+  identifier: String!
+): ForgotPasswordOtpStatus
+
+  checkChangePasswordStatus: 
+  ChangePasswordStatus
   
   pendingUsers: [User]
 
@@ -118,6 +132,7 @@ type AvailabilityResponse {
   available: Boolean!
   field: String!
 }
+  
   type Mutation {
 
 requestForgotPasswordOTP(

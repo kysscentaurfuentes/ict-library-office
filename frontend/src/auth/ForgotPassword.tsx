@@ -449,7 +449,7 @@ console.log(
   isNaN(response?.remainingSeconds)
 );
 
-    if (response?.success) {
+    if (response) {
 setSuccessMessage(
   response.message
 );

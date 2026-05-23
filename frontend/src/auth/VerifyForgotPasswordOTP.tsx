@@ -1,8 +1,10 @@
 // frontend/src/auth/VerifyForgotPasswordOTP.tsx
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { gql, useMutation } from '@apollo/client';
+import { gql, useMutation, useLazyQuery } from '@apollo/client';
 
+import { Turnstile }
+from '@marsidev/react-turnstile';
 
 const VERIFY_FORGOT_PASSWORD_OTP =
   gql`
@@ -21,14 +23,39 @@ const VERIFY_FORGOT_PASSWORD_OTP =
 const REQUEST_FORGOT_PASSWORD_OTP =
   gql`
     mutation RequestForgotPasswordOTP(
+  $identifier: String!
+  $captchaToken: String
+) {
+
+      requestForgotPasswordOTP(
+  identifier: $identifier
+  captchaToken: $captchaToken
+) {
+       success
+message
+otpSent
+captchaRequired
+attempts
+maxAttempts
+remainingSeconds
+locked
+      }
+    }
+  `;
+
+  const CHECK_FORGOT_PASSWORD_OTP_STATUS =
+  gql`
+    query CheckForgotPasswordOtpStatus(
       $identifier: String!
     ) {
 
-      requestForgotPasswordOTP(
+      checkForgotPasswordOtpStatus(
         identifier: $identifier
       ) {
-        success
-        message
+        failedAttempts
+        locked
+        remainingSeconds
+        expiresInSeconds
       }
     }
   `;
@@ -40,10 +67,40 @@ const navigate =
 const location =
   useLocation();
 
-
-
 const identifier =
-  location.state?.identifier;
+  location.state?.identifier ||
+  localStorage.getItem(
+    'forgot_identifier'
+  );
+
+  const [otpCountdown, setOtpCountdown] =
+  useState(300);
+
+  const [verifyAttempts, setVerifyAttempts] =
+  useState(0);
+
+  const [verifyLocked, setVerifyLocked] =
+  useState(false);
+
+const [verifyLockCountdown,
+setVerifyLockCountdown] =
+  useState(0);
+
+  const [showCaptcha, setShowCaptcha] =
+  useState(false);
+
+const [captchaVerified,
+setCaptchaVerified] =
+  useState(false);
+
+const [captchaToken,
+setCaptchaToken] =
+  useState('');
+
+  const [
+  captchaResetKey,
+  setCaptchaResetKey
+] = useState(0);
 
 const [code, setCode] =
   useState('');
@@ -88,6 +145,104 @@ useEffect(() => {
 
 }, [resendCooldown]);
 
+useEffect(() => {
+
+  if (otpCountdown <= 0) {
+    return;
+  }
+
+  const timer =
+    setInterval(() => {
+
+      setOtpCountdown(
+        (prev) => prev - 1
+      );
+
+    }, 1000);
+
+  return () =>
+    clearInterval(timer);
+
+}, [otpCountdown]);
+
+useEffect(() => {
+
+  if (
+    verifyLockCountdown <= 0
+  ) {
+
+    setVerifyLocked(false);
+
+    return;
+  }
+
+  const timer =
+    setInterval(() => {
+
+      setVerifyLockCountdown(
+        (prev) => {
+
+          if (prev <= 1) {
+
+            clearInterval(timer);
+
+            setVerifyLocked(false);
+
+            return 0;
+          }
+
+          return prev - 1;
+        }
+      );
+
+    }, 1000);
+
+  return () =>
+    clearInterval(timer);
+
+}, [verifyLockCountdown]);
+
+useEffect(() => {
+
+  if (!identifier) {
+    return;
+  }
+
+  checkForgotPasswordOtpStatus({
+    variables: {
+      identifier
+    }
+  })
+  .then((result) => {
+
+    const response =
+      result.data
+      ?.checkForgotPasswordOtpStatus;
+
+    if (!response) {
+      return;
+    }
+
+    setVerifyAttempts(
+      response.failedAttempts || 0
+    );
+
+    setVerifyLocked(
+      response.locked || false
+    );
+
+    setVerifyLockCountdown(
+      response.remainingSeconds || 0
+    );
+
+    setOtpCountdown(
+      response.expiresInSeconds || 0
+    );
+  })
+  .catch(console.error);
+
+}, [identifier]);
+
 const [
   verifyForgotPasswordOTP
 ] = useMutation(
@@ -99,6 +254,53 @@ const [
 ] = useMutation(
   REQUEST_FORGOT_PASSWORD_OTP
 );
+
+const [
+  checkForgotPasswordOtpStatus
+] = useLazyQuery(
+  CHECK_FORGOT_PASSWORD_OTP_STATUS,
+  {
+    fetchPolicy: 'network-only'
+  }
+);
+
+const formatCountdown = (
+  totalSeconds: number
+) => {
+
+  const minutes =
+    Math.floor(totalSeconds / 60);
+
+  const seconds =
+    totalSeconds % 60;
+
+  return `${minutes
+    .toString()
+    .padStart(2, '0')}m ${seconds
+    .toString()
+    .padStart(2, '0')}s`;
+};
+
+const maskEmail = (
+  email: string
+) => {
+
+  if (!email.includes('@')) {
+    return email;
+  }
+
+  const [name, domain] =
+    email.split('@');
+
+  return (
+    name.slice(0, 3) +
+    '*****@' +
+    domain
+  );
+};
+
+const otpExpired =
+  otpCountdown <= 0;
 
 const handleVerify = async () => {
 
@@ -127,7 +329,7 @@ const handleVerify = async () => {
 
     setSuccessMessage(
       'OTP verified successfully.'
-    );
+    ); setCode('');
 
     setTimeout(() => {
 
@@ -152,6 +354,10 @@ const handleVerify = async () => {
       'Invalid OTP.'
     );
 
+    setVerifyAttempts(
+  (prev) => prev + 1
+);
+
   } finally {
 
     setLoading(false);
@@ -164,19 +370,57 @@ const handleResend = async () => {
     return;
   }
 
-  try {
+  if (
+    showCaptcha &&
+    !captchaVerified
+  ) {
 
-    await requestForgotPasswordOTP({
-      variables: {
-        identifier,
-      },
-    });
-
-    setSuccessMessage(
-      'OTP resent successfully.'
+    setErrorMessage(
+      'Please complete CAPTCHA verification.'
     );
 
-    setResendCooldown(60);
+    return;
+  }
+
+  try {
+
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    const result =
+      await requestForgotPasswordOTP({
+        variables: {
+          identifier,
+          captchaToken,
+        },
+      });
+
+    const response =
+      result.data
+      ?.requestForgotPasswordOTP;
+
+    setShowCaptcha(
+      response?.captchaRequired || false
+    );
+
+    setCaptchaVerified(false);
+
+    setCaptchaToken('');
+
+    setCaptchaResetKey(
+      (prev) => prev + 1
+    );
+
+    if (response?.otpSent) {
+
+      setSuccessMessage(
+        'OTP resent successfully.'
+      );
+
+      setOtpCountdown(300);
+
+      setResendCooldown(60);
+    }
 
   } catch (error: any) {
 
@@ -235,8 +479,27 @@ return (
           lineHeight: 1.6,
         }}
       >
-        Enter the 6-digit OTP sent to your account.
+        A recovery code was sent to your verified email.
+        Code sent to:
+{' '}
+{maskEmail(identifier)}
       </p>
+
+      <div
+  style={{
+    marginBottom: '18px',
+    textAlign: 'center',
+    color:
+      otpExpired
+        ? '#ff7b7b'
+        : '#c4b5fd',
+    fontWeight: 700,
+  }}
+>
+  {otpExpired
+    ? 'OTP expired.'
+    : `OTP expires in ${formatCountdown(otpCountdown)}`}
+</div>
 
       {/* OTP INPUT */}
       <div
@@ -244,6 +507,86 @@ return (
           marginBottom: '18px',
         }}
       >
+
+        <div
+  style={{
+    marginBottom: '18px',
+    textAlign: 'center',
+    color: '#facc15',
+    fontWeight: 700,
+  }}
+>
+  Attempts:
+  {' '}
+  {verifyAttempts}/5
+</div>
+
+{verifyLocked && (
+
+  <div
+    style={{
+      marginBottom: '18px',
+      textAlign: 'center',
+      color: '#ff7b7b',
+      fontWeight: 700,
+    }}
+  >
+    Try again in
+    {' '}
+    {formatCountdown(
+      verifyLockCountdown
+    )}
+  </div>
+
+)}
+
+{showCaptcha && (
+
+  <div
+    style={{
+      marginBottom: '18px',
+      display: 'flex',
+      justifyContent: 'center',
+    }}
+  >
+
+    <Turnstile
+      key={captchaResetKey}
+
+      siteKey={
+        import.meta.env
+          .VITE_TURNSTILE_SITE_KEY
+      }
+
+      onSuccess={(token) => {
+
+        setCaptchaVerified(true);
+
+        setCaptchaToken(token);
+      }}
+
+      onError={() => {
+
+        setCaptchaVerified(false);
+
+        setCaptchaToken('');
+
+        setErrorMessage(
+          'CAPTCHA verification failed.'
+        );
+      }}
+
+      onExpire={() => {
+
+        setCaptchaVerified(false);
+
+        setCaptchaToken('');
+      }}
+    />
+
+  </div>
+
+)}
 
         <label
           style={{
@@ -257,6 +600,20 @@ return (
 
         <input
           type="text"
+          disabled={
+  loading ||
+  verifyLocked ||
+  otpExpired
+}
+
+autoFocus
+
+onKeyDown={(e) => {
+
+  if (e.key === 'Enter') {
+    handleVerify();
+  }
+}}
           maxLength={6}
           value={code}
           onChange={(e) =>
@@ -318,28 +675,51 @@ return (
       {/* VERIFY BUTTON */}
       <button
         onClick={handleVerify}
-        disabled={loading}
+        disabled={
+  loading ||
+  verifyLocked ||
+  otpExpired
+}
         style={{
           width: '100%',
           padding: '14px',
           borderRadius: '12px',
           border: 'none',
-          cursor: 'pointer',
+          cursor:
+  loading ||
+  verifyLocked ||
+  otpExpired
+    ? 'not-allowed'
+    : 'pointer',
+
+opacity:
+  loading ||
+  verifyLocked ||
+  otpExpired
+    ? 0.6
+    : 1,
           fontWeight: 700,
           marginBottom: '16px',
         }}
       >
 
         {loading
-          ? 'Verifying OTP...'
-          : 'Verify OTP'}
+  ? 'Verifying OTP...'
+  : verifyLocked
+    ? 'Temporarily Locked'
+    : otpExpired
+      ? 'OTP Expired'
+      : 'Verify OTP'}
 
       </button>
 
       {/* RESEND */}
       <button
         onClick={handleResend}
-        disabled={resendCooldown > 0}
+        disabled={
+  resendCooldown > 0 ||
+  loading
+}
         style={{
           width: '100%',
           padding: '12px',
@@ -348,7 +728,17 @@ return (
             '1px solid rgba(255,255,255,0.15)',
           background: 'transparent',
           color: 'white',
-          cursor: 'pointer',
+          cursor:
+  resendCooldown > 0 ||
+  loading
+    ? 'not-allowed'
+    : 'pointer',
+
+opacity:
+  resendCooldown > 0 ||
+  loading
+    ? 0.6
+    : 1,
           marginBottom: '16px',
         }}
       >
