@@ -14,6 +14,8 @@ import QRCode from "qrcode";
 import fetch from 'node-fetch';
 dotenv.config();
 import { CURRENT_POLICY_VERSION } from "./constants/policy.js";
+import { logAuditEvent }
+from "./utils/auditLogger.js";
 
 
 const __filename =
@@ -1738,7 +1740,11 @@ await pool.query(
   return true;
 },
 
-    login: async (_: any, { identifier, password }: any) => {
+   login: async (
+  _: any,
+  { identifier, password }: any,
+  context: Context
+) => {
 
     console.log("RAW IDENTIFIER:", identifier);
 
@@ -2046,6 +2052,20 @@ await pool.query(
   ]
 );
 
+await logAuditEvent({
+
+  action: "FAILED_LOGIN",
+
+  metadata: {
+    identifier,
+    reason: "INVALID_PASSWORD"
+  },
+
+  ipAddress: context.ip,
+
+  userAgent: context.userAgent,
+});
+
   throw new Error("Invalid credentials");
 }
 
@@ -2110,6 +2130,31 @@ if (
     }
   );
 
+  await logAuditEvent({
+
+  userId: user.id,
+
+  action:
+    "SUCCESSFUL_LOGIN",
+
+  targetTable:
+    "users",
+
+  targetId:
+    String(user.id),
+
+  metadata: {
+    email: user.email,
+    requiresPolicyUpdate: true
+  },
+
+  ipAddress:
+    context.ip,
+
+  userAgent:
+    context.userAgent,
+});
+
   return {
     token,
     requires2FA: false,
@@ -2128,6 +2173,31 @@ if (
           expiresIn: '1d',
         }
       );
+
+      await logAuditEvent({
+
+  userId: user.id,
+
+  action:
+    "SUCCESSFUL_LOGIN",
+
+  targetTable:
+    "users",
+
+  targetId:
+    String(user.id),
+
+  metadata: {
+    email: user.email,
+    requiresPolicyUpdate: false
+  },
+
+  ipAddress:
+    context.ip,
+
+  userAgent:
+    context.userAgent,
+});
 
      return {
   token,
@@ -4058,6 +4128,30 @@ acceptPolicyUpdate: async (
         evidenceHash
       ]
     );
+
+    await logAuditEvent({
+  userId: auth.userId,
+
+  action:
+    "USER_ACCEPTED_POLICY",
+
+  targetTable:
+    "policy_acceptance_history",
+
+  targetId:
+    String(
+      historyResult.rows[0].id
+    ),
+
+  metadata: {
+    policyVersion,
+    evidenceHash,
+  },
+
+  ipAddress: ip,
+
+  userAgent,
+});
 
   // =========================
   // CLOUD REPLICATION QUEUE
