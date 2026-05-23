@@ -33,13 +33,18 @@ type User {
   dark_mode: Boolean
   two_factor_enabled: Boolean
   account_status: String
+
+  policy_accepted: Boolean
+  policy_version: String
+  policy_accepted_at: String
  }
 
-  type AuthPayload {
-    token: String
-    requires2FA: Boolean
-    user: User
-  }
+type AuthPayload {
+  token: String
+  requires2FA: Boolean
+  requiresPolicyUpdate: Boolean
+  user: User
+}
 
   type Device {
     ip: String
@@ -132,7 +137,7 @@ type AvailabilityResponse {
   available: Boolean!
   field: String!
 }
-  
+
   type Mutation {
 
 requestForgotPasswordOTP(
@@ -151,7 +156,7 @@ resetForgotPassword(
   newPassword: String!
 ): Boolean
 
-  requestSignupOTP(
+requestSignupOTP(
   first_name: String!
   middle_name: String
   last_name: String!
@@ -160,6 +165,9 @@ resetForgotPassword(
   StudentId: String!
   course: String!
   school_id_image: String!
+
+  policyAccepted: Boolean!
+  policyVersion: String!
 ): Boolean
 
 verifySignupOTP(
@@ -244,5 +252,9 @@ disableTwoFactor(
 
         approveUser(userId: Int!): Boolean
   rejectUser(userId: Int!): Boolean
+
+  acceptPolicyUpdate(
+  policyVersion: String!
+): Boolean
   }
 `;

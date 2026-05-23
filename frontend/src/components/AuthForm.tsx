@@ -230,9 +230,6 @@ const [
   const [acceptedTerms, setAcceptedTerms] =
     useState<boolean>(false);
 
-  const [showTerms, setShowTerms] =
-    useState<boolean>(false);
-
   const [showPassword, setShowPassword] =
     useState<boolean>(false);
 
@@ -257,6 +254,129 @@ const [
   setInternalPreviewModal
 ] = useState(false);
 
+const [
+  hasRestoredDraft,
+  setHasRestoredDraft
+] = useState(false);
+
+useEffect(() => {
+
+  // ONLY FOR SIGNUP
+  if (!isSignup) {
+    return;
+  }
+
+  const savedDraft =
+    sessionStorage.getItem(
+      "signupDraft"
+    );
+
+  console.log(
+    "[RESTORE] RAW DRAFT:",
+    savedDraft
+  );
+
+  if (!savedDraft) {
+    setHasRestoredDraft(true);
+    return;
+  }
+
+  try {
+
+    const parsed =
+      JSON.parse(savedDraft);
+
+    setFirstName(
+      parsed.firstName || ""
+    );
+
+    setMiddleName(
+      parsed.middleName || ""
+    );
+
+    setLastName(
+      parsed.lastName || ""
+    );
+
+    setEmail(
+      parsed.email || ""
+    );
+
+    setPassword(
+      parsed.password || ""
+    );
+
+    evaluatePasswordStrength(
+      parsed.password || ""
+    );
+
+    setCourse(
+      parsed.course || ""
+    );
+
+    setStudentId(
+      parsed.studentId || ""
+    );
+
+  } catch (err) {
+
+    console.error(
+      "[RESTORE ERROR]",
+      err
+    );
+
+    sessionStorage.removeItem(
+      "signupDraft"
+    );
+  }
+
+  setHasRestoredDraft(true);
+
+}, [isSignup]);
+
+useEffect(() => {
+
+  // ONLY FOR SIGNUP
+  if (!isSignup) {
+    return;
+  }
+
+  if (!hasRestoredDraft) {
+    return;
+  }
+
+  const signupDraft = {
+    firstName,
+    middleName,
+    lastName,
+    email,
+    password,
+    course,
+    studentId,
+  };
+
+  console.log(
+    "[AUTOSAVE]",
+    signupDraft
+  );
+
+  sessionStorage.setItem(
+    "signupDraft",
+    JSON.stringify(signupDraft)
+  );
+
+}, [
+  isSignup,
+  hasRestoredDraft,
+  firstName,
+  middleName,
+  lastName,
+  email,
+  password,
+  course,
+  studentId,
+]);
+
     useEffect(() => {
   if (identifier) {
     localStorage.setItem('savedIdentifier', identifier);
@@ -264,6 +384,21 @@ const [
     localStorage.removeItem('savedIdentifier');
   }
 }, [identifier]);
+
+useEffect(() => {
+
+  const accepted =
+    sessionStorage.getItem(
+      "policyAccepted"
+    );
+
+  if (accepted === "true") {
+
+    setAcceptedTerms(true);
+
+  }
+
+}, []);
 
    const handleIdentifierChange = (
   e: React.ChangeEvent<HTMLInputElement>
@@ -529,20 +664,25 @@ const evaluatePasswordStrength = (
       password.trim()
   );
 
-  const handleTermsCheckboxClick =
-    (): void => {
-      if (!acceptedTerms) {
-        setShowTerms(true);
-      } else {
-        setAcceptedTerms(false);
-      }
-    };
+const handleTermsCheckboxClick =
+(): void => {
 
-  const handleAgreeTerms =
-    (): void => {
-      setAcceptedTerms(true);
-      setShowTerms(false);
-    };
+  if (!acceptedTerms) {
+
+    navigate(
+      "/signup-policy"
+    );
+
+  } else {
+
+    setAcceptedTerms(false);
+
+    sessionStorage.removeItem(
+      "policyAccepted"
+    );
+  }
+};
+
 
 const handleSubmit = async (
   e: React.FormEvent<HTMLFormElement>
@@ -702,6 +842,7 @@ const renderInput = (
 };
 
   return (
+    <>
   <div
     style={{
       width: '100%',
@@ -1637,7 +1778,8 @@ maxHeight: '78px',
     <input
     className="auth-input"
       type="text"
-      value={identifier}
+        autoComplete="username"
+  value={identifier}
       onChange={
         handleIdentifierChange
       }
@@ -1693,12 +1835,13 @@ maxHeight: '78px',
                 }}
               >
                 <input
-                className="auth-input"
-                  type={
-                    showPassword
-                      ? 'text'
-                      : 'password'
-                  }
+  className="auth-input"
+  type={
+    showPassword
+      ? 'text'
+      : 'password'
+  }
+  autoComplete="new-password"
                   value={password}
                   placeholder="Enter your password"
                   onChange={(e) =>
@@ -1896,123 +2039,9 @@ maxHeight: '78px',
             ? 'Sign in'
             : 'Sign up'}
         </span>
-      </p>
+         </p>
     </div>
-
-    {/* TERMS MODAL */}
-    {showTerms && (
-      <div
-        style={{
-          position: 'fixed',
-top: 0,
-left: 0,
-width: '100vw',
-height: '100vh',
-margin: 0,
-          background:
-            'rgba(0,0,0,0.8)',
-          display: 'flex',
-          justifyContent:
-            'center',
-          alignItems: 'center',
-          zIndex: 999,
-          padding: '20px',
-        }}
-      >
-        <div
-          style={{
-            background:
-              '#ffffff',
-            color: '#000000',
-            padding: '2rem',
-            borderRadius: '16px',
-            width: '100%',
-            maxWidth: '700px',
-            maxHeight: '80vh',
-            overflowY: 'auto',
-          }}
-        >
-          <h2
-            style={{
-              color: '#000000',
-              fontWeight: 800,
-              marginBottom:
-                '18px',
-            }}
-          >
-            Terms and Conditions
-          </h2>
-
-          <p
-            style={{
-              color: '#000000',
-              lineHeight: 1.7,
-              fontSize: '1rem',
-            }}
-          >
-            By using the ICT
-            Library Office
-            System, you agree to
-            comply with
-            university policies,
-            data privacy
-            regulations, and
-            academic rules.
-          </p>
-
-          <p
-            style={{
-              color: '#000000',
-              lineHeight: 1.7,
-              fontSize: '1rem',
-            }}
-          >
-            Your account and
-            activities may be
-            monitored for
-            security, record
-            keeping, and
-            administrative
-            purposes.
-          </p>
-
-          <p
-            style={{
-              color: '#000000',
-              lineHeight: 1.7,
-              fontSize: '1rem',
-            }}
-          >
-            Any misuse of the
-            system may result in
-            disciplinary action
-            or account
-            suspension.
-          </p>
-
-          <button
-            onClick={
-              handleAgreeTerms
-            }
-            style={{
-              marginTop: '20px',
-              padding:
-                '12px 24px',
-              border: 'none',
-              borderRadius:
-                '8px',
-              background:
-                '#6366f1',
-              color: 'white',
-              cursor: 'pointer',
-              fontWeight: 700,
-            }}
-          >
-            I Agree
-          </button>
-        </div>
-      </div>
-    )}
+  </div>
 
 {internalPreviewModal &&
   internalPreview && (
@@ -2057,8 +2086,6 @@ margin: 0,
   </div>
 
 )}
-
-  </div>
+</>
 );
-
 }

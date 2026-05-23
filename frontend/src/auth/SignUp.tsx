@@ -33,6 +33,8 @@ mutation RequestSignupOTP(
   $course: String!
   $StudentId: String!
   $school_id_image: String!
+  $policyAccepted: Boolean!
+  $policyVersion: String!
 ) {
 
   requestSignupOTP(
@@ -44,6 +46,8 @@ mutation RequestSignupOTP(
     course: $course
     StudentId: $StudentId
     school_id_image: $school_id_image
+    policyAccepted: $policyAccepted
+    policyVersion: $policyVersion
   )
 }
 `;
@@ -61,6 +65,8 @@ type SignupVariables = {
   course: string;
   StudentId: string;
   school_id_image: string;
+  policyAccepted: boolean;
+policyVersion: string;
 };
 
 export default function SignUp() {
@@ -165,6 +171,8 @@ formData.append(
         course,
         StudentId: studentId,
         school_id_image: imageUrl,
+        policyAccepted: true,
+        policyVersion: "v1.0",
       },
     });
 
@@ -194,6 +202,14 @@ const resendExpiry =
 localStorage.setItem(
   "signupResendExpiry",
   String(resendExpiry)
+);
+
+sessionStorage.removeItem(
+  "signupDraft"
+);
+
+sessionStorage.removeItem(
+  "policyAccepted"
 );
 
 alert(

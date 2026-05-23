@@ -13,6 +13,8 @@ import speakeasy from "speakeasy";
 import QRCode from "qrcode";
 import fetch from 'node-fetch';
 dotenv.config();
+import { CURRENT_POLICY_VERSION } from "./constants/policy.js";
+
 
 const __filename =
   fileURLToPath(import.meta.url);
@@ -96,6 +98,10 @@ two_factor_backup_codes?: string[] | null;
   last_otp_sent_at?: string | null;
 
   account_status?: string;
+
+  policy_accepted?: boolean;
+policy_version?: string;
+policy_accepted_at?: string | null;
 
 failed_forgot_attempts?: number;
 
@@ -320,7 +326,11 @@ WHERE LOWER(u.email) = LOWER($1)
 
   t.enabled AS two_factor_enabled,
 
-  u.account_status
+  u.account_status,
+
+  u.policy_version,
+u.policy_accepted,
+u.policy_accepted_at,
 
 FROM users u
 
@@ -1505,16 +1515,19 @@ WHERE user_id = $1
 },
     requestSignupOTP: async (
   _: any,
-  {
-    first_name,
-    middle_name,
-    last_name,
-    email,
-    password,
-    StudentId,
-    course,
-    school_id_image
-  }: any
+{
+  first_name,
+  middle_name,
+  last_name,
+  email,
+  password,
+  StudentId,
+  course,
+  school_id_image,
+
+  policyAccepted,
+  policyVersion
+}: any
 ) => {
 
   if (!/^\d{3}-\d{5}$/.test(StudentId)) {
@@ -1528,6 +1541,38 @@ WHERE user_id = $1
 
   const normalizedStudentId =
     normalizeStudentId(StudentId);
+
+    // =========================
+// POLICY ENFORCEMENT
+// =========================
+if (!policyAccepted) {
+
+  throw new GraphQLError(
+    "Policy acknowledgement required.",
+    {
+      extensions: {
+        code:
+          "POLICY_NOT_ACCEPTED",
+      },
+    }
+  );
+}
+
+if (
+  policyVersion !==
+  CURRENT_POLICY_VERSION
+) {
+
+  throw new GraphQLError(
+    "Outdated policy version.",
+    {
+      extensions: {
+        code:
+          "INVALID_POLICY_VERSION",
+      },
+    }
+  );
+}
 
   // =========================
   // VALIDATE DOMAIN
@@ -1625,14 +1670,21 @@ const pendingResult =
       course,
       school_id_image,
       signup_otp,
-      signup_otp_expires_at
+      signup_otp_expires_at,
+      policy_accepted,
+policy_version,
+policy_accepted_at
     )
 
     VALUES (
-      $1,$2,$3,$4,$5,
-      $6,$7,$8,$9,
-      NOW() + INTERVAL '5 minutes'
-    )
+  $1,$2,$3,$4,$5,
+  $6,$7,$8,$9,
+  NOW() + INTERVAL '5 minutes',
+
+  $10,
+  $11,
+  NOW()
+)
 
     RETURNING *
     `
@@ -1646,7 +1698,10 @@ const pendingResult =
       normalizedStudentId,
       course,
       school_id_image,
-      hashedOTP
+      hashedOTP,
+
+      policyAccepted,
+      policyVersion
     ]
   );
 
@@ -1700,28 +1755,22 @@ await pool.query(
 
    query = `
   SELECT
-
     u.id,
-
     password,
-
     "StudentId",
-
     role,
-
     course,
-
     email,
-
     first_name,
     middle_name,
     last_name,
-
     school_id_image,
-
     profile_picture,
-
     account_status,
+
+    u.policy_version,
+    u.policy_accepted,
+    u.policy_accepted_at,
 
     s.failed_login_attempts,
     s.login_locked_until,
@@ -1778,6 +1827,10 @@ WHERE TRIM(u."StudentId") = TRIM($1)
     profile_picture,
 
     account_status,
+
+    u.policy_version,
+    u.policy_accepted,
+    u.policy_accepted_at,
 
     s.failed_login_attempts,
     s.login_locked_until,
@@ -2038,6 +2091,31 @@ if (
       two_factor_enabled: true
     }
   };
+}// =========================
+// POLICY VERSION CHECK
+// =========================
+if (
+  user.policy_version !==
+  CURRENT_POLICY_VERSION
+) {
+
+  const token = jwt.sign(
+    {
+      userId: user.id,
+      role: user.role,
+    },
+    SECRET,
+    {
+      expiresIn: '1d',
+    }
+  );
+
+  return {
+    token,
+    requires2FA: false,
+    requiresPolicyUpdate: true,
+    user
+  };
 }
 
       const token = jwt.sign(
@@ -2053,6 +2131,8 @@ if (
 
      return {
   token,
+  requires2FA: false,
+  requiresPolicyUpdate: false,
   user: {
     id: user.id,
     first_name: user.first_name,
@@ -3476,28 +3556,36 @@ disableTwoFactor: async (
         course,
         school_id_image,
         role,
-        account_status
+        account_status,
+        policy_accepted,
+policy_version,
+policy_accepted_at
       )
 
       VALUES (
         $1,$2,$3,$4,$5,
-        $6,$7,$8,$9,$10
+        $6,$7,$8,$9,$10,$11,$12,$13
       )
 
       RETURNING *
       `,
       [
-        pending.first_name,
-        pending.middle_name,
-        pending.last_name,
-        pending.email,
-        pending.password,
-        pending.StudentId,
-        pending.course,
-        pending.school_id_image,
-        "Student",
-        "APPROVED"
-      ]
+  pending.first_name,
+  pending.middle_name,
+  pending.last_name,
+  pending.email,
+  pending.password,
+  pending.StudentId,
+  pending.course,
+  pending.school_id_image,
+
+  "Student",
+  "APPROVED",
+
+  pending.policy_accepted,
+  pending.policy_version,
+  pending.policy_accepted_at
+]
     );
 
   const createdUser =
@@ -3838,6 +3926,67 @@ WHERE user_id = $1
 
   return true;
 },
+acceptPolicyUpdate: async (
+  _: any,
+  {
+    policyVersion
+  }: {
+    policyVersion: string;
+  },
+  context: Context
+) => {
 
+  const ip =
+  context.ip || null;
+
+const userAgent =
+  context.userAgent || null;
+
+  const auth =
+    requireAuth(context);
+
+  await pool.query(
+    `
+    UPDATE users
+    SET
+      policy_version = $1,
+      policy_accepted = true,
+      policy_accepted_at = NOW()
+    WHERE id = $2
+    `,
+    [
+      policyVersion,
+      auth.userId
+    ]
+  );
+ 
+
+await pool.query(
+  `
+  INSERT INTO policy_acceptance_history (
+    user_id,
+    policy_version,
+    accepted_at,
+    ip_address,
+    user_agent
+  )
+  VALUES (
+    $1,
+    $2,
+    NOW(),
+    $3,
+    $4
+  )
+  `,
+  [
+    auth.userId,
+    policyVersion,
+    ip,
+    userAgent
+  ]
+);
+
+  return true;
+},
   }, // END OF MUTATION
 }; // END OF EXPORT CONST RESOLVERS

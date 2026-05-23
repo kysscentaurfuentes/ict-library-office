@@ -27,6 +27,8 @@ import ForgotPassword from '../auth/ForgotPassword';
 import VerifyForgotPassword from '../auth/VerifyForgotPasswordOTP'
 import ResetForgotPassword from '../auth/ResetForgotPassword'
 import AuthLayout from '../layouts/AuthLayout';
+import PolicyAcknowledgement from '../auth/PolicyAcknowledgement';
+import PolicyGuard from '../guards/PolicyGuard';
 
 export default function AppRouter() {
   return (
@@ -46,10 +48,18 @@ export default function AppRouter() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/forgot-password/verify" element={<VerifyForgotPassword />} />
         <Route path="/forgot-password/reset" element={<ResetForgotPassword />} />
+        <Route path="/signup-policy" element={<PolicyAcknowledgement />} />
+        <Route path="/policy-update" element={<PolicyAcknowledgement />} />
         </Route>
 
         {/* ✅ ALL MAIN APP PAGES INSIDE LAYOUT */}
-        <Route element={<MainLayout />}>
+       <Route
+  element={
+    <PolicyGuard>
+      <MainLayout />
+    </PolicyGuard>
+  }
+>
           <Route path="/homescreen" element={<HomeScreen />} />
           <Route path="/router" element={<Router />} />
           <Route path="/live" element={<LiveView />} />
