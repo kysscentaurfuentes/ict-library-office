@@ -3936,15 +3936,79 @@ acceptPolicyUpdate: async (
   context: Context
 ) => {
 
-  const ip =
-  context.ip || null;
-
-const userAgent =
-  context.userAgent || null;
-
   const auth =
     requireAuth(context);
 
+  const ip =
+    context.ip || null;
+
+  const userAgent =
+    context.userAgent || null;
+
+  // =========================
+  // VALIDATE POLICY VERSION
+  // =========================
+  if (
+    policyVersion !==
+    CURRENT_POLICY_VERSION
+  ) {
+    throw new Error(
+      "Invalid policy version"
+    );
+  }
+
+  // =========================
+  // PREVENT DUPLICATE ACCEPT
+  // =========================
+  const existing =
+    await pool.query(
+      `
+      SELECT id
+      FROM policy_acceptance_history
+      WHERE
+        user_id = $1
+        AND policy_version = $2
+      LIMIT 1
+      `,
+      [
+        auth.userId,
+        policyVersion
+      ]
+    );
+
+  if (existing.rows.length > 0) {
+    return true;
+  }
+
+  // =========================
+  // GENERATE EVIDENCE HASH
+  // =========================
+  const acceptedAt =
+    new Date().toISOString();
+
+  const evidenceRaw =
+    JSON.stringify({
+      userId:
+        auth.userId,
+
+      policyVersion,
+
+      acceptedAt,
+
+      ip,
+
+      userAgent,
+    });
+
+  const evidenceHash =
+    crypto
+      .createHash("sha256")
+      .update(evidenceRaw)
+      .digest("hex");
+
+  // =========================
+  // UPDATE USERS TABLE
+  // =========================
   await pool.query(
     `
     UPDATE users
@@ -3959,32 +4023,62 @@ const userAgent =
       auth.userId
     ]
   );
- 
 
-await pool.query(
-  `
-  INSERT INTO policy_acceptance_history (
-    user_id,
-    policy_version,
-    accepted_at,
-    ip_address,
-    user_agent
-  )
-  VALUES (
-    $1,
-    $2,
-    NOW(),
-    $3,
-    $4
-  )
-  `,
-  [
-    auth.userId,
-    policyVersion,
-    ip,
-    userAgent
-  ]
-);
+  // =========================
+  // INSERT IMMUTABLE HISTORY
+  // =========================
+  const historyResult =
+    await pool.query(
+      `
+      INSERT INTO policy_acceptance_history (
+        user_id,
+        policy_version,
+        accepted_at,
+        ip_address,
+        user_agent,
+        evidence_hash
+      )
+
+      VALUES (
+        $1,
+        $2,
+        NOW(),
+        $3,
+        $4,
+        $5
+      )
+
+      RETURNING *
+      `,
+      [
+        auth.userId,
+        policyVersion,
+        ip,
+        userAgent,
+        evidenceHash
+      ]
+    );
+
+  // =========================
+  // CLOUD REPLICATION QUEUE
+  // =========================
+  await pool.query(
+    `
+    INSERT INTO sync_queue (
+      table_name,
+      operation,
+      payload
+    )
+    VALUES ($1,$2,$3)
+    `,
+    [
+      "policy_acceptance_history",
+      "insert",
+      JSON.stringify(
+        historyResult.rows[0]
+      )
+    ]
+  );
 
   return true;
 },

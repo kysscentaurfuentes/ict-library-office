@@ -9,7 +9,9 @@ async function processSyncQueue() {
     const pending = await localPool.query(`
       SELECT *
       FROM sync_queue
-      WHERE synced = false
+      WHERE
+  synced = false
+  AND retry_count < 20
       ORDER BY created_at ASC
       LIMIT 20
     `);
@@ -594,17 +596,44 @@ if (
         }
 
         // =====================================================
+// POLICY_ACCEPTANCE_HISTORY INSERT
+// =====================================================
+
+if (
+  item.table_name === 'policy_acceptance_history' &&
+  item.operation === 'insert'
+) {
+
+  await neonPool.query(
+    `
+    INSERT INTO policy_acceptance_history (
+      ${columns.join(',')}
+    )
+    VALUES (
+      ${placeholders.join(',')}
+    )
+    ON CONFLICT DO NOTHING
+    `,
+    values
+  );
+}
+
+        // =====================================================
         // MARK AS SYNCED
         // =====================================================
 
-        await localPool.query(
-          `
-          UPDATE sync_queue
-          SET synced = true
-          WHERE id = $1
-          `,
-          [item.id]
-        );
+     await localPool.query(
+  `
+  UPDATE sync_queue
+  SET
+    synced = true,
+    synced_at = NOW(),
+    failed = false,
+    last_error = NULL
+  WHERE id = $1
+  `,
+  [item.id]
+);
 
         console.log(
           `☁️ Synced queue #${item.id}`
@@ -618,13 +647,19 @@ if (
         );
 
         await localPool.query(
-          `
-          UPDATE sync_queue
-          SET retry_count = retry_count + 1
-          WHERE id = $1
-          `,
-          [item.id]
-        );
+  `
+  UPDATE sync_queue
+  SET
+    retry_count = retry_count + 1,
+    failed = true,
+    last_error = $2
+  WHERE id = $1
+  `,
+  [
+    item.id,
+    String(err.message || err)
+  ]
+);
       }
     }
 
