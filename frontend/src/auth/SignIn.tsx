@@ -311,6 +311,14 @@ if (
       err?.graphQLErrors?.[0]
         ?.extensions?.studentId || '';
 
+        const rejectedReason =
+  err?.graphQLErrors?.[0]
+    ?.extensions?.reason || '';
+
+const rejectedAt =
+  err?.graphQLErrors?.[0]
+    ?.extensions?.rejectedAt || '';
+
     localStorage.setItem(
       'rejectedEmail',
       rejectedEmail
@@ -320,6 +328,16 @@ if (
       'rejectedStudentId',
       rejectedStudentId
     );
+
+    localStorage.setItem(
+  'rejectedReason',
+  rejectedReason
+);
+
+localStorage.setItem(
+  'rejectedAt',
+  rejectedAt
+);
 
     window.location.hash =
       '#/rejected-approval';

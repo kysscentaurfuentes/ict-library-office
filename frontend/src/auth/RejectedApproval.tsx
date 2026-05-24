@@ -15,6 +15,16 @@ export default function RejectedApproval() {
       'rejectedEmail'
     ) || '';
 
+    const rejectedReason =
+  localStorage.getItem(
+    'rejectedReason'
+  ) || '';
+
+const rejectedAt =
+  localStorage.getItem(
+    'rejectedAt'
+  ) || '';
+
   return (
     <div
       style={{
@@ -220,6 +230,52 @@ export default function RejectedApproval() {
               >
                 CARSU Email: {rejectedEmail}
               </div>
+
+              {/* REJECTION REASON */}
+<div
+  style={{
+    padding: '10px 18px',
+    borderRadius: '10px',
+    background:
+      'rgba(255,255,255,0.08)',
+    border:
+      '1px solid rgba(255,255,255,0.08)',
+    color: '#ffffff',
+    fontWeight: 600,
+    fontSize: '0.95rem',
+    minWidth: '320px',
+  }}
+>
+  Rejection Reason:
+  <br />
+  {rejectedReason}
+</div>
+
+{/* REJECTED AT */}
+<div
+  style={{
+    padding: '10px 18px',
+    borderRadius: '10px',
+    background:
+      'rgba(255,255,255,0.08)',
+    border:
+      '1px solid rgba(255,255,255,0.08)',
+    color: '#ffffff',
+    fontWeight: 600,
+    fontSize: '0.95rem',
+    minWidth: '320px',
+  }}
+>
+  Rejected At:
+  <br />
+  {
+    rejectedAt
+      ? new Date(
+          rejectedAt
+        ).toLocaleString()
+      : 'N/A'
+  }
+</div>
 
             </div>
 

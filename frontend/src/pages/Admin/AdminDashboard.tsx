@@ -38,11 +38,16 @@ const APPROVE_USER = gql`
 `;
 
 const REJECT_USER = gql`
-  mutation ($userId: Int!) {
-    rejectUser(userId: $userId)
+  mutation (
+    $userId: Int!,
+    $reason: String!
+  ) {
+    rejectUser(
+      userId: $userId,
+      reason: $reason
+    )
   }
 `;
-
 export default function AdminDashboard() {
 const {
   data,
@@ -127,21 +132,35 @@ setIsDarkMode(savedDarkMode);
     setProcessingId(null);
   };
 
-  const handleReject = async (
-    id: number
-  ) => {
-    setProcessingId(id);
+const handleReject = async (
+  id: number
+) => {
 
-    await rejectUser({
-      variables: {
-        userId: id,
-      },
-    });
+  const reason =
+    prompt(
+      "Enter rejection reason:"
+    );
 
-    await refetch();
+  if (
+    !reason ||
+    !reason.trim()
+  ) {
+    return;
+  }
 
-    setProcessingId(null);
-  };
+  setProcessingId(id);
+
+  await rejectUser({
+    variables: {
+      userId: id,
+      reason
+    },
+  });
+
+  await refetch();
+
+  setProcessingId(null);
+};
 
   const formatName = (
     u: any

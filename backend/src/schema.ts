@@ -251,7 +251,10 @@ disableTwoFactor(
 ): Boolean
 
         approveUser(userId: Int!): Boolean
-  rejectUser(userId: Int!): Boolean
+rejectUser(
+  userId: Int!,
+  reason: String!
+): Boolean
 
   acceptPolicyUpdate(
   policyVersion: String!

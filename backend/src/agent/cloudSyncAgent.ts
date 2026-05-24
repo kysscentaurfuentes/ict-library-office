@@ -1,11 +1,9 @@
 // backend/src/agent/cloudSyncAgent.ts
-
 import { localPool, neonPool } from '../db.js';
 
 async function processSyncQueue() {
 
   try {
-
     const pending = await localPool.query(`
       SELECT *
       FROM sync_queue
@@ -219,21 +217,22 @@ async function processSyncQueue() {
           );
         }
 
-        // =====================================================
-        // USER_PROFILE UPDATE
-        // =====================================================
+// =====================================================
+// USER_PROFILE UPDATE
+// =====================================================
 
-        if (
-          item.table_name === 'user_profile' &&
-          item.operation === 'update'
-        ) {
+if (
+  item.table_name === 'user_profile' &&
+  item.operation === 'update'
+) {
 
-          const updateColumns =
-            Object.keys(payload)
-              .filter(
-                key => key !== 'id'
-              );
-
+  const updateColumns =
+    Object.keys(payload)
+      .filter(
+        key =>
+          key !== 'id' &&
+          key !== 'user_id'
+      );
           const updateValues =
             updateColumns.map(
               col => payload[col]
@@ -250,11 +249,11 @@ async function processSyncQueue() {
             UPDATE user_profile
             SET
               ${setClause.join(',')}
-            WHERE id = $${updateColumns.length + 1}
+            WHERE user_id = $${updateColumns.length + 1}
             `,
             [
               ...updateValues,
-              payload.id
+              payload.user_id
             ]
           );
         }
@@ -293,10 +292,12 @@ async function processSyncQueue() {
         ) {
 
           const updateColumns =
-            Object.keys(payload)
-              .filter(
-                key => key !== 'id'
-              );
+  Object.keys(payload)
+    .filter(
+      key =>
+        key !== 'id' &&
+        key !== 'user_id'
+    );
 
           const updateValues =
             updateColumns.map(
@@ -314,11 +315,11 @@ async function processSyncQueue() {
             UPDATE user_preferences
             SET
               ${setClause.join(',')}
-            WHERE id = $${updateColumns.length + 1}
+            WHERE user_id = $${updateColumns.length + 1}
             `,
             [
               ...updateValues,
-              payload.id
+              payload.user_id
             ]
           );
         }
@@ -357,10 +358,12 @@ async function processSyncQueue() {
         ) {
 
           const updateColumns =
-            Object.keys(payload)
-              .filter(
-                key => key !== 'id'
-              );
+  Object.keys(payload)
+    .filter(
+      key =>
+        key !== 'id' &&
+        key !== 'user_id'
+    );
 
           const updateValues =
             updateColumns.map(
@@ -378,11 +381,11 @@ async function processSyncQueue() {
             UPDATE user_security
             SET
               ${setClause.join(',')}
-            WHERE id = $${updateColumns.length + 1}
+            WHERE user_id = $${updateColumns.length + 1}
             `,
             [
               ...updateValues,
-              payload.id
+              payload.user_id
             ]
           );
         }
@@ -420,11 +423,13 @@ async function processSyncQueue() {
           item.operation === 'update'
         ) {
 
-          const updateColumns =
-            Object.keys(payload)
-              .filter(
-                key => key !== 'id'
-              );
+         const updateColumns =
+  Object.keys(payload)
+    .filter(
+      key =>
+        key !== 'id' &&
+        key !== 'user_id'
+    );
 
           const updateValues =
             updateColumns.map(
@@ -442,11 +447,11 @@ async function processSyncQueue() {
             UPDATE user_2fa
             SET
               ${setClause.join(',')}
-            WHERE id = $${updateColumns.length + 1}
+            WHERE user_id = $${updateColumns.length + 1}
             `,
             [
               ...updateValues,
-              payload.id
+              payload.user_id
             ]
           );
         }
@@ -524,12 +529,12 @@ if (
 
   await neonPool.query(
     `
-    DELETE FROM password_resets
-    WHERE id = $1
-    `,
-    [payload.id]
+DELETE FROM password_resets
+WHERE user_id = $1
+`,
+[payload.user_id]
   );
-}
+}  
 
         // =====================================================
         // FORGOT_PASSWORD_SECURITY INSERT
@@ -596,8 +601,31 @@ if (
         }
 
         // =====================================================
-// POLICY_ACCEPTANCE_HISTORY INSERT
+// AUDIT_LOGS INSERT
 // =====================================================
+
+if (
+  item.table_name === 'audit_logs' &&
+  item.operation === 'insert'
+) {
+
+  await neonPool.query(
+    `
+    INSERT INTO audit_logs (
+      ${columns.join(',')}
+    )
+    VALUES (
+      ${placeholders.join(',')}
+    )
+    ON CONFLICT DO NOTHING
+    `,
+    values
+  );
+}
+
+        // =====================================================
+        // POLICY_ACCEPTANCE_HISTORY INSERT
+        // =====================================================
 
 if (
   item.table_name === 'policy_acceptance_history' &&

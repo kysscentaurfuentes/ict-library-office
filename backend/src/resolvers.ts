@@ -1191,7 +1191,7 @@ await pool.query(
   `,
   [
     "password_resets",
-    "update",
+    "insert",
     JSON.stringify(resetRow)
   ]
 );
@@ -1374,7 +1374,7 @@ if (
       .digest("hex");
 
   // =========================
-  // INVALID OTP
+  // INVALID OTP VERIFY FORGOT PASSWORD
   // =========================
   if (
   reset.otp_hash !==
@@ -1411,6 +1411,27 @@ WHERE user_id = $3
       ]
     );
 
+    await pool.query(
+  `
+  INSERT INTO sync_queue (
+    table_name,
+    operation,
+    payload
+  )
+  VALUES ($1,$2,$3)
+  `,
+  [
+    "user_security",
+    "update",
+    JSON.stringify({
+      user_id: user.id,
+      failed_forgot_attempts: attempts,
+      forgot_locked_until: lockUntil,
+      updated_at: new Date().toISOString()
+    })
+  ]
+);
+
     throw new Error(
       "Invalid OTP"
     );
@@ -1420,16 +1441,37 @@ WHERE user_id = $3
   // RESET FAILED ATTEMPTS
   // =========================
   await pool.query(
-    `
-   UPDATE user_security
-SET
+  `
+  UPDATE user_security
+  SET
   failed_forgot_attempts = 0,
   forgot_locked_until = NULL,
   updated_at = NOW()
-WHERE user_id = $1
-    `,
-    [user.id]
+   WHERE user_id = $1
+  `,
+  [user.id]
   );
+
+  await pool.query(
+  `
+  INSERT INTO sync_queue (
+    table_name,
+    operation,
+    payload
+  )
+  VALUES ($1,$2,$3)
+  `,
+  [
+    "user_security",
+    "update",
+    JSON.stringify({
+      user_id: user.id,
+      failed_forgot_attempts: 0,
+      forgot_locked_until: null,
+      updated_at: new Date().toISOString()
+    })
+  ]
+);
 
   return true;
 },
@@ -1553,6 +1595,28 @@ const reset =
 );
 
 // =========================
+// SYNC USER PASSWORD UPDATE
+// =========================
+await pool.query(
+  `
+  INSERT INTO sync_queue (
+    table_name,
+    operation,
+    payload
+  )
+  VALUES ($1,$2,$3)
+  `,
+  [
+    "users",
+    "update",
+    JSON.stringify({
+      id: user.id,
+      password: hashedPassword
+    })
+  ]
+);
+
+// =========================
 // DELETE RESET SESSION
 // =========================
   await pool.query(
@@ -1567,12 +1631,57 @@ WHERE user_id = $1
   `
   UPDATE user_security
   SET
-    failed_forgot_attempts = 0,
-    forgot_locked_until = NULL,
-    updated_at = NOW()
-  WHERE user_id = $1
+  failed_forgot_attempts = 0,
+  forgot_locked_until = NULL,
+  updated_at = NOW()
+   WHERE user_id = $1
   `,
   [user.id]
+  );
+
+// =========================
+// SYNC DELETE RESET SESSION
+// =========================
+await pool.query(
+  `
+  INSERT INTO sync_queue (
+    table_name,
+    operation,
+    payload
+  )
+  VALUES ($1,$2,$3)
+  `,
+  [
+    "password_resets",
+    "delete",
+    JSON.stringify({
+      user_id: user.id
+    })
+  ]
+);
+
+// =========================
+// SYNC RESET SECURITY
+// =========================
+await pool.query(
+  `
+  INSERT INTO sync_queue (
+    table_name,
+    operation,
+    payload
+  )
+  VALUES ($1,$2,$3)
+  `,
+  [
+    "user_security",
+    "update",
+    JSON.stringify({
+      user_id: user.id,
+      failed_forgot_attempts: 0,
+      forgot_locked_until: null,
+      updated_at: new Date().toISOString()
+    })
+  ]
 );
 
 await logAuditEvent({
@@ -2023,20 +2132,26 @@ if (
   ) {
 
     throw new GraphQLError(
-      "Your account has been rejected by Admin.",
-      {
-        extensions: {
-          code:
-            "ACCOUNT_REJECTED",
+  "Your account has been rejected by Admin.",
+  {
+    extensions: {
+      code:
+        "ACCOUNT_REJECTED",
 
-          studentId:
-            pendingUser.StudentId,
+      studentId:
+        pendingUser.StudentId,
 
-          email:
-            pendingUser.email,
-        },
-      }
-    );
+      email:
+        pendingUser.email,
+
+      reason:
+        pendingUser.rejected_reason,
+
+      rejectedAt:
+        pendingUser.rejected_at,
+    },
+  }
+);
   }
 }
 
@@ -2110,12 +2225,6 @@ if (lockCheck.rows[0]?.locked) {
   const attempts =
     (user.failed_login_attempts || 0) + 1;
 
-  const lockUntil =
-    attempts >= 5
-    // TIME TEMPORARY
-      ? "NOW() + INTERVAL '30 seconds'"
-      : "NULL";
-
       // TIME TEMPORARY '30 SECONDS'
 await pool.query(
   `
@@ -2136,6 +2245,36 @@ await pool.query(
   [
     attempts,
     user.id
+  ]
+);
+
+await pool.query(
+  `
+  INSERT INTO sync_queue (
+    table_name,
+    operation,
+    payload
+  )
+  VALUES ($1,$2,$3)
+  `,
+  [
+    "user_security",
+    "update",
+   JSON.stringify({
+  user_id: user.id,
+  failed_login_attempts: attempts,
+
+  login_locked_until:
+    attempts >= 5
+      ? new Date(
+          Date.now() +
+          30 * 1000
+        ).toISOString()
+      : null,
+
+  updated_at:
+    new Date().toISOString()
+})
   ]
 );
 
@@ -2167,6 +2306,27 @@ await pool.query(
   WHERE user_id = $1
   `,
   [user.id]
+);
+
+await pool.query(
+  `
+  INSERT INTO sync_queue (
+    table_name,
+    operation,
+    payload
+  )
+  VALUES ($1,$2,$3)
+  `,
+  [
+    "user_security",
+    "update",
+    JSON.stringify({
+      user_id: user.id,
+      failed_login_attempts: 0,
+      login_locked_until: null,
+      updated_at: new Date().toISOString()
+    })
+  ]
 );
 // 👇 DITO ILALAGAY ANG 2FA LOGIC
 if (
@@ -2524,7 +2684,7 @@ if (
     .digest("hex");
 
   // =========================
-  // INVALID OTP
+  // INVALID OTP VERIFY SIGNUP OTP
   // =========================
   if (
     pending.signup_otp !==
@@ -2827,6 +2987,27 @@ WHERE user_id = $3
     ]
   );
 
+  await pool.query(
+  `
+  INSERT INTO sync_queue (
+    table_name,
+    operation,
+    payload
+  )
+  VALUES ($1,$2,$3)
+  `,
+  [
+    "user_security",
+    "update",
+    JSON.stringify({
+      user_id: user.id,
+      failed_otp_attempts: attempts,
+      otp_locked_until: lockUntil,
+      updated_at: new Date().toISOString()
+    })
+  ]
+);
+
   throw Object.assign(
     new Error(
       "Invalid authenticator code"
@@ -2857,6 +3038,27 @@ SET
 WHERE user_id = $1
   `,
   [user.id]
+);
+
+await pool.query(
+  `
+  INSERT INTO sync_queue (
+    table_name,
+    operation,
+    payload
+  )
+  VALUES ($1,$2,$3)
+  `,
+  [
+    "user_security",
+    "update",
+    JSON.stringify({
+      user_id: user.id,
+      failed_otp_attempts: 0,
+      otp_locked_until: null,
+      updated_at: new Date().toISOString()
+    })
+  ]
 );
 
   const token = jwt.sign(
@@ -2901,6 +3103,25 @@ updateProfilePicture: async (
     [profile_picture, auth.userId]
   );
 
+  await pool.query(
+  `
+  INSERT INTO sync_queue (
+    table_name,
+    operation,
+    payload
+  )
+  VALUES ($1,$2,$3)
+  `,
+  [
+    "users",
+    "update",
+    JSON.stringify({
+      id: auth.userId,
+      profile_picture
+    })
+  ]
+);
+
   return updated.rows[0];
 },
 
@@ -2941,8 +3162,6 @@ updateUserInformation: async (
 ) => {
 
   const auth = requireAuth(context);
-
-  
 
   // get current user
   const existingUser = await pool.query<UserRow>(
@@ -3073,6 +3292,57 @@ if (
 
 await pool.query(
   `
+  INSERT INTO sync_queue (
+    table_name,
+    operation,
+    payload
+  )
+  VALUES ($1,$2,$3)
+  `,
+  [
+    "user_profile",
+    "update",
+    JSON.stringify({
+      user_id: auth.userId,
+      phone_number,
+
+      suffix: finalSuffix,
+      suffix_locked: finalLocked,
+
+      birthdate: finalBirthdate,
+      birthdate_locked:
+        finalBirthdateLocked,
+
+      age,
+
+      gender: finalGender,
+      gender_locked:
+        finalGenderLocked,
+
+      nationality:
+        finalNationality,
+
+      nationality_locked:
+        finalNationalityLocked,
+
+      user_classification,
+
+      student_type,
+
+      college_department,
+
+      program,
+
+      year_level,
+
+      updated_at:
+        new Date().toISOString()
+    })
+  ]
+);
+
+await pool.query(
+  `
   UPDATE user_preferences
   SET
     vibration_enabled = $1,
@@ -3091,6 +3361,35 @@ await pool.query(
       ?? user.dark_mode,
 
     auth.userId
+  ]
+);
+
+await pool.query(
+  `
+  INSERT INTO sync_queue (
+    table_name,
+    operation,
+    payload
+  )
+  VALUES ($1,$2,$3)
+  `,
+  [
+    "user_preferences",
+    "update",
+    JSON.stringify({
+      user_id: auth.userId,
+
+      vibration_enabled:
+        vibration_enabled ??
+        user.vibration_enabled,
+
+      dark_mode:
+        dark_mode ??
+        user.dark_mode,
+
+      updated_at:
+        new Date().toISOString()
+    })
   ]
 );
 
@@ -3664,6 +3963,24 @@ await pool.query(
   [createdUser.id]
 );
 
+await pool.query(
+  `
+  INSERT INTO sync_queue (
+    table_name,
+    operation,
+    payload
+  )
+  VALUES ($1,$2,$3)
+  `,
+  [
+    "user_profile",
+    "insert",
+    JSON.stringify({
+      user_id: createdUser.id
+    })
+  ]
+);
+
 // =========================
 // CREATE USER PREFERENCES
 // =========================
@@ -3683,6 +4000,26 @@ await pool.query(
   ]
 );
 
+await pool.query(
+  `
+  INSERT INTO sync_queue (
+    table_name,
+    operation,
+    payload
+  )
+  VALUES ($1,$2,$3)
+  `,
+  [
+    "user_preferences",
+    "insert",
+    JSON.stringify({
+      user_id: createdUser.id,
+      vibration_enabled: true,
+      dark_mode: false
+    })
+  ]
+);
+
 // =========================
 // CREATE USER SECURITY
 // =========================
@@ -3694,6 +4031,41 @@ await pool.query(
   VALUES ($1)
   `,
   [createdUser.id]
+);
+
+await pool.query(
+  `
+  INSERT INTO sync_queue (
+    table_name,
+    operation,
+    payload
+  )
+  VALUES ($1,$2,$3)
+  `,
+  [
+    "user_security",
+    "insert",
+    JSON.stringify({
+  user_id: createdUser.id,
+
+  failed_login_attempts: 0,
+  login_locked_until: null,
+
+  failed_otp_attempts: 0,
+  otp_locked_until: null,
+
+  failed_forgot_attempts: 0,
+  forgot_locked_until: null,
+
+  forgot_request_count: 0,
+  forgot_request_last_sent_at: null,
+  forgot_request_locked_until: null,
+  forgot_request_last_ip: null,
+
+  failed_change_password_attempts: 0,
+  change_password_locked_until: null
+})
+  ]
 );
 
 // =========================
@@ -3709,6 +4081,26 @@ await pool.query(
   VALUES ($1, false, false)
   `,
   [createdUser.id]
+);
+
+await pool.query(
+  `
+  INSERT INTO sync_queue (
+    table_name,
+    operation,
+    payload
+  )
+  VALUES ($1,$2,$3)
+  `,
+  [
+    "user_2fa",
+    "insert",
+    JSON.stringify({
+      user_id: createdUser.id,
+      enabled: false,
+      confirmed: false
+    })
+  ]
 );
 
   // =========================
@@ -3790,9 +4182,18 @@ await pool.query(
 
   return true;
 },
+// ================================
+// REJECTED USER
+// ================================
 rejectUser: async (
   _: any,
-  { userId }: { userId: number },
+  {
+    userId,
+    reason
+  }: {
+    userId: number;
+    reason: string;
+  },
   context: Context
 ) => {
 
@@ -3800,11 +4201,19 @@ rejectUser: async (
 
   await pool.query(
     `
-    UPDATE signup_pending
-    SET account_status = 'REJECTED'
-    WHERE id = $1
+UPDATE signup_pending
+SET
+  account_status = 'REJECTED',
+  rejected_reason = $2,
+  rejected_at = NOW(),
+  rejected_by = $3
+WHERE id = $1
     `,
-    [userId]
+    [
+  userId,
+  reason,
+  context.authUser?.userId
+]
   );
 
   await pool.query(
@@ -3820,9 +4229,16 @@ rejectUser: async (
       "signup_pending",
       "update",
       JSON.stringify({
-        id: userId,
-        account_status: "REJECTED"
-      })
+  id: userId,
+  account_status: 
+    "REJECTED",
+  rejected_reason: 
+    reason,
+  rejected_at:
+    new Date().toISOString(),
+  rejected_by:
+    context.authUser?.userId
+})
     ]
   );
 
@@ -3840,10 +4256,16 @@ rejectUser: async (
   targetId:
     String(userId),
 
-  metadata: {
-    rejectedUserId:
-      userId
-  },
+metadata: {
+  rejectedUserId:
+    userId,
+
+  rejectedReason:
+    reason,
+
+  rejectedBy:
+    context.authUser?.userId
+},
 
   ipAddress:
     context.ip,

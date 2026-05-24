@@ -4,6 +4,11 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+console.log(
+  'NEON DATABASE:',
+  process.env.DATABASE_URL_NEON
+);
+
 // ✅ LOCAL DATABASE (PRIMARY)
 export const localPool = new Pool({
   connectionString: process.env.DATABASE_URL_LOCAL,
