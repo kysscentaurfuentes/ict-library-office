@@ -6,7 +6,7 @@ import AuthForm from '../components/AuthForm';
 import { ApolloError } from "@apollo/client";
 import { useLazyQuery } from "@apollo/client";
 import { useState, useEffect } from "react";
-
+import { CURRENT_POLICY_VERSION } from "../constants/policy";
 
 const CHECK_SIGNUP = gql`
 query CheckSignupAvailability(
@@ -172,7 +172,7 @@ formData.append(
         StudentId: studentId,
         school_id_image: imageUrl,
         policyAccepted: true,
-        policyVersion: "v1.0",
+        policyVersion: CURRENT_POLICY_VERSION,
       },
     });
 

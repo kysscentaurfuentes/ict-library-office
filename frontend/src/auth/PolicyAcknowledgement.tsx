@@ -3,9 +3,7 @@ import { useState, useEffect } from "react";
 import { policySteps } from "./policies/policySteps";
 import { gql } from "@apollo/client/core";
 import { useMutation } from "@apollo/client/react";
-import {
-  CURRENT_POLICY_VERSION
-} from "../constants/policy";
+import { CURRENT_POLICY_VERSION } from "../constants/policy";
 
 const ACCEPT_POLICY_UPDATE = gql`
 mutation AcceptPolicyUpdate(
@@ -140,8 +138,21 @@ sessionStorage.removeItem(
   "policyCurrentStep"
 );
 
-      window.location.hash =
-        "#/homescreen";
+      const role =
+  localStorage.getItem(
+    "role"
+  );
+
+if (role === "Admin") {
+
+  window.location.hash =
+    "#/admin";
+
+} else {
+
+  window.location.hash =
+    "#/homescreen";
+}
 
       return;
 

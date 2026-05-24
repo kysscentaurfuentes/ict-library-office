@@ -44,8 +44,15 @@ const REJECT_USER = gql`
 `;
 
 export default function AdminDashboard() {
-  const { data, refetch, loading } =
-    useQuery(GET_PENDING_USERS);
+const {
+  data,
+  refetch,
+  loading,
+  error
+} = useQuery(GET_PENDING_USERS);
+
+console.log("PENDING USERS:", data);
+console.log("PENDING ERROR:", error);
 
   const [approveUser] =
     useMutation(APPROVE_USER);
@@ -63,14 +70,12 @@ export default function AdminDashboard() {
     useState(false);
 
   useEffect(() => {
-    const savedDarkMode =
-      localStorage.getItem(
-        "darkMode"
-      );
+const savedDarkMode =
+  JSON.parse(
+    localStorage.getItem("darkMode") || "true"
+  );
 
-    setIsDarkMode(
-      savedDarkMode === "true"
-    );
+setIsDarkMode(savedDarkMode); 
   }, []);
 
   const theme = {

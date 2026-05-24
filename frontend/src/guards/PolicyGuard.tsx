@@ -23,6 +23,16 @@ export default function PolicyGuard({
   children,
 }: Props) {
 
+  console.log(
+  "[POLICY GUARD ROLE]",
+  localStorage.getItem("role")
+);
+
+console.log(
+  "[POLICY GUARD HASH]",
+  window.location.hash
+);
+
   const token =
     localStorage.getItem("token");
 

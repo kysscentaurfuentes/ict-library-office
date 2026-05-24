@@ -332,7 +332,7 @@ WHERE LOWER(u.email) = LOWER($1)
 
   u.policy_version,
 u.policy_accepted,
-u.policy_accepted_at,
+u.policy_accepted_at
 
 FROM users u
 
@@ -400,7 +400,10 @@ const result = await pool.query(
     school_id_image,
     account_status
   FROM signup_pending
-  WHERE email_verified = true
+  WHERE
+  email_verified = true
+AND
+  account_status = 'PENDING'
   ORDER BY id DESC
   `
 );
@@ -703,6 +706,9 @@ checkForgotPasswordOtpStatus: async (
   
   // START OF MUTATION
    Mutation: {
+    // =====================================
+    // REQUEST FORGOT PASSWORD OTP
+    // =====================================
     requestForgotPasswordOTP: async (
   _: any,
   {
@@ -756,6 +762,24 @@ if (captchaRequired) {
 
   if (!captchaToken) {
 
+    await logAuditEvent({
+
+  action:
+    "PASSWORD_RESET_BLOCKED",
+
+  metadata: {
+    identifier: clean,
+    reason:
+      "CAPTCHA_REQUIRED"
+  },
+
+  ipAddress:
+    context.ip,
+
+  userAgent:
+    context.userAgent,
+});
+
   return {
   success: false,
   message:
@@ -807,6 +831,24 @@ if (captchaRequired) {
   );
 
   if (!verifyData.success) {
+
+    await logAuditEvent({
+
+  action:
+    "PASSWORD_RESET_BLOCKED",
+
+  metadata: {
+    identifier: clean,
+    reason:
+      "CAPTCHA_FAILED"
+  },
+
+  ipAddress:
+    context.ip,
+
+  userAgent:
+    context.userAgent,
+});
 
     throw new Error(
       'CAPTCHA verification failed.'
@@ -1162,6 +1204,22 @@ await pool.query(
     code
   );
 
+  await logAuditEvent({
+
+  action:
+    "PASSWORD_RESET_REQUESTED",
+
+  metadata: {
+    identifier: clean
+  },
+
+  ipAddress:
+    context.ip,
+
+  userAgent:
+    context.userAgent,
+});
+
 
 return {
   success: true,
@@ -1182,6 +1240,9 @@ return {
   requestCount >= 3,
 };
 },
+// =====================================
+// VERIFY FORGOT PASSWORD OTP
+// =====================================
 verifyForgotPasswordOTP: async (
   _: any,
   {
@@ -1379,8 +1440,9 @@ resetForgotPassword: async (
     identifier,
     code,
     newPassword
-  }: any
-) => {
+  }: any,
+  context: Context
+)=> {
 
   const clean =
     normalizeIdentifier(identifier);
@@ -1512,6 +1574,31 @@ WHERE user_id = $1
   `,
   [user.id]
 );
+
+await logAuditEvent({
+
+  userId:
+    user.id,
+
+  action:
+    "PASSWORD_RESET_COMPLETED",
+
+  targetTable:
+    "users",
+
+  targetId:
+    String(user.id),
+
+  metadata: {
+    identifier: clean
+  },
+
+  ipAddress:
+    context.ip,
+
+  userAgent:
+    context.userAgent,
+});
 
   return true;
 },
@@ -2784,143 +2871,6 @@ WHERE user_id = $1
   };
 },
 
-    signup: async (
-  _: any,
-  {
-    first_name,
-    middle_name,
-    last_name,
-    email,
-    password,
-    StudentId,
-    course,
-    school_id_image
-  }: any
-) => {
-  if (!/^\d{3}-\d{5}$/.test(StudentId)) {
-  throw new Error("Invalid Student ID format");
-}
-
-  const normalizedEmail =
-  email.trim().toLowerCase();
-
-const normalizedStudentId =
-  normalizeStudentId(StudentId);
-
-// =========================
-// VALIDATE CARSU EMAIL
-// =========================
-if (
-  !normalizedEmail.endsWith(
-    "@carsu.edu.ph"
-  )
-) {
-  throw new GraphQLError(
-  "Only CARSU email is allowed.",
-  {
-    extensions: {
-      code:
-        "INVALID_EMAIL_DOMAIN",
-    },
-  }
-);
-}
-
-// =========================
-// CHECK EMAIL DUPLICATE
-// =========================
-const existingEmail =
-  await pool.query(
-    `
-    SELECT id
-    FROM users
-    WHERE LOWER(email) = LOWER($1)
-    `,
-    [normalizedEmail]
-  );
-
-if (
-  existingEmail.rows.length > 0
-) {
-  throw new GraphQLError(
-  "CARSU email already registered.",
-  {
-    extensions: {
-      code:
-        "EMAIL_EXISTS",
-    },
-  }
-);
-}
-
-// =========================
-// CHECK STUDENT ID DUPLICATE
-// =========================
-const existingStudentId =
-  await pool.query(
-    `
-    SELECT id
-    FROM users
-    WHERE "StudentId" = $1
-    `,
-    [normalizedStudentId]
-  );
-
-if (
-  existingStudentId.rows.length > 0
-) {
-throw new GraphQLError(
-  "Student ID already registered.",
-  {
-    extensions: {
-      code:
-        "STUDENT_ID_EXISTS",
-    },
-  }
-);
-}
-
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  const result = await pool.query<UserRow>(
-    `
-    INSERT INTO users (
-      first_name,
-      middle_name,
-      last_name,
-      email,
-      password,
-      "StudentId",
-      course,
-      school_id_image,
-      role,
-      account_status
-    )
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-    RETURNING *
-    `,
-    [
-      first_name,
-      middle_name,
-      last_name,
-      normalizedEmail,
-      hashedPassword,
-      normalizedStudentId,
-      course,
-      school_id_image,
-      "Student",
-      "PENDING"
-    ]
-  );
-
-  const user = result.rows[0];
-
-  return {
-  token: null,
-  user
-};
-},
-
 updateProfilePicture: async (
   _: any,
   { profile_picture }: { profile_picture: string },
@@ -3502,8 +3452,6 @@ WHERE u.id = $1
   // =========================
   // ACTIVATE REAL 2FA
   // =========================
-  
-
   await pool.query(
   `
   UPDATE user_2fa
@@ -3522,6 +3470,27 @@ WHERE user_id = $3
   user.id
 ]
 );
+
+await logAuditEvent({
+
+  userId:
+    auth.userId,
+
+  action:
+    "TWO_FACTOR_ENABLED",
+
+  targetTable:
+    "user_2fa",
+
+  targetId:
+    String(auth.userId),
+
+  ipAddress:
+    context.ip,
+
+  userAgent:
+    context.userAgent,
+});
 
   return true;
 },
@@ -3576,6 +3545,27 @@ disableTwoFactor: async (
   `,
   [user.id]
 );
+
+await logAuditEvent({
+
+  userId:
+    auth.userId,
+
+  action:
+    "TWO_FACTOR_DISABLED",
+
+  targetTable:
+    "user_2fa",
+
+  targetId:
+    String(auth.userId),
+
+  ipAddress:
+    context.ip,
+
+  userAgent:
+    context.userAgent,
+});
 
   return true;
 },
@@ -3772,6 +3762,32 @@ await pool.query(
     ]
   );
 
+  await logAuditEvent({
+
+  userId:
+    context.authUser?.userId,
+
+  action:
+    "ADMIN_APPROVED_USER",
+
+  targetTable:
+    "users",
+
+  targetId:
+    String(createdUser.id),
+
+  metadata: {
+    approvedUserId:
+      createdUser.id
+  },
+
+  ipAddress:
+    context.ip,
+
+  userAgent:
+    context.userAgent,
+});
+
   return true;
 },
 rejectUser: async (
@@ -3810,9 +3826,37 @@ rejectUser: async (
     ]
   );
 
+  await logAuditEvent({
+
+  userId:
+    context.authUser?.userId,
+
+  action:
+    "ADMIN_REJECTED_USER",
+
+  targetTable:
+    "signup_pending",
+
+  targetId:
+    String(userId),
+
+  metadata: {
+    rejectedUserId:
+      userId
+  },
+
+  ipAddress:
+    context.ip,
+
+  userAgent:
+    context.userAgent,
+});
+
   return true;
 },
-
+// =====================================
+// CHANGE PASSWORD
+// =====================================
 changePassword: async (
   _: any,
   {
@@ -3980,22 +4024,53 @@ WHERE user_id = $1
     );
 
   // =========================
-  // UPDATE PASSWORD
-  // =========================
-  await pool.query(
-    `
-    UPDATE users
-    SET password = $1
-    WHERE id = $2
-    `,
-    [
-      hashedPassword,
-      user.id
-    ]
-  );
+// UPDATE PASSWORD
+// =========================
+await pool.query(
+  `
+  UPDATE users
+  SET password = $1
+  WHERE id = $2
+  `,
+  [
+    hashedPassword,
+    user.id
+  ]
+);
 
-  return true;
+await logAuditEvent({
+
+  userId:
+    auth.userId,
+
+  action:
+    "PASSWORD_CHANGED",
+
+  targetTable:
+    "users",
+
+  targetId:
+    String(auth.userId),
+
+  metadata: {
+    changeType:
+      "authenticated_change"
+  },
+
+  ipAddress:
+    context.ip,
+
+  userAgent:
+    context.userAgent,
+});
+
+return true;
 },
+
+
+// =====================================
+// ACCEPT POLICY UPDATE
+// =====================================
 acceptPolicyUpdate: async (
   _: any,
   {
@@ -4176,5 +4251,6 @@ acceptPolicyUpdate: async (
 
   return true;
 },
+
   }, // END OF MUTATION
 }; // END OF EXPORT CONST RESOLVERS

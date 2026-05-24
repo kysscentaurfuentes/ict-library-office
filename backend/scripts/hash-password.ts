@@ -26,3 +26,5 @@ console.log(hash);
 // UPDATE users
 // SET password = 'PASTE_HASH_HERE'
 // WHERE "StudentId" = '000-00000';
+
+

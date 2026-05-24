@@ -168,6 +168,26 @@ if (
       "token",
       result.token
     );
+
+    localStorage.setItem(
+  "role",
+  result.user.role || ''
+);
+
+localStorage.setItem(
+  "user",
+  JSON.stringify(result.user)
+);
+
+    console.log(
+  "FULL LOGIN RESULT:",
+  result
+);
+
+console.log(
+  "ROLE:",
+  result.user.role
+);
   }
 
   window.location.hash =
@@ -215,14 +235,30 @@ if (
       );
 
       console.log(
-        'Login successful! Student ID saved:',
-        result.user.StudentId
-      );
-      localStorage.setItem(
+  'Login successful! Student ID saved:',
+  result.user.StudentId
+);
+
+localStorage.setItem(
   'savedIdentifier',
   identifier || ''
 );
-      window.location.hash = '#/homescreen';
+
+// =========================
+// ROLE-BASED REDIRECT
+// =========================
+if (
+  result.user.role === 'Admin'
+) {
+
+  window.location.hash =
+    '#/admin';
+
+} else {
+
+  window.location.hash =
+    '#/homescreen';
+}
 
     } catch (err: any) {
     console.error('Login failed:', err);

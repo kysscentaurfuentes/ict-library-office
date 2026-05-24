@@ -1,2 +1,2 @@
 // frontend/src/constants/policy.ts
-export const CURRENT_POLICY_VERSION = "v1.6";
+export const CURRENT_POLICY_VERSION = "v1.8";
