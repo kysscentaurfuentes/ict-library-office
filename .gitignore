@@ -1,11 +1,11 @@
+# ICT-LIBRARY-OFFICE/.gitignore
 node_modules
 package-lock.json
-.env
+.env*
 .venv/
 __pycache__/
 *.pyc
 ict_library_db.sql
 dist
 database_backups
-local_backup_before_refactor.sql
-neon_backup_before_refactor.sql
+postgres_data

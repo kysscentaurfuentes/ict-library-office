@@ -2,7 +2,11 @@
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({
+  path: process.env.NODE_ENV === 'docker'
+    ? '.env.docker'
+    : '.env.local',
+});
 
 console.log(
   'NEON DATABASE:',
