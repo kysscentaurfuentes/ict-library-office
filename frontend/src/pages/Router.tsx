@@ -1,6 +1,4 @@
 // frontend/src/pages/Router.tsx
-
-import Sidebar from '../components/Sidebar';
 import { gql } from '@apollo/client';
 import { useQuery, useMutation } from '@apollo/client/react';
 import { useEffect, useState } from 'react';

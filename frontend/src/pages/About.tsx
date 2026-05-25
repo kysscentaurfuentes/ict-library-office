@@ -1,29 +1,5 @@
 // frontend/src/pages/About.tsx
-// FILE PATH: frontend/src/pages/About.tsx
-// COMPONENT: About the Developer & Project
-// DESCRIPTION: Information about the developer (Kyss Centaur Fuentes) and the ICT Library Office project
-// INTEGRATION: Uses Sidebar component for navigation
-
 import React, { useState, useEffect } from 'react';
-import Sidebar from '../components/Sidebar';
-
-
-
-// IMPORTANT: To use local image from C:\Users\ADMIN\Pictures\tor.jpg
-// You have two options:
-//
-// OPTION 1: Copy the image to your project's public folder
-//   1. Copy tor.jpg to: frontend/public/images/tor.jpg
-//   2. Then use: /images/tor.jpg
-//
-// OPTION 2: Import the image directly (if moved to src folder)
-//   1. Copy tor.jpg to: frontend/src/assets/tor.jpg
-//   2. Then uncomment the import below:
-//
-// import developerImage from '../assets/tor.jpg';
-//
-// OPTION 3: For development only - serve from absolute path (not recommended for production)
-//   Place the image in public folder as shown in OPTION 1
 
 const About: React.FC = () => {
   // State for dark mode

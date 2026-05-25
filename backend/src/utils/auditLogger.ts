@@ -16,6 +16,10 @@ type AuditLogInput = {
   ipAddress?: string | null;
 
   userAgent?: string | null;
+
+  severity?: string;
+
+  source?: string;
 };
 
 export async function logAuditEvent({
@@ -26,6 +30,8 @@ export async function logAuditEvent({
   metadata,
   ipAddress,
   userAgent,
+  severity = "INFO",
+  source = "backend",
 }: AuditLogInput) {
 
   try {
@@ -39,7 +45,9 @@ export async function logAuditEvent({
         target_id,
         metadata,
         ip_address,
-        user_agent
+        user_agent,
+        severity,
+        source
       )
 
       VALUES (
@@ -49,7 +57,9 @@ export async function logAuditEvent({
         $4,
         $5,
         $6,
-        $7
+        $7,
+        $8,
+        $9
       )
       `,
       [
@@ -68,6 +78,10 @@ export async function logAuditEvent({
         ipAddress || null,
 
         userAgent || null,
+
+        severity,
+
+        source,
       ]
     );
 

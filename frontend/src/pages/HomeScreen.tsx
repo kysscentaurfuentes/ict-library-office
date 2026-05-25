@@ -1,7 +1,6 @@
 // frontend/src/pages/HomeScreen.tsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Sidebar from '../components/Sidebar';
 import { usePC } from '../context/PCContext';
 import { 
   QrCode, Tv, Wifi, ClipboardList, Search, 

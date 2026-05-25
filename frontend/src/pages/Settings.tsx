@@ -1,6 +1,5 @@
 // frontend/src/pages/Settings.tsx
 import React, { useState, useEffect } from 'react';
-import Sidebar from '../components/Sidebar';
 import { gql } from '@apollo/client';
 import { useQuery, useMutation } from '@apollo/client/react';
 import { COURSE_ACRONYMS } from '../utils/courseAcronyms';
@@ -2813,7 +2812,8 @@ body.dark-mode {
 ========================================================= */
 .settings-container {
   flex: 1;
-  height: 100vh;
+  overflow-x: hidden;
+}
 
   overflow-y: auto;
   overflow-x: hidden;

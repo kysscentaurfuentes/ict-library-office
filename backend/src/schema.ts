@@ -101,6 +101,29 @@ type ForgotPasswordOtpStatus {
   expiresInSeconds: Int!
 }
 
+type AuditLog {
+  id: ID
+  action: String
+  severity: String
+  source: String
+  target_table: String
+  target_id: String
+  metadata: String
+  ip_address: String
+  user_agent: String
+  created_at: String
+}
+
+type ScanLog {
+  id: ID
+  student_id: String
+  device_id: String
+  status: String
+  created_at: String
+  flag: String
+  risk_score: Int
+}
+
  type Query {
   hello: String
   me: User
@@ -126,6 +149,10 @@ checkForgotPasswordOtpStatus(
   ChangePasswordStatus
   
   pendingUsers: [User]
+
+auditLogs: [AuditLog]
+
+scanLogs: [ScanLog]
 
   checkSignupAvailability(
     email: String,

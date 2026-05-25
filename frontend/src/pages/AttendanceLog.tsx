@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import Sidebar from '../components/Sidebar';
 
 interface AttendanceRecord {
   date: string; // Format: YYYY-MM-DD

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
+import AdminTopbar from "./AdminTopbar";
 
 export default function MainLayout() {
   const [hoveredFromParent, setHoverFromParent] = useState<string | null>(null);
@@ -29,9 +30,14 @@ export default function MainLayout() {
           flex: 1,
           height: '100vh',
           overflowY: 'auto', // ONLY ONE SCROLL
+          scrollbarGutter: 'stable',
           minWidth: 0,
         }}
       >
+          {/* ✅ ONLY SHOW ON ADMIN PAGES */}
+        {window.location.hash.includes("/admin") && (
+          <AdminTopbar />
+        )}
         <Outlet context={{ setHoverFromParent }} />
       </div>
     </div>

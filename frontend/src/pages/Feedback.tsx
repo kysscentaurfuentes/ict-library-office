@@ -1,12 +1,5 @@
 // frontend/src/pages/Feedback.tsx
-// FILE PATH: frontend/src/pages/Feedback.tsx
-// COMPONENT: Feedback & Reports Center
-// DESCRIPTION: Users can send feedback, reports, and concerns to the admin/developer
-// INTEGRATION: Uses Sidebar component for navigation
-// BACKEND NOTES: Admin panel will receive these feedbacks (commented - ready for backend)
-
 import React, { useState, useEffect, useRef } from 'react';
-import Sidebar from '../components/Sidebar';
 
 // Types
 interface FeedbackSubject {

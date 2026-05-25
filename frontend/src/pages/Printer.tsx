@@ -6,7 +6,6 @@
 // BACKEND NOTES: For Electron app with IPP/RAW 9100/CUPS support
 
 import React, { useState, useEffect, useRef } from 'react';
-import Sidebar from '../components/Sidebar';
 
 // Types
 interface PrintJob {

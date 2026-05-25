@@ -1,7 +1,5 @@
 // frontend/src/pages/SoftwareAccess.tsx
 import React, { useState, useEffect } from 'react';
-import Sidebar from '../components/Sidebar';
-
 // Types
 interface Software {
   id: string;

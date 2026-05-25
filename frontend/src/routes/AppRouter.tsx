@@ -3,7 +3,7 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
 
 import HomeScreen from '../pages/HomeScreen';
-import Router from '../pages/Router';
+
 import LiveView from '../pages/LiveView';
 import QrCodeScanner from '../pages/QrCodeScanner';
 import AttendanceLog from '../pages/AttendanceLog';
@@ -15,7 +15,10 @@ import Feedback from '../pages/Feedback';
 import About from '../pages/About';
 
 import AdminDashboard from '../pages/Admin/AdminDashboard';
+import Router from '../pages/Router';
+import AuditLogs from '../pages/Admin/AuditLogs';
 import AdminRoute from '../guards/AdminRoute';
+import ScanLogs from '../pages/Admin/ScanLogs';
 
 import SignIn from '../auth/SignIn';
 import SignUp from '../auth/SignUp';
@@ -61,7 +64,6 @@ export default function AppRouter() {
   }
 >
           <Route path="/homescreen" element={<HomeScreen />} />
-          <Route path="/router" element={<Router />} />
           <Route path="/live" element={<LiveView />} />
           <Route path="/qr-scanner" element={<QrCodeScanner />} />
           <Route path="/attendance-log" element={<AttendanceLog />} />
@@ -71,15 +73,12 @@ export default function AppRouter() {
           <Route path="/printer" element={<Printer />} />
           <Route path="/feedback" element={<Feedback />} />
           <Route path="/about" element={<About />} />
+
           {/* ADMIN INSIDE SAME LAYOUT */}
-          <Route
-            path="/admin"
-            element={
-              <AdminRoute>
-                <AdminDashboard />
-              </AdminRoute>
-            }
-          />
+          <Route path="/admin" element={<AdminRoute> <AdminDashboard /></AdminRoute>}/>
+          <Route path="/router" element={<Router />} />
+          <Route path="/admin/audit-logs" element={ <AdminRoute> <AuditLogs /> </AdminRoute> }/>
+          <Route path="/admin/scan-logs" element={ <AdminRoute> <ScanLogs /> </AdminRoute> }/>
         </Route>
 
         <Route path="*" element={<div style={{ color: 'white' }}>404</div>} />

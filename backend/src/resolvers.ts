@@ -377,6 +377,40 @@ WHERE u.id = $1
     },
     // END ROUTER DEVICES QUERY
 
+    // START OF AUDIT LOGS QUERY
+    auditLogs: async (
+  _: any,
+  __: any,
+  context: Context
+) => {
+
+  requireAdmin(context);
+
+  const result =
+    await pool.query(
+      `
+      SELECT *
+      FROM audit_logs
+      ORDER BY created_at DESC
+      LIMIT 100
+      `
+    );
+
+  return result.rows.map((row) => ({
+    ...row,
+
+    metadata:
+      row.metadata
+        ? JSON.stringify(
+            row.metadata,
+            null,
+            2
+          )
+        : null,
+  }));
+},
+// END OF AUDIT LOGS QUERY
+
     // PENDING USERS QUERY
     pendingUsers: async (
   _: any,
@@ -700,6 +734,18 @@ checkForgotPasswordOtpStatus: async (
 
     expiresInSeconds,
   };
+},
+
+scanLogs: async () => {
+
+  const result =
+    await pool.query(`
+      SELECT *
+      FROM scan_logs
+      ORDER BY created_at DESC
+    `);
+
+  return result.rows;
 },
   }, // END OF QUERY
   
