@@ -1,4 +1,5 @@
 # ICT-LIBRARY-OFFICE/docker-compose.yml
+
 services:
   frontend:
     container_name: ict-frontend
@@ -43,6 +44,29 @@ services:
       db:
         condition: service_healthy
 
+      redis:
+        condition: service_healthy
+
+      ai-service:
+        condition: service_started
+
+  ai-service:
+    container_name: ict-ai-service
+    build: ./ai-service
+    restart: always
+
+    ports:
+      - "5000:5000"
+
+    volumes:
+      - ./ai-service:/app
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   db:
     container_name: ict-postgres
     image: postgres:16
@@ -66,6 +90,20 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/database/migrations:/docker-entrypoint-initdb.d
 
+  redis:
+    container_name: ict-redis
+    image: redis:latest
+    restart: always
+
+    ports:
+      - "6379:6379"
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   nginx:
     container_name: ict-nginx
     image: nginx:latest
@@ -80,6 +118,7 @@ services:
     depends_on:
       - frontend
       - backend
+      - ai-service
 
 volumes:
   postgres_data:

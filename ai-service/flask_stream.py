@@ -23,7 +23,7 @@ log.setLevel(logging.ERROR)
 RTSP_URL = "rtsp://Khysss333:Deluxbaby123@192.168.8.156:554/stream1"
 PH_TIMEZONE = pytz.timezone('Asia/Manila')
 
-FFMPEG_PATH = r"C:\Users\ADMIN\Downloads\ffmpeg\ffmpeg\bin\ffmpeg.exe"
+FFMPEG_PATH = "ffmpeg"
 
 BACKEND_HLS_DIR = r"C:\Users\ADMIN\Desktop\ICT Library Office\backend\public\hls"
 HLS_OUTPUT = os.path.join(BACKEND_HLS_DIR, "stream.m3u8")

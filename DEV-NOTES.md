@@ -10,6 +10,17 @@ npm run build
 npm start
 
 #===================================================
+
+To activate the .venv:
+.\.venv\Scripts\Activate.ps1
+then type cd ai-service to navigate to the ai-service directory, and then run:
+python flask_stream.py
+
+const { default: bcrypt } = await import('bcrypt');
+const hash = await bcrypt.hash('PASSWORD HERE', 10);
+console.log(hash);
+
+#===================================================
 If there is changes on:
 Dockerfile
 package.json
@@ -34,4 +45,6 @@ ls node_modules
 
 container quit
 exit
-
+#===================================================
+docker builder prune -a
+docker compose up --build

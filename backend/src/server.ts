@@ -28,6 +28,7 @@ import { upload } from "./upload.js";
 import { initSocket } from "./socket.js";
 import { userSockets } from "./socket.js";
 import './agent/cloudSyncAgent.js';
+import './redis.js';
 
 // Setup require for ESM
 const require = createRequire(import.meta.url);
