@@ -66,5 +66,20 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/database/migrations:/docker-entrypoint-initdb.d
 
+  nginx:
+    container_name: ict-nginx
+    image: nginx:latest
+    restart: always
+
+    ports:
+      - "80:80"
+
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+
+    depends_on:
+      - frontend
+      - backend
+
 volumes:
   postgres_data:
