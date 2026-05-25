@@ -9,3 +9,5 @@ ict_library_db.sql
 dist
 database_backups
 postgres_data
+local_backup_before_refactor.sql
+neon_backup_before_refactor.sql
