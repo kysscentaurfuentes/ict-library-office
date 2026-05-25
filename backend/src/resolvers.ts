@@ -17,7 +17,6 @@ import { CURRENT_POLICY_VERSION } from "./constants/policy.js";
 import { logAuditEvent }
 from "./utils/auditLogger.js";
 
-
 const __filename =
   fileURLToPath(import.meta.url);
 
