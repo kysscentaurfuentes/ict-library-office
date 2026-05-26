@@ -56,7 +56,10 @@ jobs:
       - name: Tag Docker image
         run: |
           docker tag ict-library-backend ghcr.io/${{ github.repository_owner }}/ict-library-backend:latest
+          docker tag ict-library-backend ghcr.io/${{ github.repository_owner }}/ict-library-backend:${{ github.sha }}
 
       - name: Push Docker image
+        if: github.ref == 'refs/heads/main'
         run: |
           docker push ghcr.io/${{ github.repository_owner }}/ict-library-backend:latest
+          docker push ghcr.io/${{ github.repository_owner }}/ict-library-backend:${{ github.sha }}
