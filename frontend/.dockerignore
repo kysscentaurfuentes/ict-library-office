@@ -1,5 +1,8 @@
-# frontend/Dockerfile
+# frontend/.dockerignore
+
 node_modules
 dist
 npm-debug.log
-.env
+.env*
+.github
+.git
