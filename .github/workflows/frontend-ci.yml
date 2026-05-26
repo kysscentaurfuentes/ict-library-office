@@ -4,6 +4,7 @@ name: Frontend CI
 
 permissions:
   contents: read
+  packages: write
 
 on:
   push:
@@ -45,3 +46,17 @@ jobs:
 
       - name: Build frontend Docker image
         run: docker build -t ict-library-frontend .
+
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Tag frontend Docker image
+        run: |
+          docker tag ict-library-frontend ghcr.io/${{ github.repository_owner }}/ict-library-frontend:latest
+          docker tag ict-library-frontend ghcr.io/${{ github.repository_owner }}/ict-library-frontend:${{ github.sha }}
+
+      - name: Push frontend Docker image
+        if: github.ref == 'refs/heads/main'
+        run: |
+          docker push ghcr.io/${{ github.repository_owner }}/ict-library-frontend:latest
+          docker push ghcr.io/${{ github.repository_owner }}/ict-library-frontend:${{ github.sha }}
