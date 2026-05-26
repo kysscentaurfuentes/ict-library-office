@@ -35,7 +35,7 @@ setInterval(() => {
   const message = `[${new Date().toISOString()}] Backend alive\n`;
 
   fs.appendFileSync("logs/backend.log", message);
-}, 5000);
+}, 60000); // Every 1 minuete
 
 // Setup require for ESM
 const require = createRequire(import.meta.url);

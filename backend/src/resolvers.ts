@@ -1741,7 +1741,7 @@ await logAuditEvent({
     "users",
 
   targetId:
-    String(user.id),
+    user.StudentId,
 
   metadata: {
     identifier: clean
@@ -2275,22 +2275,28 @@ if (lockCheck.rows[0]?.locked) {
 // =========================
 if (attempts >= 5) {
 
-  await logAuditEvent({
+await logAuditEvent({
 
-    action: "BRUTE_FORCE_DETECTED",
+  userId: user.id,
 
-    metadata: {
-      identifier,
-      attempts,
-      reason: "MULTIPLE_FAILED_LOGINS"
-    },
+  action: "BRUTE_FORCE_DETECTED",
 
-    ipAddress: context.ip,
+  targetTable: "users",
 
-    userAgent: context.userAgent,
+  targetId: user.StudentId,
 
-    severity: "CRITICAL",
-  });
+  metadata: {
+    identifier,
+    attempts,
+    reason: "MULTIPLE_FAILED_LOGINS"
+  },
+
+  ipAddress: context.ip,
+
+  userAgent: context.userAgent,
+
+  severity: "CRITICAL",
+});
 }
 
       // TIME TEMPORARY '30 SECONDS'
@@ -2348,7 +2354,13 @@ await pool.query(
 
 await logAuditEvent({
 
+  userId: user.id,
+
   action: "FAILED_LOGIN",
+
+  targetTable: "users",
+
+  targetId: user.StudentId,
 
   metadata: {
     identifier,
@@ -2456,7 +2468,7 @@ if (
     "users",
 
   targetId:
-    String(user.id),
+    user.StudentId,
 
   metadata: {
     email: user.email,
@@ -2500,7 +2512,7 @@ if (
     "users",
 
   targetId:
-    String(user.id),
+    user.StudentId,
 
   metadata: {
     email: user.email,

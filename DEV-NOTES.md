@@ -25,20 +25,21 @@ If there is changes on:
 Dockerfile
 package.json
 docker-compose.yml
-docker compose down 
+docker compose down # to reset
 
 run then:
-docker compose up --build
+docker compose up -d --build #
 #===================================================
 docker containers:
 enter backend container:
 docker exec -it ict-backend sh
+docker ps # to check if every container is healthy
 
 check files:
 ls
 
 check uploads:
-ls uploads
+ls uploads 
 
 check node module exists:
 ls node_modules
@@ -48,3 +49,5 @@ exit
 #===================================================
 docker builder prune -a
 docker compose up --build
+
+

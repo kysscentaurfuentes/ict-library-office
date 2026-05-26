@@ -92,8 +92,8 @@ export async function logAuditEvent({
       err
     );
   }
-  fs.appendFileSync(
+fs.appendFileSync(
   "logs/security.log",
-  `[${new Date().toISOString()}] ${action} | IP=${ipAddress}\n`
+  `[${new Date().toISOString()}] ${action} | STUDENT_ID=${targetId || "UNKNOWN"} | USER=${userId || "UNKNOWN"} | IP=${ipAddress}\n`
 );
 }
