@@ -1,6 +1,6 @@
 # ICT-LIBRARY-OFFICE/.github/workflows/backend-ci.yml
 
-name: ICT Library Backend CI
+name: Backend CI
 
 permissions:
   contents: read

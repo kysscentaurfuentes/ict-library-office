@@ -1,6 +1,6 @@
 # ICT-LIBRARY-OFFICE/.github/workflows/frontend-ci.yml
 
-name: ICT Library Frontend CI
+name: Frontend CI
 
 permissions:
   contents: read

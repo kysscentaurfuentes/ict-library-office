@@ -1,9 +1,10 @@
 # ICT-LIBRARY-OFFICE/.github/workflows/frontend-deploy.yml
-name: Deploy Frontend to GitHub Pages
+
+name: Frontend Deploy
 
 on:
   workflow_run:
-    workflows: ["ICT Library Frontend CI"]
+    workflows: ["Frontend CI"]
     types:
       - completed
 
