@@ -42,3 +42,6 @@ jobs:
 
       - name: Run TypeScript build
         run: npm run build
+
+      - name: Build frontend Docker image
+        run: docker build -t ict-library-frontend .

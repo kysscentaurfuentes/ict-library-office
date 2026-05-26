@@ -1,14 +1,26 @@
 # frontend/Dockerfile
-FROM node:20-alpine
+# =========================================
+# STAGE 1 — Build React/Vite App
+# =========================================
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm install
+RUN npm ci
 
 COPY . .
 
-EXPOSE 5173
+RUN npm run build
 
-CMD ["npm", "run", "dev", "--", "--host"]
+# =========================================
+# STAGE 2 — Serve with Nginx
+# =========================================
+FROM nginx:stable-alpine
+
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
