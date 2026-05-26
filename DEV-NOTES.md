@@ -50,4 +50,55 @@ exit
 docker builder prune -a
 docker compose up --build
 
+#===================================================
+# =========================================
+# DATABASE BACKUP & RESTORE GUIDE
+# =========================================
 
+# STEP 1:
+# CREATE DATABASE BACKUP
+
+.\backup-database.bat
+
+# STEP 2:
+# OPEN POSTGRES CONTAINER
+
+docker exec -it ict-postgres psql -U postgres
+
+# STEP 3:
+# CREATE TEMPORARY TEST DATABASE
+# (RUN INSIDE POSTGRES)
+
+CREATE DATABASE ict_restore_test;
+
+# STEP 4:
+# EXIT POSTGRES
+
+\q
+
+# STEP 5:
+# RESTORE BACKUP INTO TEST DATABASE
+
+type database_backups\YOUR_BACKUP.sql | docker exec -i ict-postgres psql -U postgres -d ict_restore_test
+
+# STEP 6:
+# VERIFY RESTORE SUCCESS
+
+docker exec -it ict-postgres psql -U postgres -d ict_restore_test
+
+# STEP 7:
+# SHOW ALL TABLES
+# (RUN INSIDE POSTGRES)
+
+\dt
+
+# EXPECTED RESULT:
+# Tables such as:
+# - users
+# - audit_logs
+# - attendance
+# - devices
+# etc...
+#
+# If tables appear:
+# BACKUP + RESTORE SUCCESSFUL
