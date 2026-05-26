@@ -1,4 +1,5 @@
-# ICT-LIBRARY-OFFICE/monitoring/docker-compose.yml
+# ICT-LIBRARY-OFFICE/monitoring/docker-compose.monitoring.yml
+name: ict-monitoring
 
 services:
 

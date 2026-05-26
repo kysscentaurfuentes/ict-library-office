@@ -3,9 +3,10 @@ import { Pool } from 'pg';
 import dotenv from 'dotenv';
 
 dotenv.config({
-  path: process.env.NODE_ENV === 'docker'
-    ? '.env.docker'
-    : '.env.local',
+  path:
+    process.env.DOCKER_ENV === "true"
+      ? ".env.docker"
+      : ".env.local",
 });
 
 console.log(

@@ -102,3 +102,11 @@ docker exec -it ict-postgres psql -U postgres -d ict_restore_test
 #
 # If tables appear:
 # BACKUP + RESTORE SUCCESSFUL
+
+
+# OPEN POWERSHELL
+code $PROFILE
+
+SAVE CHANGES THEN
+# REFRESH
+profile

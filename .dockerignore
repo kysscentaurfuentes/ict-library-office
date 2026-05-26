@@ -1,0 +1,11 @@
+# ICT-LIBRARY-OFFICE/.dockerignore
+local_backup_before_refactor.sql
+neon_backup_before_refactor.sql
+ict_backup_2026-05-26_17-32.sql
+
+node_modules
+dist
+.git
+.env*
+logs
+database_backups

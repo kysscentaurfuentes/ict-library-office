@@ -1,0 +1,4 @@
+# ai-service/.dockerignore
+__pycache__
+venv
+.env

@@ -2,7 +2,7 @@
 
 docker compose up -d
 
-docker ps
+docker ps 
 docker logs ict-loki
 docker logs ict-promtail
 docker logs ict-grafana
