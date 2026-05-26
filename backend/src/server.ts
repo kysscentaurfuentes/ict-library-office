@@ -5,6 +5,7 @@
 // import {ParsedQs} from 'qs'
 import type { ParamsDictionary } from 'express-serve-static-core'
 import express from "express";
+import client from 'prom-client';
 import type { Request, Response } from "express";
 import http from "http";
 import cors from "cors";
@@ -30,6 +31,12 @@ import { userSockets } from "./socket.js";
 import './agent/cloudSyncAgent.js';
 import './redis.js';
 
+setInterval(() => {
+  const message = `[${new Date().toISOString()}] Backend alive\n`;
+
+  fs.appendFileSync("logs/backend.log", message);
+}, 5000);
+
 // Setup require for ESM
 const require = createRequire(import.meta.url);
 // ✅ Gagamitin natin ang 'expressMiddleware' na variable name dito
@@ -37,6 +44,21 @@ import { expressMiddleware } from "@as-integrations/express4";
 
 dotenv.config();
 const app = express();
+
+// ===============================
+// PROMETHEUS METRICS
+// ===============================
+
+const collectDefaultMetrics =
+  client.collectDefaultMetrics;
+
+collectDefaultMetrics();
+
+const httpRequestsTotal =
+  new client.Counter({
+    name: 'http_requests_total',
+    help: 'Total HTTP Requests',
+  });
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -80,6 +102,12 @@ app.use(
 }));
 
 app.use(express.json());
+app.use((req, res, next) => {
+
+  httpRequestsTotal.inc();
+
+  next();
+});
 app.use(express.urlencoded({ extended: true }));
 
 const limiter = rateLimit({
@@ -337,11 +365,18 @@ const allowedOrigins = process.env.CORS_ORIGIN
   max: 10,
 }));
 
+const qrScansTotal =
+  new client.Counter({
+    name: 'qr_scans_total',
+    help: 'Total QR scans',
+  });
+
   // ==========================
   // 🔥 SCAN API
   // ==========================
-  app.post("/api/scan", async (req: Request, res: Response) => {
-    let attendanceSaved = false;
+ app.post("/api/scan", async (req: Request, res: Response) => {
+  qrScansTotal.inc();
+  let attendanceSaved = false;
     let finalStatus = "fail";
     const rawID = String(req.body.student_id || "");
     const deviceID = String(req.headers["x-device-id"] || "UNKNOWN");
@@ -618,6 +653,21 @@ if (socketId) {
       }
     }
   }));
+
+// ==========================
+// 📊 PROMETHEUS METRICS
+// ==========================
+app.get('/metrics', async (_req, res) => {
+
+  res.set(
+    'Content-Type',
+    client.register.contentType
+  );
+
+  res.end(
+    await client.register.metrics()
+  );
+});
 
   // ==========================
   // 🧪 HEALTH CHECK

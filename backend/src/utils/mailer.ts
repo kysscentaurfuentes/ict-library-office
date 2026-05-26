@@ -1,4 +1,4 @@
-// backend/utils/mailer.ts
+// backend/src/utils/mailer.ts
 import nodemailer from "nodemailer";
 
 export const transporter = nodemailer.createTransport({

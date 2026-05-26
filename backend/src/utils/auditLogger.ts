@@ -1,6 +1,6 @@
 // backend/src/utils/auditLogger.ts
-
 import { pool } from "../db.js";
+import fs from "fs";
 
 type AuditLogInput = {
   userId?: number | null;
@@ -92,4 +92,8 @@ export async function logAuditEvent({
       err
     );
   }
+  fs.appendFileSync(
+  "logs/security.log",
+  `[${new Date().toISOString()}] ${action} | IP=${ipAddress}\n`
+);
 }
