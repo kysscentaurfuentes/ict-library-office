@@ -1,4 +1,5 @@
 # ICT-LIBRARY-OFFICE/monitoring/docker-compose.yml
+
 services:
 
   prometheus:
@@ -14,6 +15,8 @@ services:
 
     restart: unless-stopped
 
+
+
   grafana:
     image: grafana/grafana-oss
 
@@ -22,7 +25,20 @@ services:
     ports:
       - "3000:3000"
 
+    environment:
+      - GF_SMTP_ENABLED=true
+      - GF_SMTP_HOST=smtp.gmail.com:587
+      - GF_SMTP_USER=${GF_SMTP_USER}
+      - GF_SMTP_PASSWORD=${GF_SMTP_PASSWORD}
+      - GF_SMTP_FROM_ADDRESS=kysscentaur.fuentes@carsu.edu.ph
+      - GF_SMTP_FROM_NAME=ICT Security Alerts
+
+    volumes:
+      - grafana-storage:/var/lib/grafana
+
     restart: unless-stopped
+
+
 
   loki:
     image: grafana/loki:3.7.2
@@ -39,6 +55,8 @@ services:
 
     restart: unless-stopped
 
+
+
   promtail:
     image: grafana/promtail:latest
 
@@ -51,3 +69,8 @@ services:
     command: -config.file=/etc/promtail/config.yml
 
     restart: unless-stopped
+
+
+
+volumes:
+  grafana-storage:
