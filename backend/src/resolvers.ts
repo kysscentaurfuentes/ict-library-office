@@ -2270,6 +2270,29 @@ if (lockCheck.rows[0]?.locked) {
   const attempts =
     (user.failed_login_attempts || 0) + 1;
 
+    // =========================
+// BRUTE FORCE DETECTION
+// =========================
+if (attempts >= 5) {
+
+  await logAuditEvent({
+
+    action: "BRUTE_FORCE_DETECTED",
+
+    metadata: {
+      identifier,
+      attempts,
+      reason: "MULTIPLE_FAILED_LOGINS"
+    },
+
+    ipAddress: context.ip,
+
+    userAgent: context.userAgent,
+
+    severity: "CRITICAL",
+  });
+}
+
       // TIME TEMPORARY '30 SECONDS'
 await pool.query(
   `
