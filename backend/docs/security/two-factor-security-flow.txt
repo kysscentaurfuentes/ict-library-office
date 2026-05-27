@@ -1,0 +1,69 @@
+# backend/docs/security/two-factor-security-flow.txt
+
+ICT LIBRARY OFFICE
+Two-Factor Authentication Security Flow
+
+
+SETUP TWO FACTOR AUTHENTICATION
+ ├── Check existing 2FA
+ │
+ ├── Already configured
+ │    └── Return existing setup status
+ │
+ ├── Generate temporary secret
+ │
+ ├── Save temporary secret
+ │
+ ├── Generate QR code
+ │
+ └── Return QR setup
+
+
+CONFIRM TWO FACTOR AUTHENTICATION
+ ├── Verify temporary secret exists
+ │
+ ├── Validate authenticator OTP
+ │
+ ├── Invalid authenticator code
+ │    └── FAILED_2FA_SETUP log
+ │
+ ├── Generate backup recovery codes
+ │
+ ├── Activate 2FA
+ │    ├── Move temp secret to permanent secret
+ │    ├── Enable 2FA
+ │    └── Save backup codes
+ │
+ └── TWO_FACTOR_ENABLED log
+
+
+VERIFY LOGIN TWO FACTOR AUTHENTICATION
+ ├── Check OTP lock status
+ │
+ ├── OTP temporarily locked
+ │    └── OTP_LOCKED log
+ │
+ ├── Validate authenticator code
+ │
+ ├── Invalid authenticator code
+ │    ├── Increment failed OTP attempts
+ │    ├── Lock OTP after max attempts
+ │    └── FAILED_2FA_LOGIN log
+ │
+ ├── Valid authenticator code
+ │    ├── Reset failed attempts
+ │    ├── Generate JWT
+ │    └── SUCCESSFUL_2FA_LOGIN log
+
+
+DISABLE TWO FACTOR AUTHENTICATION
+ ├── Verify account password
+ │
+ ├── Invalid password
+ │    └── FAILED_2FA_DISABLE log
+ │
+ ├── Remove 2FA secret
+ │
+ ├── Delete backup codes
+ │
+ └── TWO_FACTOR_DISABLED log

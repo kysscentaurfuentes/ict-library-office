@@ -9,3 +9,4 @@ dist
 .env*
 logs
 database_backups
+grafana.ini

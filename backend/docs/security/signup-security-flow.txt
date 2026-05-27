@@ -1,0 +1,55 @@
+# backend/docs/security/signup-security-flow.txt
+
+ICT LIBRARY OFFICE
+Signup Security Flow
+
+
+USER REGISTRATION
+ ├── Validate input fields
+ │
+ ├── Validate email format
+ │
+ ├── Validate password strength
+ │
+ ├── Check duplicate email
+ │    └── DUPLICATE_EMAIL_REGISTER log
+ │
+ ├── CAPTCHA verification
+ │    ├── CAPTCHA_FAILED log
+ │    └── SIGNUP_BLOCKED log
+ │
+ ├── Rate limit registration attempts
+ │    └── SIGNUP_RATE_LIMIT log
+ │
+ ├── Generate email verification OTP
+ │
+ ├── Save pending user
+ │
+ ├── Send verification OTP email
+ │    └── SIGNUP_OTP_SENT log
+
+
+VERIFY REGISTRATION OTP
+ ├── Check OTP expiration
+ │
+ ├── Invalid OTP
+ │    ├── Increment failed attempts
+ │    └── FAILED_SIGNUP_OTP log
+ │
+ ├── OTP max attempts reached
+ │    └── SIGNUP_OTP_LOCKED log
+ │
+ └── Valid OTP
+      ├── Create account
+      ├── Delete pending registration
+      └── ACCOUNT_CREATED log
+
+
+POST REGISTRATION
+ ├── Generate JWT
+ │
+ ├── Create audit log
+ │
+ ├── SUCCESSFUL_SIGNUP log
+ │
+ └── Redirect user

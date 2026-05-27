@@ -16,6 +16,7 @@ dotenv.config();
 import { CURRENT_POLICY_VERSION } from "./constants/policy.js";
 import { logAuditEvent }
 from "./utils/auditLogger.js";
+import { securityLogger } from "./utils/securityLogger.js";
 
 const __filename =
   fileURLToPath(import.meta.url);
@@ -1249,6 +1250,17 @@ await pool.query(
     code
   );
 
+  securityLogger(
+  "PASSWORD_RESET_REQUESTED",
+
+  {
+    email: user.email,
+    ip: context.ip,
+  },
+
+  "INFO"
+);
+
   await logAuditEvent({
 
   action:
@@ -2275,6 +2287,20 @@ if (lockCheck.rows[0]?.locked) {
 // =========================
 if (attempts >= 5) {
 
+  securityLogger(
+  "BRUTE_FORCE_DETECTED",
+
+  {
+    email: user.email,
+    studentId: user.StudentId,
+    attempts,
+    ip: context.ip,
+    userAgent: context.userAgent,
+  },
+
+  "CRITICAL"
+);
+
 await logAuditEvent({
 
   userId: user.id,
@@ -2372,6 +2398,19 @@ await logAuditEvent({
   userAgent: context.userAgent,
 });
 
+securityLogger(
+  "FAILED_LOGIN",
+
+  {
+    email: user.email,
+    studentId: user.StudentId,
+    ip: context.ip,
+    userAgent: context.userAgent,
+  },
+
+  "WARNING"
+);
+
   throw new Error("Invalid credentials");
 }
 
@@ -2446,6 +2485,18 @@ if (
   CURRENT_POLICY_VERSION
 ) {
 
+  securityLogger(
+    "SUCCESSFUL_LOGIN",
+    {
+      email: user.email,
+      studentId: user.StudentId,
+      ip: context.ip,
+      userAgent: context.userAgent,
+      requiresPolicyUpdate: true,
+    },
+    "INFO"
+  );
+
   const token = jwt.sign(
     {
       userId: user.id,
@@ -2458,29 +2509,23 @@ if (
   );
 
   await logAuditEvent({
+    userId: user.id,
 
-  userId: user.id,
+    action: "SUCCESSFUL_LOGIN",
 
-  action:
-    "SUCCESSFUL_LOGIN",
+    targetTable: "users",
 
-  targetTable:
-    "users",
+    targetId: user.StudentId,
 
-  targetId:
-    user.StudentId,
+    metadata: {
+      email: user.email,
+      requiresPolicyUpdate: true
+    },
 
-  metadata: {
-    email: user.email,
-    requiresPolicyUpdate: true
-  },
+    ipAddress: context.ip,
 
-  ipAddress:
-    context.ip,
-
-  userAgent:
-    context.userAgent,
-});
+    userAgent: context.userAgent,
+  });
 
   return {
     token,
@@ -2489,6 +2534,19 @@ if (
     user
   };
 }
+
+securityLogger(
+  "SUCCESSFUL_LOGIN",
+
+  {
+    email: user.email,
+    studentId: user.StudentId,
+    ip: context.ip,
+    userAgent: context.userAgent,
+  },
+
+  "INFO"
+);
 
       const token = jwt.sign(
         {
@@ -3039,6 +3097,16 @@ if (!verified) {
   const attempts =
     (user.failed_otp_attempts || 0) + 1;
 
+  securityLogger(
+    "FAILED_2FA_LOGIN",
+    {
+      email: user.email,
+      studentId: user.StudentId,
+      attempts,
+    },
+    "WARNING"
+  );
+
   let lockUntil: Date | null =
     null;
 
@@ -3054,11 +3122,11 @@ if (!verified) {
   await pool.query(
     `
     UPDATE user_security
-SET
-  failed_otp_attempts = $1,
-  otp_locked_until = $2,
-  updated_at = NOW()
-WHERE user_id = $3
+    SET
+      failed_otp_attempts = $1,
+      otp_locked_until = $2,
+      updated_at = NOW()
+    WHERE user_id = $3
     `,
     [
       attempts,
@@ -3066,27 +3134,6 @@ WHERE user_id = $3
       user.id
     ]
   );
-
-  await pool.query(
-  `
-  INSERT INTO sync_queue (
-    table_name,
-    operation,
-    payload
-  )
-  VALUES ($1,$2,$3)
-  `,
-  [
-    "user_security",
-    "update",
-    JSON.stringify({
-      user_id: user.id,
-      failed_otp_attempts: attempts,
-      otp_locked_until: lockUntil,
-      updated_at: new Date().toISOString()
-    })
-  ]
-);
 
   throw Object.assign(
     new Error(
@@ -3139,6 +3186,17 @@ await pool.query(
       updated_at: new Date().toISOString()
     })
   ]
+);
+
+securityLogger(
+  "SUCCESSFUL_2FA_LOGIN",
+
+  {
+    email: user.email,
+    studentId: user.StudentId,
+  },
+
+  "INFO"
 );
 
   const token = jwt.sign(

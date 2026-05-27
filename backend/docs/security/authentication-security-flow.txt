@@ -1,0 +1,33 @@
+# backend/docs/security/authentication-security-flow.txt
+
+ICT LIBRARY OFFICE
+SIEM Authentication Logic Flow
+
+
+LOGIN
+ ├── Invalid Password
+ │     ├── FAILED_LOGIN log
+ │     ├── Brute force detection
+ │     └── Lock account
+ │
+ ├── Valid password
+ │     ├── Reset failed attempts
+ │     └── Check 2FA
+ │
+ ├── Invalid 2FA
+ │     ├── FAILED_2FA_LOGIN log
+ │     ├── Increment otp attempts
+ │     └── Otp lock
+ │
+ ├── Successful 2FA
+ │     ├── SUCCESSFUL_2FA_LOGIN log
+ │     └── Generate JWT
+ │
+ ├── Policy outdated
+ │     ├── SUCCESSFUL_LOGIN log
+ │     ├── RequiresPolicyUpdate=true
+ │     └── Generate JWT
+ │
+ └── Normal login
+       ├── SUCCESSFUL_LOGIN log
+       └── Generate JWT

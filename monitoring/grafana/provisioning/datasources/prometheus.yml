@@ -1,0 +1,10 @@
+# ICT-LIBRARY-OFFICE/monitoring/grafana/provisioning/datasources/prometheus.yml
+
+apiVersion: 1
+
+datasources:
+  - name: ICT Library Office
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true

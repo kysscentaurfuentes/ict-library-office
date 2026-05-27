@@ -1,0 +1,85 @@
+# backend/docs/security/admin-approval-security-flow.txt
+
+ICT LIBRARY OFFICE
+Admin Approval Security Flow
+
+
+USER REGISTRATION FLOW
+
+ ├── User submits signup form
+ │
+ ├── Validate CARSU email domain
+ │
+ ├── Validate policy acknowledgement
+ │
+ ├── Generate signup OTP
+ │
+ ├── Save temporary signup data
+ │    └── signup_pending table
+ │
+ ├── Email verification required
+ │
+ └── Await OTP confirmation
+
+
+SIGNUP OTP VERIFICATION FLOW
+
+ ├── Validate signup OTP
+ │
+ ├── Invalid OTP
+ │    ├── Increment failed attempts
+ │    ├── Lock after max failures
+ │    └── INVALID_SIGNUP_OTP
+ │
+ ├── Expired OTP
+ │    └── Reject verification
+ │
+ ├── Successful OTP verification
+ │    ├── Reset failed attempts
+ │    ├── Mark email_verified = true
+ │    ├── Set account_status = PENDING
+ │    └── Move school ID image
+ │
+ └── Await admin approval
+
+
+ADMIN APPROVAL FLOW
+
+ ├── Admin reviews pending account
+ │
+ ├── Verify:
+ │    ├── Student information
+ │    ├── School ID image
+ │    ├── Email legitimacy
+ │    └── Account authenticity
+ │
+ ├── APPROVE USER
+ │    ├── Move data into users table
+ │    ├── Create user_profile
+ │    ├── Create user_preferences
+ │    ├── Create user_security
+ │    ├── Create user_2fa placeholder
+ │    ├── Initialize default security state
+ │    └── Insert sync_queue entries
+ │
+ ├── REJECT USER
+ │    ├── Keep pending record
+ │    ├── Set account_status = REJECTED
+ │    ├── Store rejection reason
+ │    └── Prevent authentication
+ │
+ └── ACCOUNT_APPROVED log
+
+
+LOGIN APPROVAL ENFORCEMENT
+
+ ├── Login checks account_status
+ │
+ ├── PENDING
+ │    └── ACCOUNT_PENDING error
+ │
+ ├── REJECTED
+ │    └── ACCOUNT_REJECTED error
+ │
+ └── APPROVED
+      └── Allow authentication flow

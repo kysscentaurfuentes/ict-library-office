@@ -1,0 +1,13 @@
+# ICT-LIBRARY-OFFICE/grafana/provisioning/dashboards/dashboard.yml
+apiVersion: 1
+
+providers:
+  - name: "ICT Monitoring"
+    orgId: 1
+    folder: ""
+    type: file
+    disableDeletion: false
+    editable: true
+
+    options:
+      path: /etc/grafana/provisioning/dashboards-json

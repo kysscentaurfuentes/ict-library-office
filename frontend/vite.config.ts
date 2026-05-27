@@ -1,12 +1,20 @@
 // frontend/vite.config.ts
+
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
 
-  // IMPORTANT FOR GITHUB PAGES
-  base: '/ict-library-office/',
+  // =========================================================
+  // PRODUCTION BASE PATH
+  // =========================================================
+  // Docker + Nginx Production
+  // IMPORTANT:
+  // GitHub Pages uses /ict-library-office/
+  // Docker/Nginx localhost uses /
+  // =========================================================
+  base: '/',
 
   server: {
     host: true,
@@ -17,12 +25,19 @@ export default defineConfig({
     ],
 
     proxy: {
+
+      // =========================================================
+      // BACKEND API
+      // =========================================================
       '/api': {
         target: 'https://ict-library-office-backend.onrender.com',
         changeOrigin: true,
         secure: true,
       },
 
+      // =========================================================
+      // GRAPHQL
+      // =========================================================
       '/graphql': {
         target: 'https://ict-library-office-backend.onrender.com',
         changeOrigin: true,

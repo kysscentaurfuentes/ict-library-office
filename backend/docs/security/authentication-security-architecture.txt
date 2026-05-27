@@ -1,0 +1,194 @@
+# backend/docs/security/authentication-security-architecture.txt
+
+ICT LIBRARY OFFICE
+Authentication & Account Security Architecture
+
+“Blueprint kung paano gumagana buong security system ng building”
+“Architecture of how the entire building security system operates.”
+
+=================================================
+LOGIN SECURITY FLOW
+=================================================
+
+User Login Flow
+ ├── Normalize identifier
+ │    ├── Email normalization
+ │    └── Student ID normalization
+ │
+ ├── Query user account
+ │
+ ├── Check pending signup records
+ │    ├── ACCOUNT_PENDING
+ │    └── ACCOUNT_REJECTED
+ │
+ ├── Check real account status
+ │    ├── APPROVED
+ │    ├── PENDING
+ │    └── REJECTED
+ │
+ ├── Check login lock status
+ │
+ ├── Validate password using bcrypt
+ │
+ ├── Invalid password
+ │    ├── Increment failed_login_attempts
+ │    ├── Trigger BRUTE_FORCE_DETECTED
+ │    ├── Temporary lockout
+ │    ├── Audit log insertion
+ │    └── Security log insertion
+ │
+ ├── Valid password
+ │    ├── Reset login failures
+ │    └── Continue authentication
+ │
+ ├── Check 2FA enabled
+ │    ├── requires2FA = true
+ │    └── Verify authenticator code
+ │
+ ├── Policy version validation
+ │    ├── requiresPolicyUpdate
+ │    └── Continue session
+ │
+ └── Generate JWT session token
+
+
+
+=================================================
+FORGOT PASSWORD SECURITY
+=================================================
+
+Forgot Password Flow
+ ├── IP-based rate limiting
+ │
+ ├── CAPTCHA escalation
+ │    ├── Trigger after repeated requests
+ │    └── Cloudflare Turnstile validation
+ │
+ ├── Exponential request lockouts
+ │    ├── 5th request
+ │    ├── 6th request
+ │    ├── 7th request
+ │    └── 8th+ request
+ │
+ ├── OTP generation
+ │    ├── Random 6-digit OTP
+ │    ├── HMAC SHA256 hashing
+ │    └── 5 minute expiration
+ │
+ ├── Save password reset session
+ │
+ ├── Verify forgot password OTP
+ │    ├── Failed attempt tracking
+ │    ├── Temporary forgot lock
+ │    └── Expiration validation
+ │
+ ├── Reset password
+ │    ├── Prevent same password reuse
+ │    ├── bcrypt hashing
+ │    ├── Delete reset session
+ │    └── Reset security counters
+ │
+ └── Audit + SIEM logging
+
+
+
+=================================================
+2FA AUTHENTICATOR SECURITY
+=================================================
+
+Two-Factor Authentication Flow
+ ├── Generate temporary TOTP secret
+ │
+ ├── QR code provisioning
+ │
+ ├── Authenticator verification
+ │
+ ├── Activate real 2FA secret
+ │
+ ├── Generate backup codes
+ │
+ ├── Store:
+ │    ├── enabled
+ │    ├── confirmed
+ │    ├── secret
+ │    └── backup_codes
+ │
+ ├── Login 2FA validation
+ │
+ ├── Invalid authenticator code
+ │    ├── failed_otp_attempts
+ │    ├── otp_locked_until
+ │    └── 8 hour lock
+ │
+ ├── Successful authenticator validation
+ │    ├── Reset OTP failures
+ │    └── Generate JWT
+ │
+ └── Disable 2FA requires password validation
+
+
+
+=================================================
+SECURITY COUNTERS
+=================================================
+
+user_security table
+ ├── failed_login_attempts
+ ├── login_locked_until
+ │
+ ├── failed_otp_attempts
+ ├── otp_locked_until
+ │
+ ├── failed_forgot_attempts
+ ├── forgot_locked_until
+ │
+ ├── failed_change_password_attempts
+ └── change_password_locked_until
+
+
+
+=================================================
+SECURITY FEATURES
+=================================================
+
+Implemented Protections
+ ├── bcrypt password hashing
+ ├── HMAC SHA256 OTP hashing
+ ├── JWT authentication
+ ├── 2FA TOTP authentication
+ ├── Backup recovery codes
+ ├── IP-based rate limiting
+ ├── CAPTCHA escalation
+ ├── Exponential lockouts
+ ├── Brute force detection
+ ├── Policy version enforcement
+ ├── Audit trail logging
+ ├── SIEM-style event logging
+ ├── Immutable identity fields
+ ├── Sync queue replication
+ └── Role-based authorization
+
+
+
+=================================================
+SECURITY EVENTS
+=================================================
+
+Current Security Events
+ ├── FAILED_LOGIN
+ ├── SUCCESSFUL_LOGIN
+ ├── BRUTE_FORCE_DETECTED
+ │
+ ├── FAILED_2FA_LOGIN
+ ├── SUCCESSFUL_2FA_LOGIN
+ │
+ ├── PASSWORD_RESET_REQUESTED
+ ├── PASSWORD_RESET_COMPLETED
+ ├── PASSWORD_RESET_BLOCKED
+ │
+ ├── INVALID_SIGNUP_OTP
+ ├── SIGNUP_OTP_LOCKED
+ │
+ ├── ACCOUNT_PENDING
+ ├── ACCOUNT_REJECTED
+ └── ACCOUNT_APPROVED

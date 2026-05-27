@@ -1,0 +1,155 @@
+# backend/docs/security/security-events.txt
+
+ICT LIBRARY OFFICE
+Security Events
+
+“Listahan ng alarm names sa building”
+“Registry of building alarm events.”
+
+============================================================================================================================================
+============================================================================================================================================
+
+FAILED_LOGIN
+Severity: WARNING
+Description:
+Invalid password login attempt.
+
+BRUTE_FORCE_DETECTED
+Severity: CRITICAL
+Description:
+Multiple failed login attempts detected.
+
+SUCCESSFUL_LOGIN
+Severity: INFO
+Description:
+User successfully authenticated.
+
+FAILED_2FA_LOGIN
+Severity: WARNING
+Description:
+Invalid authenticator OTP.
+
+============================================================================================================================================
+============================================================================================================================================
+
+PASSWORD_RESET_REQUESTED
+Severity: INFO
+Description:
+Forgot password OTP requested.
+
+PASSWORD_RESET_BLOCKED
+Severity: WARNING
+Description:
+Forgot password request blocked due to CAPTCHA or rate limit.
+
+FAILED_FORGOT_OTP
+Severity: WARNING
+Description:
+Invalid forgot password OTP attempt.
+
+PASSWORD_RESET_COMPLETED
+Severity: INFO
+Description:
+User successfully reset password.
+
+============================================================================================================================================
+============================================================================================================================================
+
+DUPLICATE_EMAIL_REGISTER
+Severity: WARNING
+Description:
+Duplicate email registration attempt detected.
+
+SIGNUP_BLOCKED
+Severity: WARNING
+Description:
+Registration blocked due to CAPTCHA failure or suspicious behavior.
+
+SIGNUP_RATE_LIMIT
+Severity: WARNING
+Description:
+Too many registration attempts detected.
+
+SIGNUP_OTP_SENT
+Severity: INFO
+Description:
+Signup verification OTP sent.
+
+FAILED_SIGNUP_OTP
+Severity: WARNING
+Description:
+Invalid signup OTP entered.
+
+SIGNUP_OTP_LOCKED
+Severity: WARNING
+Description:
+Signup OTP temporarily locked due to multiple failures.
+
+ACCOUNT_CREATED
+Severity: INFO
+Description:
+New account successfully created.
+
+SUCCESSFUL_SIGNUP
+Severity: INFO
+Description:
+User successfully completed signup process.
+
+============================================================================================================================================
+============================================================================================================================================
+
+FAILED_2FA_SETUP
+Severity: WARNING
+Description:
+Invalid authenticator OTP during 2FA setup.
+
+OTP_LOCKED
+Severity: WARNING
+Description:
+Authenticator OTP temporarily locked due to multiple failures.
+
+TWO_FACTOR_ENABLED
+Severity: INFO
+Description:
+Two-factor authentication enabled successfully.
+
+FAILED_2FA_DISABLE
+Severity: WARNING
+Description:
+Invalid password while disabling 2FA.
+
+TWO_FACTOR_DISABLED
+Severity: INFO
+Description:
+Two-factor authentication disabled successfully.
+
+============================================================================================================================================
+============================================================================================================================================
+
+ACCOUNT_PENDING
+Severity: INFO
+Description:
+User account awaiting administrator approval.
+
+ACCOUNT_REJECTED
+Severity: WARNING
+Description:
+Administrator rejected pending account.
+
+ACCOUNT_APPROVED
+Severity: INFO
+Description:
+Administrator approved pending account.
+
+INVALID_SIGNUP_OTP
+Severity: WARNING
+Description:
+Invalid signup OTP entered.
+
+SIGNUP_OTP_LOCKED
+Severity: WARNING
+Description:
+Signup OTP temporarily locked due to multiple failures.
+
+============================================================================================================================================
+============================================================================================================================================
