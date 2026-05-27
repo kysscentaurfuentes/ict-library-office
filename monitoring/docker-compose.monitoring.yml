@@ -20,6 +20,12 @@ services:
 
     restart: unless-stopped
 
+    depends_on:
+      - blackbox-exporter
+
+    networks:
+      - monitoring-network
+
 
 
   # =========================================================
@@ -46,6 +52,7 @@ services:
       GF_SMTP_FROM_NAME: ICT Security Alerts
 
     volumes:
+
       # Persistent Grafana Database
       - ./grafana-data:/var/lib/grafana
 
@@ -64,6 +71,10 @@ services:
       - prometheus
       - loki
 
+    networks:
+      - monitoring-network
+      - prod-network
+
 
 
   # =========================================================
@@ -75,14 +86,18 @@ services:
     container_name: ict-loki
 
     ports:
-      - "3100:3100"
+      - "3101:3100"
 
-    command: -config.file=/etc/loki/loki-config.yml
+    command:
+      - -config.file=/etc/loki/loki-config.yml
 
     volumes:
       - ./loki-config.yml:/etc/loki/loki-config.yml:ro
 
     restart: unless-stopped
+
+    networks:
+      - monitoring-network
 
 
 
@@ -94,7 +109,8 @@ services:
 
     container_name: ict-promtail
 
-    command: -config.file=/etc/promtail/config.yml
+    command:
+      - -config.file=/etc/promtail/config.yml
 
     volumes:
       - ./promtail-config.yml:/etc/promtail/config.yml:ro
@@ -104,6 +120,9 @@ services:
 
     depends_on:
       - loki
+
+    networks:
+      - monitoring-network
 
 
 
@@ -119,6 +138,9 @@ services:
       - "9100:9100"
 
     restart: unless-stopped
+
+    networks:
+      - monitoring-network
 
 
 
@@ -140,3 +162,44 @@ services:
       - /var/lib/docker/:/var/lib/docker:ro
 
     restart: unless-stopped
+
+    networks:
+      - monitoring-network
+
+
+
+  # =========================================================
+  # BLACKBOX EXPORTER
+  # =========================================================
+  blackbox-exporter:
+    image: prom/blackbox-exporter:latest
+
+    container_name: ict-blackbox-exporter
+
+    ports:
+      - "9115:9115"
+
+    command:
+      - --config.file=/config/blackbox.yml
+
+    volumes:
+      - ./blackbox/blackbox.yml:/config/blackbox.yml:ro
+
+    restart: unless-stopped
+
+    networks:
+      - monitoring-network
+
+
+
+# =========================================================
+# NETWORKS
+# =========================================================
+networks:
+
+  monitoring-network:
+    driver: bridge
+
+  prod-network:
+    external: true
+    name: ict-library-prod_default

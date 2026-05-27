@@ -3,8 +3,6 @@
 global:
   scrape_interval: 5s
 
-
-
 scrape_configs:
 
   # =========================================================
@@ -17,6 +15,7 @@ scrape_configs:
     static_configs:
       - targets:
           - "host.docker.internal:4000"
+
 
 
   # =========================================================
@@ -38,3 +37,51 @@ scrape_configs:
     static_configs:
       - targets:
           - "cadvisor:8080"
+
+
+
+  # =========================================================
+  # AI SERVICE METRICS
+  # =========================================================
+  - job_name: "ict-ai-service"
+
+    metrics_path: /metrics
+
+    static_configs:
+      - targets:
+          - "host.docker.internal:5000"
+
+
+
+  # =========================================================
+  # BLACKBOX EXPORTER
+  # =========================================================
+  - job_name: "blackbox-ping"
+
+    metrics_path: /probe
+
+    params:
+      module: [ping]
+
+    static_configs:
+      - targets:
+
+          # GOOGLE DNS
+          - 8.8.8.8
+
+          # CLOUDFLARE DNS
+          - 1.1.1.1
+
+          # LOCALHOST
+          - localhost
+
+    relabel_configs:
+
+      - source_labels: [__address__]
+        target_label: __param_target
+
+      - source_labels: [__param_target]
+        target_label: instance
+
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
