@@ -1,0 +1,225 @@
+ICT-Library-Office
+│
+├── .github
+├── .idea
+├── .venv
+├── .vscode
+│   └── settings.json
+│
+├── ai-service
+│   ├── .dockerignore
+│   ├── deploy.prototxt
+│   ├── Dockerfile
+│   ├── download_model.py
+│   ├── flask_stream.py
+│   ├── main.py
+│   ├── REQUIREMENTS.txt
+│   └── res10_300x300_ssd_iter_140000.caffemodel
+│
+├── backend
+│   ├── database
+│   │   └── migrations
+│   │       └── 001_full_schema.sql
+│   │
+│   ├── docs
+│   │   ├── internal
+│   │   │   └── vps-deployment-checklist.md
+│   │   │
+│   │   └── security
+│   │       ├── admin-approval-security-flow.txt
+│   │       ├── authentication-security-architecture.txt
+│   │       ├── authentication-security-flow.txt
+│   │       ├── forgot-password-security-flow.txt
+│   │       ├── security-events.txt
+│   │       ├── signup-security-flow.txt
+│   │       └── two-factor-security-flow.txt
+│   │
+│   ├── logs
+│   │   ├── backend.log
+│   │   └── security.log
+│   │
+│   ├── public
+│   │   └── hls
+│   │
+│   ├── scripts
+│   │   ├── change-password.bat
+│   │   └── hash-password.ts
+│   │
+│   ├── src
+│   │   ├── agent
+│   │   │   ├── cloudSyncAgent.ts
+│   │   │   └── routerAgent.ts
+│   │   │
+│   │   ├── constants
+│   │   │   └── policy.ts
+│   │   │
+│   │   ├── routes
+│   │   │   └── shareRoutes.ts
+│   │   │
+│   │   ├── types
+│   │   │   ├── apollo-express.d.ts
+│   │   │   └── mac-lookup.d.ts
+│   │   │
+│   │   ├── utils
+│   │   │   ├── auditLogger.ts
+│   │   │   ├── logger.ts
+│   │   │   ├── mailer.ts
+│   │   │   └── securityLogger.ts
+│   │   │
+│   │   ├── db.ts
+│   │   ├── redis.ts
+│   │   ├── resolvers.ts
+│   │   ├── router.ts
+│   │   ├── schema.ts
+│   │   ├── server.ts
+│   │   ├── socket.ts
+│   │   └── upload.ts
+│   │
+│   ├── uploads
+│   │   ├── profile-pictures
+│   │   ├── school-ids
+│   │   └── temporary school-ids
+│   │
+│   ├── .dockerignore
+│   ├── .env.docker
+│   ├── .env.example
+│   ├── .env.local
+│   ├── .node-version
+│   ├── Dockerfile.dev
+│   ├── Dockerfile.prod
+│   ├── package-lock.json
+│   ├── package.json
+│   └── tsconfig.json
+│
+├── database_backups
+│
+├── docker
+│   ├── development
+│   │   ├── .env.dev
+│   │   └── docker-compose.dev.yml
+│   │
+│   ├── production
+│   │   ├── .env.prod
+│   │   └── docker-compose.prod.yml
+│   │
+│   └── DEV-NOTES.md
+│
+├── frontend
+│   ├── public
+│   │   ├── background-pictures
+│   │   ├── favicon.svg
+│   │   ├── icons.svg
+│   │   └── tor.jpg
+│   │
+│   ├── src
+│   │   ├── assets
+│   │   ├── auth
+│   │   │   ├── policies
+│   │   │   │   └── policySteps.ts
+│   │   │   │
+│   │   │   ├── ForgotPassword.tsx
+│   │   │   ├── PendingApproval.tsx
+│   │   │   ├── PolicyAcknowledgement.tsx
+│   │   │   ├── RejectedApproval.tsx
+│   │   │   ├── ResetForgotPassword.tsx
+│   │   │   ├── SignIn.tsx
+│   │   │   ├── SignUp.tsx
+│   │   │   ├── TwoFactor.tsx
+│   │   │   ├── VerifyForgotPasswordOTP.tsx
+│   │   │   └── VerifySignupOTP.tsx
+│   │   │
+│   │   ├── components
+│   │   │   ├── AdminTopbar.tsx
+│   │   │   ├── AuthBackground.tsx
+│   │   │   ├── AuthForm.css
+│   │   │   ├── AuthForm.tsx
+│   │   │   ├── FaceDetect.tsx
+│   │   │   ├── MainLayout.tsx
+│   │   │   └── Sidebar.tsx
+│   │   │
+│   │   ├── constants
+│   │   │   └── policy.ts
+│   │   │
+│   │   ├── context
+│   │   │   └── PCContext.tsx
+│   │   │
+│   │   ├── graphql
+│   │   │   └── client.ts
+│   │   │
+│   │   ├── guards
+│   │   │   ├── AdminRoute.tsx
+│   │   │   ├── PolicyGuard.tsx
+│   │   │   └── ProtectedRoute.tsx
+│   │   │
+│   │   ├── hooks
+│   │   │   └── useDynamicBackground.ts
+│   │   │
+│   │   ├── layouts
+│   │   │   └── AuthLayout.tsx
+│   │   │
+│   │   ├── pages
+│   │   │   ├── Admin
+│   │   │   │   ├── AdminDashboard.tsx
+│   │   │   │   ├── AuditLogs.tsx
+│   │   │   │   └── ScanLogs.tsx
+│   │   │   │
+│   │   │   ├── About.tsx
+│   │   │   ├── AttendanceLog.tsx
+│   │   │   ├── CheckAvailability.tsx
+│   │   │   ├── Feedback.tsx
+│   │   │   ├── HomeScreen.tsx
+│   │   │   ├── LiveView.tsx
+│   │   │   ├── Printer.tsx
+│   │   │   ├── QrCodeScanner.tsx
+│   │   │   ├── Resume.tsx
+│   │   │   ├── Router.tsx
+│   │   │   ├── Settings.tsx
+│   │   │   └── SoftwareAccess.tsx
+│   │   │
+│   │   ├── pictures
+│   │   │   └── CSU background.webp
+│   │   │
+│   │   ├── routes
+│   │   │   └── AppRouter.tsx
+│   │   │
+│   │   ├── utils
+│   │   │   └── courseAcronyms.ts
+│   │   │
+│   │   ├── App.css
+│   │   ├── App.tsx
+│   │   ├── index.css
+│   │   ├── main.tsx
+│   │   └── vite-env.d.ts
+│   │
+│   ├── .dockerignore
+│   ├── .env
+│   ├── .env.example
+│   ├── Dockerfile
+│   ├── eslint.config.js
+│   ├── index.html
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── README.md
+│   ├── tsconfig.app.json
+│   ├── tsconfig.json
+│   ├── tsconfig.node.json
+│   └── vite.config.ts
+│
+├── mobile
+├── monitoring
+├── network-bridge
+├── nginx
+│   └── default.conf
+│
+├── node_modules
+│
+├── scripts
+│   └── deploy-prod.sh
+│
+├── .dockerignore
+├── .gitignore
+├── ARCHITECTURE.md
+├── backup-database.bat
+├── DEV-NOTES.md
+├── package-lock.json
+└── package.json

@@ -15,7 +15,7 @@ import { setContext } from '@apollo/client/link/context'
 // 🔥 Dynamic API URL
 // 🔗 HTTP connection
 const PRIMARY =
-  `${import.meta.env.VITE_API_URL}/graphql`;
+  `http://localhost:4000/graphql`;
 
 const FALLBACK =
   `${import.meta.env.VITE_API_FALLBACK}/graphql`;

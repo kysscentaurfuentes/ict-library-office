@@ -42,7 +42,9 @@ const require = createRequire(import.meta.url);
 // ✅ Gagamitin natin ang 'expressMiddleware' na variable name dito
 import { expressMiddleware } from "@as-integrations/express4";
 
-dotenv.config();
+dotenv.config({
+  path: ".env.local"
+});
 const app = express();
 
 // ===============================

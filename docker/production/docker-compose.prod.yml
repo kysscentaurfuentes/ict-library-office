@@ -12,6 +12,26 @@ services:
 
     image: ghcr.io/kysscentaurfuentes/ict-library-frontend:latest
 
+    # =========================================
+    # LOCAL BUILD OVERRIDE
+    # Used for local Docker testing
+    #
+    # FREE STAGE:
+    # - Local frontend rebuilds
+    # - No VPS cost yet
+    #
+    # FUTURE:
+    # - GHCR image-only deployment
+    # - VPS auto-pull via CI/CD
+    # =========================================
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile
+
+      args:
+        VITE_API_URL: http://localhost/api
+        VITE_API_FALLBACK: https://ict-library-office-backend.onrender.com
+
     restart: unless-stopped
 
     expose:

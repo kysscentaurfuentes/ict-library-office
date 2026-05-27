@@ -6,7 +6,7 @@ import {
 } from '@apollo/client';
 
 const PRIMARY =
-  `${import.meta.env.VITE_API_URL}/graphql`;
+  `http://localhost:4000/graphql`;
 
 const FALLBACK =
   `${import.meta.env.VITE_API_FALLBACK}/graphql`;

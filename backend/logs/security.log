@@ -53,3 +53,7 @@
 [2026-05-26T07:45:32.409Z] FAILED_LOGIN | STUDENT_ID=211-01851 | USER=10 | IP=127.0.0.1
 [2026-05-26T07:45:32.572Z] BRUTE_FORCE_DETECTED | STUDENT_ID=211-01851 | USER=10 | IP=127.0.0.1
 [2026-05-26T07:45:32.573Z] FAILED_LOGIN | STUDENT_ID=211-01851 | USER=10 | IP=127.0.0.1
+{"timestamp":"2026-05-27T11:04:32.470Z","severity":"INFO","event":"SUCCESSFUL_LOGIN","email":"kyss.fuentes1@gmail.com","studentId":"211-01850","ip":"127.0.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"}
+[2026-05-27T11:04:32.487Z] SUCCESSFUL_LOGIN | STUDENT_ID=211-01850 | USER=7 | IP=127.0.0.1
+{"timestamp":"2026-05-27T11:14:35.836Z","severity":"INFO","event":"SUCCESSFUL_LOGIN","email":"kyss.fuentes1@gmail.com","studentId":"211-01850","ip":"127.0.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"}
+[2026-05-27T11:14:35.838Z] SUCCESSFUL_LOGIN | STUDENT_ID=211-01850 | USER=7 | IP=127.0.0.1
