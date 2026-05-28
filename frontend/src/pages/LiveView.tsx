@@ -569,7 +569,7 @@ hls.on(Hls.Events.LEVEL_UPDATED, (_, data) => {
     key={index}
     style={{
       position: 'absolute',
-left: `${box.x + 80}px`,
+left: `${box.x}px`,
 top: `${box.y}px`,
 width: `${box.width}px`,
 height: `${box.height}px`,
