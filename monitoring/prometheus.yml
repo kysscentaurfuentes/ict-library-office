@@ -1,12 +1,13 @@
 # ICT-LIBRARY-OFFICE/monitoring/prometheus.yml
 
 global:
-  scrape_interval: 5s
+  scrape_interval: 2s
+  evaluation_interval: 2s
 
 scrape_configs:
 
   # =========================================================
-  # BACKEND METRICS
+  # ICT LIBRARY BACKEND (NODE.JS)
   # =========================================================
   - job_name: "ict-library-backend"
 
@@ -15,6 +16,19 @@ scrape_configs:
     static_configs:
       - targets:
           - "host.docker.internal:4000"
+
+
+
+  # =========================================================
+  # ICT AI CCTV SERVICE (FLASK + OPENCV + FFMPEG)
+  # =========================================================
+  - job_name: "ict-ai-service"
+
+    metrics_path: /metrics
+
+    static_configs:
+      - targets:
+          - "host.docker.internal:5000"
 
 
 
@@ -37,19 +51,6 @@ scrape_configs:
     static_configs:
       - targets:
           - "cadvisor:8080"
-
-
-
-  # =========================================================
-  # AI SERVICE METRICS
-  # =========================================================
-  - job_name: "ict-ai-service"
-
-    metrics_path: /metrics
-
-    static_configs:
-      - targets:
-          - "host.docker.internal:5000"
 
 
 
@@ -83,11 +84,11 @@ scrape_configs:
           # CLOUDFLARE DNS
           - 1.1.1.1
 
-          # LOCALHOST
-          - localhost
-
           # ROUTER
           - 192.168.8.1
+
+          # LOCAL MACHINE
+          - host.docker.internal
 
     relabel_configs:
 
@@ -119,13 +120,16 @@ scrape_configs:
           - http://host.docker.internal:5173
 
           # BACKEND
-          - http://host.docker.internal:4000
+          - http://host.docker.internal:4000/health
 
           # AI SERVICE
-          - http://host.docker.internal:5000
+          - http://host.docker.internal:5000/health
 
           # GRAFANA
           - http://host.docker.internal:3000
+
+          # PROMETHEUS
+          - http://host.docker.internal:9090
 
     relabel_configs:
 

@@ -1,9 +1,19 @@
+// frontend/src/pages/LiveView.tsx
 import { useState, useEffect, useRef } from 'react';
 import Hls from 'hls.js';
 
 export default function LiveView() {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [faceCount, setFaceCount] = useState<number>(0);
+
+  const [faceBoxes, setFaceBoxes] = useState<
+  {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }[]
+>([]);
   const [latency, setLatency] = useState<number>(0);
   const [bufferHealth, setBufferHealth] = useState<number>(0);
   
@@ -19,8 +29,11 @@ export default function LiveView() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
 
-  const STREAM_URL = 'https://ict-library-office-backend.onrender.com/hls/stream.m3u8';
-  const FACES_API = 'https://ict-library-office-backend.onrender.com/faces';
+const STREAM_URL =
+`http://${window.location.hostname}:5000/hls/stream.m3u8`;
+
+const FACES_API =
+`http://${window.location.hostname}:5000/faces`;
 
   // Bagong function para sa pagbabago at pag-save ng posisyon
   const updatePositionX = (value: number) => {
@@ -73,6 +86,10 @@ export default function LiveView() {
         const response = await fetch(FACES_API);
         const data = await response.json();
         setFaceCount(data.faces);
+console.log("FACE API:", data);
+
+setFaceCount(data.faces || 0);
+setFaceBoxes(data.boxes || []);
       } catch (error) {
         console.error('Error fetching face count:', error);
       }
@@ -86,6 +103,63 @@ export default function LiveView() {
   // Monitor latency and buffer
   useEffect(() => {
     const monitorPerformance = () => {
+
+      console.log('==========================');
+console.log('VIDEO DEBUG');
+
+if (videoRef.current) {
+  const video = videoRef.current;
+
+  console.log('Current Time:', video.currentTime);
+
+  if (video.buffered.length > 0) {
+    console.log(
+      'Buffered End:',
+      video.buffered.end(video.buffered.length - 1)
+    );
+
+    console.log(
+      'Buffer Health:',
+      (
+        video.buffered.end(video.buffered.length - 1)
+        - video.currentTime
+      ).toFixed(3)
+    );
+  }
+
+  console.log('Dropped Frames:',
+    video.getVideoPlaybackQuality?.().droppedVideoFrames
+  );
+
+  console.log('Total Frames:',
+    video.getVideoPlaybackQuality?.().totalVideoFrames
+  );
+
+  console.log('Ready State:', video.readyState);
+
+  console.log('Network State:', video.networkState);
+
+  console.log('Paused:', video.paused);
+
+  console.log('Playback Rate:', video.playbackRate);
+}
+
+if (hlsRef.current) {
+  console.log(
+    'Latency:',
+    hlsRef.current.latency
+  );
+
+  console.log(
+    'Live Sync Position:',
+    hlsRef.current.liveSyncPosition
+  );
+
+  console.log(
+    'Bandwidth Estimate:',
+    hlsRef.current.bandwidthEstimate
+  );
+}
       if (hlsRef.current && videoRef.current) {
         const hls = hlsRef.current;
         const video = videoRef.current;
@@ -128,30 +202,36 @@ export default function LiveView() {
           hlsRef.current.destroy();
         }
         
-        const hls = new Hls({
-          enableWorker: true,
-          lowLatencyMode: true,
-          liveSyncDurationCount: 1,
-          liveMaxLatencyDurationCount: 2,
-          maxLiveSyncPlaybackRate: 1.5,
-          startLevel: -1,
-          maxBufferLength: 1,
-          maxMaxBufferLength: 2,
-          backBufferLength: 0.5,
-          liveDurationInfinity: true,
-          manifestLoadingTimeOut: 1000,
-          manifestLoadingMaxRetry: 2,
-          levelLoadingTimeOut: 1000,
-          levelLoadingMaxRetry: 2,
-          fragLoadingTimeOut: 2000,
-          fragLoadingMaxRetry: 3,
-          startFragPrefetch: true,
-          testBandwidth: false,
-          abrEwmaDefaultEstimate: 5000000,
-          abrBandWidthFactor: 0.95,
-          abrBandWidthUpFactor: 1,
-          minAutoBitrate: 2000000
-        });
+       const hls = new Hls({
+  enableWorker: true,
+
+  lowLatencyMode: true,
+
+  liveSyncDurationCount: 2,
+  liveMaxLatencyDurationCount: 4,
+
+  maxLiveSyncPlaybackRate: 1.5,
+
+  maxBufferLength: 3,
+  maxMaxBufferLength: 5,
+
+  backBufferLength: 0,
+
+  liveDurationInfinity: true,
+
+  manifestLoadingTimeOut: 1000,
+  manifestLoadingMaxRetry: 2,
+
+  levelLoadingTimeOut: 1000,
+  levelLoadingMaxRetry: 2,
+
+  fragLoadingTimeOut: 2000,
+  fragLoadingMaxRetry: 2,
+
+  startFragPrefetch: true,
+
+  capLevelToPlayerSize: true,
+});
         
         hls.loadSource(STREAM_URL);
         hls.attachMedia(video);
@@ -160,6 +240,28 @@ export default function LiveView() {
           video.play().catch(e => console.log('Auto-play:', e));
         });
         
+        hls.on(Hls.Events.FRAG_LOADING, (_, data) => {
+  console.log('📦 Loading Fragment:', data.frag.sn);
+});
+
+hls.on(Hls.Events.FRAG_LOADED, (_, data) => {
+  console.log('✅ Fragment Loaded:', data.frag.sn);
+});
+
+hls.on(Hls.Events.BUFFER_APPENDED, () => {
+  console.log('📥 Buffer Appended');
+});
+
+hls.on(Hls.Events.ERROR, (_, data) => {
+  if (data.details === 'bufferStalledError') {
+    console.warn('⚠️ BUFFER STALLED');
+  }
+});
+
+hls.on(Hls.Events.LEVEL_UPDATED, (_, data) => {
+  console.log('📺 Level Updated');
+  console.log(data.details);
+});
         hls.on(Hls.Events.ERROR, (event, data) => {
           if (data.fatal) {
             switch (data.type) {
@@ -221,11 +323,11 @@ export default function LiveView() {
         const newHls = new Hls({
           enableWorker: true,
           lowLatencyMode: true,
-          liveSyncDurationCount: 1,
-          liveMaxLatencyDurationCount: 2,
+          liveSyncDurationCount: 2,
+          liveMaxLatencyDurationCount: 4,
           maxLiveSyncPlaybackRate: 1.5,
-          maxBufferLength: 1,
-          maxMaxBufferLength: 2,
+          maxBufferLength: 3,
+          maxMaxBufferLength: 5,
           backBufferLength: 0.5,
           liveDurationInfinity: true,
           manifestLoadingTimeOut: 1000,
@@ -461,6 +563,24 @@ export default function LiveView() {
                 transformOrigin: 'center center',
               }}
             />
+
+            {faceBoxes.map((box, index) => (
+  <div
+    key={index}
+    style={{
+      position: 'absolute',
+left: `${box.x + 80}px`,
+top: `${box.y}px`,
+width: `${box.width}px`,
+height: `${box.height}px`,
+      border: '3px solid #00ff00',
+      boxShadow: '0 0 12px #00ff00',
+      borderRadius: '6px',
+      zIndex: 20,
+      pointerEvents: 'none'
+    }}
+  />
+))}
 
             {/* Face Detection Overlay */}
             <div style={{

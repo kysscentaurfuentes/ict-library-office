@@ -1,3 +1,4 @@
+# ai-service/download_model.py
 import urllib.request
 
 print("Downloading deploy.prototxt...")

@@ -12,7 +12,9 @@ npm start
 #===================================================
 
 To activate the .venv:
+
 .\.venv\Scripts\Activate.ps1
+
 then type cd ai-service to navigate to the ai-service directory, and then run:
 python flask_stream.py
 

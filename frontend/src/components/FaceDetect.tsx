@@ -21,9 +21,9 @@ export default function FaceDetect() {
     formData.append("file", file);
 
     try {
-      const res = await fetch("https://ict-library-office-backend.onrender.com/detect", {
+      const res = await fetch("http://${window.location.hostname}:5000/detect", {
         method: "POST",
-        body: formData,
+        body: formData,  
       });
 
       if (!res.ok) throw new Error("Upload failed");
