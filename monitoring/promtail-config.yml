@@ -1,4 +1,5 @@
 # ICT-LIBRARY-OFFICE/monitoring/promtail-config.yml
+
 server:
   http_listen_port: 9080
 
@@ -9,6 +10,10 @@ clients:
   - url: http://loki:3100/loki/api/v1/push
 
 scrape_configs:
+
+  # =========================================================
+  # BACKEND LOGS
+  # =========================================================
   - job_name: ict-library-backend-logs
 
     static_configs:
@@ -18,4 +23,39 @@ scrape_configs:
         labels:
           job: ict-library-backend
           host: windows
-          __path__: /logs/*.log
+          service: backend
+          __path__: /logs/backend.log
+
+
+
+  # =========================================================
+  # SECURITY LOGS
+  # =========================================================
+  - job_name: ict-security-logs
+
+    static_configs:
+      - targets:
+          - localhost
+
+        labels:
+          job: ict-security
+          host: windows
+          service: security
+          __path__: /logs/security.log
+
+
+
+  # =========================================================
+  # NETWORK MONITORING LOGS
+  # =========================================================
+  - job_name: ict-network-monitoring
+
+    static_configs:
+      - targets:
+          - localhost
+
+        labels:
+          job: ict-network-monitoring
+          host: windows
+          service: network
+          __path__: /logs/network.log

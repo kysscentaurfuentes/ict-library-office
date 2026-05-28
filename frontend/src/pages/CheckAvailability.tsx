@@ -9,8 +9,83 @@ const CheckAvailability: React.FC = () => {
   const [selected, setSelected] = useState<PC | null>(null);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [hoveredPC, setHoveredPC] = useState<PC | null>(null);
+  const panelRef = React.useRef<HTMLDivElement>(null);
   
   const { pcs, vacantCount, inUseCount, emptyCount, totalPCs, updatePCStatus } = usePC();
+
+  useEffect(() => {
+  const handleClickOutside = (event: MouseEvent) => {
+    const target = event.target as HTMLElement;
+
+    const clickedPC =
+      target.closest("[data-pc-box]");
+
+    const clickedPanel =
+      panelRef.current?.contains(target);
+
+    if (!clickedPC && !clickedPanel) {
+      setSelected(null);
+    }
+  };
+
+  document.addEventListener(
+    "mousedown",
+    handleClickOutside
+  );
+
+  return () => {
+    document.removeEventListener(
+      "mousedown",
+      handleClickOutside
+    );
+  };
+}, []);
+
+  useEffect(() => {
+  const fetchDeviceStatus = async () => {
+    try {
+      const response = await fetch(
+        "http://localhost:4000/api/network/devices"
+      );
+
+      const devices = await response.json();
+
+      for (const device of devices) {
+        if (device.id === "PC-01") {
+          updatePCStatus(
+            1,
+            device.online ? "in-use" : "vacant"
+          );
+        }
+      }
+
+    } catch (err) {
+      console.error("Device monitoring error:", err);
+    }
+  };
+
+  fetchDeviceStatus();
+
+  const interval = setInterval(
+    fetchDeviceStatus,
+    5000
+  );
+
+  return () => clearInterval(interval);
+
+}, [updatePCStatus]);
+
+useEffect(() => {
+  if (selected?.id) {
+    const updatedPC = pcs.find(
+      pc => pc.id === selected.id
+    );
+
+    if (updatedPC) {
+      setSelected(updatedPC);
+    }
+  }
+}, [pcs, selected]);
 
   // Load dark mode preference
   useEffect(() => {
@@ -86,6 +161,7 @@ const CheckAvailability: React.FC = () => {
     return (
       <div
         key={pc.id}
+         data-pc-box
         onClick={() => setSelected(pc)}
         onMouseEnter={() => setHoveredPC(pc)}
         onMouseLeave={() => setHoveredPC(null)}
@@ -294,12 +370,17 @@ const CheckAvailability: React.FC = () => {
         </div>
 
         {/* Side Panel */}
-        <div style={{ 
+        <div 
+        ref={panelRef}
+        style={{ 
           position: "fixed", 
           top: 0, 
           right: selected ? 0 : -450, 
           width: 420, 
-          height: "100vh", 
+          height: "100vh",
+display: "flex",
+flexDirection: "column",
+justifyContent: "center",
           background: isDarkMode ? 
             "linear-gradient(135deg, #1e293b, #0f172a)" : 
             "linear-gradient(135deg, #ffffff, #f8fafc)",
@@ -313,34 +394,43 @@ const CheckAvailability: React.FC = () => {
         }}>
           {selected && (
             <>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
+              <div
+  style={{
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    marginBottom: 60,
+    textAlign: "center",
+  }}
+>
                 <div>
-                  <h2 style={{ fontSize: 28, margin: 0, display: "flex", alignItems: "center", gap: 12 }}>
-                    <span>🖥️</span> PC {selected.id}
-                  </h2>
+                 <h2
+  style={{
+    fontSize: 72,
+    margin: 0,
+    fontWeight: "bold",
+    letterSpacing: 2,
+    color:
+      selected.status === "vacant"
+        ? "#22c55e"
+        : "#ef4444",
+  }}
+>
+  PC #{selected.id}
+</h2>
+<p
+  style={{
+    marginTop: 12,
+    fontSize: 14,
+    opacity: 0.7,
+    letterSpacing: 1,
+  }}
+>
+  LIVE DEVICE STATUS
+</p>
                   <p style={{ margin: "8px 0 0", fontSize: 12, opacity: 0.6 }}>Click outside to close</p>
                 </div>
-                <button 
-                  onClick={() => setSelected(null)} 
-                  style={{ 
-                    background: isDarkMode ? "#334155" : "#e2e8f0", 
-                    border: "none", 
-                    color: isDarkMode ? "#f1f5f9" : "#475569", 
-                    width: 36, 
-                    height: 36, 
-                    borderRadius: "50%", 
-                    fontSize: 20, 
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center"
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.1)"}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
-                >
-                  ✕
-                </button>
+              
               </div>
 
               <div style={{ 
@@ -370,55 +460,10 @@ const CheckAvailability: React.FC = () => {
                 </div>
               </div>
 
-              <button 
-                onClick={() => {
-                  if (selected.id && selected.status === "vacant") {
-                    updatePCStatus(selected.id, "in-use");
-                    setSelected(null);
-                  }
-                }}
-                style={{ 
-                  width: "100%", 
-                  padding: "14px", 
-                  background: selected.status === "vacant" ? 
-                    "linear-gradient(135deg, #22c55e, #16a34a)" : 
-                    isDarkMode ? "#334155" : "#cbd5e1",
-                  border: "none", 
-                  borderRadius: "16px", 
-                  color: selected.status === "vacant" ? "white" : (isDarkMode ? "#94a3b8" : "#64748b"),
-                  fontWeight: "bold", 
-                  fontSize: 16,
-                  cursor: selected.status === "vacant" ? "pointer" : "not-allowed",
-                  transition: "all 0.2s",
-                  opacity: selected.status === "vacant" ? 1 : 0.6
-                }}
-                onMouseEnter={(e) => {
-                  if (selected.status === "vacant") {
-                    e.currentTarget.style.transform = "scale(1.02)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "scale(1)";
-                }}
-              >
-                {selected.status === "vacant" ? "✅ Mark as In Use" : "⛔ Currently Occupied"}
-              </button>
+           
 
               {/* Additional Info */}
-              <div style={{ 
-                marginTop: 32, 
-                padding: 20, 
-                background: isDarkMode ? "rgba(51, 65, 85, 0.3)" : "rgba(241, 245, 249, 0.5)",
-                borderRadius: "16px",
-                fontSize: 12,
-                lineHeight: 1.6
-              }}>
-                <strong>📍 Location Info:</strong>
-                <p style={{ margin: "8px 0 0" }}>
-                  Coordinates: ({selected.x}, {selected.y})<br />
-                  Status last updated: Just now
-                </p>
-              </div>
+              
             </>
           )}
         </div>

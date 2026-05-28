@@ -30,6 +30,8 @@ import { initSocket } from "./socket.js";
 import { userSockets } from "./socket.js";
 import './agent/cloudSyncAgent.js';
 import './redis.js';
+import "./services/network/scheduler.js";
+import networkRoutes from "./services/network/network.routes.js"
 
 setInterval(() => {
   const message = `[${new Date().toISOString()}] Backend alive\n`;
@@ -113,9 +115,13 @@ app.use((req, res, next) => {
 app.use(express.urlencoded({ extended: true }));
 
 const limiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 30, // max 30 requests per minute
-  
+  windowMs: 60 * 1000,
+
+  max:
+    process.env.NODE_ENV ===
+    "production"
+      ? 300
+      : 5000,
 });
 
 app.use(limiter);
@@ -366,6 +372,8 @@ const allowedOrigins = process.env.CORS_ORIGIN
   windowMs: 60 * 1000,
   max: 10,
 }));
+
+app.use("/api/network", networkRoutes);
 
 const qrScansTotal =
   new client.Counter({

@@ -9,31 +9,64 @@ import {
   ShieldAlert,
   Clock3,
   ScanLine,
+  Activity,
+  Shield,
+  Brain,
+  Cctv,
+  Network,
 } from "lucide-react";
+
 
 export default function AdminTopbar() {
 
   const location = useLocation();
 
   const navItems = [
-    {
-      label: "Pending",
-      path: "/admin",
-      icon: <Clock3 size={16} />,
-    },
+  {
+    label: "Pending",
+    path: "/admin",
+    icon: <Clock3 size={16} />,
+  },
 
-    {
-      label: "Audit Logs",
-      path: "/admin/audit-logs",
-      icon: <ShieldAlert size={16} />,
-    },
+  {
+    label: "Audit Logs",
+    path: "/admin/audit-logs",
+    icon: <ShieldAlert size={16} />,
+  },
 
-    {
-      label: "Scan Logs",
-      path: "/admin/scan-logs",
-      icon: <ScanLine size={16} />,
-    },
-  ];
+  {
+    label: "Scan Logs",
+    path: "/admin/scan-logs",
+    icon: <ScanLine size={16} />,
+  },
+
+  {
+    label: "System Monitoring",
+    path: "/admin/system-monitoring",
+    icon: <Activity size={16} />,
+  },
+
+  {
+    label: "Security Monitoring",
+    path: "/admin/security-monitoring",
+    icon: <Shield size={16} />,
+  },
+  {
+  label: "Operational Intelligence",
+  path: "/admin/operational-intelligence",
+  icon: <Brain size={16} />,
+  },
+  {
+  label: "Surveillance AI",
+  path: "/admin/surveillance-ai",
+  icon: <Cctv size={16} />,
+  },
+  {
+  label: "Network Operations",
+  path: "/admin/network-operations",
+  icon: <Network size={16} />,
+  },
+];
 
   return (
     <div
@@ -50,6 +83,9 @@ export default function AdminTopbar() {
         paddingLeft: 24,
         paddingRight: 24,
         gap: 12,
+        overflowX: "auto",
+whiteSpace: "nowrap",
+scrollbarWidth: "none",
       }}
     >
 

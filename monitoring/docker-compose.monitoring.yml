@@ -22,6 +22,8 @@ services:
 
     depends_on:
       - blackbox-exporter
+      - snmp-exporter
+      - collectd-exporter
 
     networks:
       - monitoring-network
@@ -184,6 +186,49 @@ services:
 
     volumes:
       - ./blackbox/blackbox.yml:/config/blackbox.yml:ro
+
+    restart: unless-stopped
+
+    networks:
+      - monitoring-network
+
+
+
+  # =========================================================
+  # SNMP EXPORTER
+  # =========================================================
+  snmp-exporter:
+    image: prom/snmp-exporter:latest
+
+    container_name: ict-snmp-exporter
+
+    ports:
+      - "9116:9116"
+
+    volumes:
+      - ./snmp/snmp.yml:/etc/snmp_exporter/snmp.yml:ro
+
+    restart: unless-stopped
+
+    networks:
+      - monitoring-network
+
+
+
+  # =========================================================
+  # COLLECTD EXPORTER (ROUTER TELEMETRY)
+  # =========================================================
+  collectd-exporter:
+    image: prom/collectd-exporter:latest
+
+    container_name: ict-collectd-exporter
+
+    command:
+      - '--collectd.listen-address=:25826'
+
+    ports:
+      - "9103:9103"
+      - "25826:25826/udp"
 
     restart: unless-stopped
 

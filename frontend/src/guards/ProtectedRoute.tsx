@@ -1,15 +1,30 @@
 // frontend/src/guards/ProtectedRoute.tsx
-import { Navigate } from 'react-router-dom';
+
+import {
+  Navigate,
+} from "react-router-dom";
 
 type Props = {
   children: React.ReactNode;
 };
 
-export default function ProtectedRoute({ children }: Props) {
-  const token = localStorage.getItem('token');
+export default function ProtectedRoute({
+  children,
+}: Props) {
+
+  const token =
+    localStorage.getItem(
+      "token"
+    );
 
   if (!token) {
-    return <Navigate to="/signin" replace />;
+
+    return (
+      <Navigate
+        to="/signin"
+        replace
+      />
+    );
   }
 
   return <>{children}</>;

@@ -5,8 +5,29 @@ from fastapi.middleware.cors import CORSMiddleware
 import cv2
 import numpy as np
 import time
+from prometheus_client import Counter, Gauge, Histogram, generate_latest
+from fastapi.responses import Response
 
 app = FastAPI()
+
+# =========================================================
+# PROMETHEUS METRICS
+# =========================================================
+
+ACTIVE_STREAMS = Gauge(
+    "ai_active_streams",
+    "Number of active CCTV streams"
+)
+
+FACE_DETECTIONS = Counter(
+    "ai_face_detections_total",
+    "Total detected faces"
+)
+
+AI_PROCESSING_LATENCY = Histogram(
+    "ai_processing_latency_seconds",
+    "AI frame processing latency"
+)
 
 # ✅ CORS (for React)
 app.add_middleware(
@@ -54,12 +75,14 @@ async def detect_face(file: UploadFile = File(...)):
 # ✅ LIVE CCTV STREAM
 def generate_frames():
     cap = cv2.VideoCapture(video_source)
+    ACTIVE_STREAMS.set(1)
 
     if not cap.isOpened():
         print("❌ Cannot open RTSP stream")
         return
 
     while True:
+        start_time = time.time()
         success, frame = cap.read()
 
         # 🔁 Auto reconnect pag naputol
@@ -73,7 +96,9 @@ def generate_frames():
         # ✅ Face detection
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = face_cascade.detectMultiScale(gray, 1.3, 5)
-
+        
+        FACE_DETECTIONS.inc(len(faces))
+        
         for (x, y, w, h) in faces:
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
@@ -81,11 +106,25 @@ def generate_frames():
         _, buffer = cv2.imencode(".jpg", frame)
         frame_bytes = buffer.tobytes()
 
+        AI_PROCESSING_LATENCY.observe(
+    time.time() - start_time
+)
+        
         yield (
             b"--frame\r\n"
             b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n"
         )
 
+# =========================================================
+# PROMETHEUS METRICS ENDPOINT
+# =========================================================
+
+@app.get("/metrics")
+def metrics():
+    return Response(
+        generate_latest(),
+        media_type="text/plain"
+    )
 
 @app.get("/video")
 def video_feed():

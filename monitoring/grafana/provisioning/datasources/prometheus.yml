@@ -3,8 +3,18 @@
 apiVersion: 1
 
 datasources:
+
+  # =========================================================
+  # PROMETHEUS
+  # =========================================================
   - name: ICT Library Office
+
     type: prometheus
+
     access: proxy
+
     url: http://prometheus:9090
+
     isDefault: true
+
+    editable: true

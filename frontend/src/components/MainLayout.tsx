@@ -1,45 +1,109 @@
-// frontend/src/MainLayout.tsx
+// frontend/src/components/MainLayout.tsx
+
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
+
 import Sidebar from "./Sidebar";
 import AdminTopbar from "./AdminTopbar";
 
 export default function MainLayout() {
-  const [hoveredFromParent, setHoverFromParent] = useState<string | null>(null);
+
+  const [
+    hoveredFromParent,
+    setHoverFromParent,
+  ] = useState<string | null>(null);
+
+  // =========================================
+  // ROLE CHECK
+  // =========================================
+
+  const role =
+    localStorage.getItem("role");
+
+  const isAdmin =
+    role === "Admin";
 
   return (
+
     <div
       style={{
-        display: 'flex',
-        minHeight: '100vh',
-        width: '100%',
-        background: '#0f172a',
-        overflow: 'hidden', // 🔥 IMPORTANT
+        display: "flex",
+        width: "100%",
+        height: "100dvh",
+        background: "#0f172a",
+        overflow: "hidden",
       }}
     >
-      {/* SIDEBAR FIXED */}
+
+      {/* =====================================
+          SIDEBAR
+      ===================================== */}
+
       <Sidebar
-        hoveredFromParent={hoveredFromParent}
-        setHoverFromParent={setHoverFromParent}
+        hoveredFromParent={
+          hoveredFromParent
+        }
+        setHoverFromParent={
+          setHoverFromParent
+        }
       />
 
-      {/* CONTENT AREA */}
+      {/* =====================================
+          RIGHT SIDE
+      ===================================== */}
+
       <div
         style={{
-          marginLeft: '260px', // 🔥 IMPORTANT (prevents overlap)
+          marginLeft: "260px",
+
           flex: 1,
-          height: '100vh',
-          overflowY: 'auto', // ONLY ONE SCROLL
-          scrollbarGutter: 'stable',
+
+          height: "100dvh",
+
+          display: "flex",
+          flexDirection: "column",
+
           minWidth: 0,
+
+          overflow: "hidden",
         }}
       >
-          {/* ✅ ONLY SHOW ON ADMIN PAGES */}
-        {window.location.hash.includes("/admin") && (
-          <AdminTopbar />
-        )}
-        <Outlet context={{ setHoverFromParent }} />
+
+        {/* =================================
+            ADMIN TOPBAR
+        ================================= */}
+
+        {
+          isAdmin && (
+            <AdminTopbar />
+          )
+        }
+
+        {/* =================================
+            PAGE CONTENT
+        ================================= */}
+
+        <div
+          style={{
+            flex: 1,
+
+            overflowX: "hidden",
+            overflowY: "auto",
+
+            minHeight: 0,
+          }}
+        >
+
+          <Outlet
+            context={{
+              setHoverFromParent,
+            }}
+          />
+
+        </div>
+
       </div>
+
     </div>
   );
 }

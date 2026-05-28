@@ -1,17 +1,35 @@
-  // frontend/src/auth/SignIn.tsx
-  import { gql } from '@apollo/client/core';
-  import { useMutation } from '@apollo/client/react';
-  import { useState, useEffect } from 'react';
-  import AuthForm from '../components/AuthForm';
+// frontend/src/auth/SignIn.tsx
 
+import { gql } from "@apollo/client/core";
+import { useMutation } from "@apollo/client/react";
 
+import {
+  useEffect,
+  useState,
+} from "react";
 
-  const SIGNIN = gql`
-    mutation Login($identifier: String!, $password: String!) {
-    login(identifier: $identifier, password: $password) {
-        token
-    requiresPolicyUpdate
-    requires2FA
+import AuthForm from "../components/AuthForm";
+
+/* =========================================================
+   GRAPHQL
+========================================================= */
+
+const SIGNIN = gql`
+  mutation Login(
+    $identifier: String!,
+    $password: String!
+  ) {
+
+    login(
+      identifier: $identifier,
+      password: $password
+    ) {
+
+      token
+
+      requiresPolicyUpdate
+
+      requires2FA
 
       user {
         first_name
@@ -27,379 +45,559 @@
       }
     }
   }
-  `;
+`;
 
-  type LoginResponse = {
-    login: {
-      token: string;
+/* =========================================================
+   TYPES
+========================================================= */
+
+type LoginResponse = {
+
+  login: {
+
+    token: string;
+
     requiresPolicyUpdate?: boolean;
-    requires2FA?: boolean;   
-      user: {
-        first_name: string;
-        middle_name: string;
-        last_name: string;
-        email: string;
-        StudentId: string;
-        role: string;
-        profile_picture: string;
-        vibration_enabled: boolean;
-        dark_mode: boolean;
-        two_factor_enabled?: boolean;
-      };
+
+    requires2FA?: boolean;
+
+    user: {
+      first_name: string;
+      middle_name: string;
+      last_name: string;
+      email: string;
+      StudentId: string;
+      role: string;
+      profile_picture: string;
+      vibration_enabled: boolean;
+      dark_mode: boolean;
+      two_factor_enabled?: boolean;
     };
   };
+};
 
-  type LoginVariables = {
-    identifier: string;
-    password: string;
-  };
+type LoginVariables = {
+  identifier: string;
+  password: string;
+};
 
-  const LOCK_ERROR =
-    'Sign-in temporarily disabled due to too many failed attempts. Please try again shortly.';
+/* =========================================================
+   CONSTANTS
+========================================================= */
 
-  export default function SignIn() {
-    const [login, { loading, error }] = useMutation<LoginResponse, LoginVariables>(SIGNIN);
+const LOCK_ERROR =
+  "Sign-in temporarily disabled due to too many failed attempts. Please try again shortly.";
 
-    const [lockMessage, setLockMessage] = useState('');
+/* =========================================================
+   COMPONENT
+========================================================= */
+
+export default function SignIn() {
+
+  const [
+    login,
+    {
+      loading,
+      error,
+    },
+  ] = useMutation<
+    LoginResponse,
+    LoginVariables
+  >(SIGNIN);
+
+  /* =======================================================
+     LOCK STATE
+  ======================================================= */
+
   const savedLockUntil =
-    Number(localStorage.getItem('loginLockUntil')) || 0;
+    Number(
+      localStorage.getItem(
+        "loginLockUntil"
+      )
+    ) || 0;
 
   const remaining =
     Math.max(
       0,
-      Math.floor((savedLockUntil - Date.now()) / 1000)
+      Math.floor(
+        (savedLockUntil - Date.now()) /
+        1000
+      )
     );
 
-  const [isLocked, setIsLocked] =
-    useState(remaining > 0);
+  const [
+    isLocked,
+    setIsLocked,
+  ] = useState(
+    remaining > 0
+  );
 
-  const [lockCountdown, setLockCountdown] =
-    useState(remaining);
+  const [
+    lockCountdown,
+    setLockCountdown,
+  ] = useState(
+    remaining
+  );
+
+  const [
+    lockMessage,
+    setLockMessage,
+  ] = useState("");
+
+  /* =======================================================
+     LOCK EFFECT
+  ======================================================= */
 
   useEffect(() => {
+
     if (isLocked) {
-      setLockMessage(LOCK_ERROR);
+
+      setLockMessage(
+        LOCK_ERROR
+      );
     }
+
   }, [isLocked]);
 
-    useEffect(() => {
-    let timer: ReturnType<typeof setInterval>;
+  useEffect(() => {
 
-    if (isLocked && lockCountdown > 0) {
+    let timer:
+      ReturnType<
+        typeof setInterval
+      >;
+
+    if (
+      isLocked &&
+      lockCountdown > 0
+    ) {
+
       timer = setInterval(() => {
-        setLockCountdown((prev) => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            localStorage.removeItem('loginLockUntil');
-            setIsLocked(false);
-            setLockMessage('');
-            return 0;
-          }
 
-          return prev - 1;
-        });
+        setLockCountdown(
+          (prev) => {
+
+            if (prev <= 1) {
+
+              clearInterval(
+                timer
+              );
+
+              localStorage.removeItem(
+                "loginLockUntil"
+              );
+
+              setIsLocked(
+                false
+              );
+
+              setLockMessage(
+                ""
+              );
+
+              return 0;
+            }
+
+            return prev - 1;
+          }
+        );
+
       }, 1000);
     }
 
     return () => {
+
       if (timer) {
-        clearInterval(timer);
+
+        clearInterval(
+          timer
+        );
       }
     };
-  }, [isLocked, lockCountdown]);
+
+  }, [
+    isLocked,
+    lockCountdown,
+  ]);
+
+  /* =======================================================
+     LOGIN HANDLER
+  ======================================================= */
 
   const handleSignin = async (
+
     _firstName: string,
+
     _middleName: string,
+
     _lastName: string,
+
     _email: string,
+
     password: string,
+
     _course: string,
+
     _studentId: string,
+
     _schoolIdImage: File,
+
     identifier?: string
+
   ) => {
 
-    console.log("IDENTIFIER:", identifier);
-    console.log("STUDENT ID:", _studentId);
-
     try {
-      // ✅ SINGLE REQUEST ONLY
-      const res = await login({
-        variables: {
-          identifier: identifier || '',
-          password,
-        },
-      });
 
-      // safety check
-      const result = res.data?.login;
+      const res =
+        await login({
+
+          variables: {
+
+            identifier:
+              identifier || "",
+
+            password,
+          },
+        });
+
+      const result =
+        res.data?.login;
+
+      /* ===================================================
+         SAFETY CHECK
+      =================================================== */
 
       if (!result) {
-        console.error("No login response");
+
+        console.error(
+          "No login response"
+        );
+
         return;
       }
 
-      // 🔐 2FA FLOW
-  if (result.user?.two_factor_enabled && !result.token) {
-    localStorage.setItem(
-      'pendingIdentifier',
-      identifier || ''
-    );
+      /* ===================================================
+         2FA FLOW
+      =================================================== */
 
-    localStorage.setItem(
-      'pendingEmail',
-      result.user.email || ''
-    );
+      if (
+        result.user
+          ?.two_factor_enabled &&
+        !result.token
+      ) {
 
-    window.location.hash = '#/two-factor';
-    return;
-  }
- // =========================
-// POLICY UPDATE REQUIRED
-// =========================
-if (
-  result.requiresPolicyUpdate
-) {
+        localStorage.setItem(
+          "pendingIdentifier",
+          identifier || ""
+        );
 
-  if (result.token) {
+        localStorage.setItem(
+          "pendingEmail",
+          result.user.email || ""
+        );
 
-    localStorage.setItem(
-      "token",
-      result.token
-    );
+        window.location.hash =
+          "#/two-factor";
 
-    localStorage.setItem(
-  "role",
-  result.user.role || ''
-);
+        return;
+      }
 
-localStorage.setItem(
-  "user",
-  JSON.stringify(result.user)
-);
+      /* ===================================================
+         POLICY UPDATE
+      =================================================== */
 
-    console.log(
-  "FULL LOGIN RESULT:",
-  result
-);
+      if (
+        result.requiresPolicyUpdate
+      ) {
 
-console.log(
-  "ROLE:",
-  result.user.role
-);
-  }
+        if (result.token) {
 
-  window.location.hash =
-    "#/policy-update";
+          localStorage.setItem(
+            "token",
+            result.token
+          );
 
-  return;
-}
-      // ❌ invalid login safety
+          localStorage.setItem(
+            "role",
+            result.user.role || ""
+          );
+
+          localStorage.setItem(
+            "user",
+            JSON.stringify(
+              result.user
+            )
+          );
+        }
+
+        window.location.hash =
+          "#/policy-update";
+
+        return;
+      }
+
+      /* ===================================================
+         INVALID LOGIN
+      =================================================== */
+
       if (!result.token) {
-        console.error("No token returned");
+
+        console.error(
+          "No token returned"
+        );
+
         return;
       }
 
-      // ✅ SAVE TO LOCAL STORAGE
-      localStorage.setItem('token', result.token);
+      /* ===================================================
+         SAVE SESSION
+      =================================================== */
 
       localStorage.setItem(
-        'studentId',
-        result.user.StudentId || ''
+        "token",
+        result.token
       );
 
       localStorage.setItem(
-        'role',
-        result.user.role || ''
+        "studentId",
+        result.user
+          .StudentId || ""
       );
 
       localStorage.setItem(
-        'userName',
-        result.user.first_name || ''
+        "role",
+        result.user.role || ""
       );
 
       localStorage.setItem(
-        'user',
-        JSON.stringify(result.user)
+        "userName",
+        result.user
+          .first_name || ""
       );
 
       localStorage.setItem(
-        'vibrationEnabled',
-        JSON.stringify(result.user.vibration_enabled)
+        "user",
+        JSON.stringify(
+          result.user
+        )
       );
 
       localStorage.setItem(
-        'darkMode',
-        JSON.stringify(result.user.dark_mode)
+        "savedIdentifier",
+        identifier || ""
       );
 
-      console.log(
-  'Login successful! Student ID saved:',
-  result.user.StudentId
-);
+      localStorage.setItem(
+        "vibrationEnabled",
+        JSON.stringify(
+          result.user
+            .vibration_enabled
+        )
+      );
 
-localStorage.setItem(
-  'savedIdentifier',
-  identifier || ''
-);
+      localStorage.setItem(
+        "darkMode",
+        JSON.stringify(
+          result.user
+            .dark_mode
+        )
+      );
 
-// =========================
-// ROLE-BASED REDIRECT
-// =========================
-if (
-  result.user.role === 'Admin'
-) {
+      /* ===================================================
+         ROLE REDIRECT
+      =================================================== */
 
-  window.location.hash =
-    '#/admin';
+      if (
+        result.user.role ===
+        "Admin"
+      ) {
 
-} else {
+        window.location.hash =
+          "#/admin";
 
-  window.location.hash =
-    '#/homescreen';
-}
+      } else {
+
+        window.location.hash =
+          "#/homescreen";
+      }
 
     } catch (err: any) {
-    console.error('Login failed:', err);
 
-    const message =
-      err?.message || '';
+      console.error(
+        "Login failed:",
+        err
+      );
+
+      const message =
+        err?.message || "";
+
       const errorCode =
-    err?.graphQLErrors?.[0]
-      ?.extensions?.code;
+        err?.graphQLErrors?.[0]
+          ?.extensions?.code;
 
-  if (
-    errorCode ===
-    "ACCOUNT_PENDING"
-  ) {
+      /* ===================================================
+         ACCOUNT PENDING
+      =================================================== */
 
-    const pendingEmail =
-      err?.graphQLErrors?.[0]
-        ?.extensions?.email || '';
+      if (
+        errorCode ===
+        "ACCOUNT_PENDING"
+      ) {
 
-    const pendingStudentId =
-      err?.graphQLErrors?.[0]
-        ?.extensions?.studentId || '';
+        const pendingEmail =
+          err?.graphQLErrors?.[0]
+            ?.extensions?.email || "";
 
-    localStorage.setItem(
-      'pendingEmail',
-      pendingEmail
-    );
+        const pendingStudentId =
+          err?.graphQLErrors?.[0]
+            ?.extensions?.studentId || "";
 
-    localStorage.setItem(
-      'pendingIdentifier',
-      pendingStudentId
-    );
+        localStorage.setItem(
+          "pendingEmail",
+          pendingEmail
+        );
 
-    window.location.hash =
-      "#/pending-approval";
+        localStorage.setItem(
+          "pendingIdentifier",
+          pendingStudentId
+        );
 
-    return;
-  }
+        window.location.hash =
+          "#/pending-approval";
 
-  if (
-    errorCode ===
-    "ACCOUNT_REJECTED"
-  ) {
+        return;
+      }
 
-    const rejectedEmail =
-      err?.graphQLErrors?.[0]
-        ?.extensions?.email || '';
+      /* ===================================================
+         ACCOUNT REJECTED
+      =================================================== */
 
-    const rejectedStudentId =
-      err?.graphQLErrors?.[0]
-        ?.extensions?.studentId || '';
+      if (
+        errorCode ===
+        "ACCOUNT_REJECTED"
+      ) {
+
+        const rejectedEmail =
+          err?.graphQLErrors?.[0]
+            ?.extensions?.email || "";
+
+        const rejectedStudentId =
+          err?.graphQLErrors?.[0]
+            ?.extensions?.studentId || "";
 
         const rejectedReason =
-  err?.graphQLErrors?.[0]
-    ?.extensions?.reason || '';
+          err?.graphQLErrors?.[0]
+            ?.extensions?.reason || "";
 
-const rejectedAt =
-  err?.graphQLErrors?.[0]
-    ?.extensions?.rejectedAt || '';
+        const rejectedAt =
+          err?.graphQLErrors?.[0]
+            ?.extensions
+            ?.rejectedAt || "";
 
-    localStorage.setItem(
-      'rejectedEmail',
-      rejectedEmail
-    );
+        localStorage.setItem(
+          "rejectedEmail",
+          rejectedEmail
+        );
 
-    localStorage.setItem(
-      'rejectedStudentId',
-      rejectedStudentId
-    );
+        localStorage.setItem(
+          "rejectedStudentId",
+          rejectedStudentId
+        );
 
-    localStorage.setItem(
-  'rejectedReason',
-  rejectedReason
-);
+        localStorage.setItem(
+          "rejectedReason",
+          rejectedReason
+        );
 
-localStorage.setItem(
-  'rejectedAt',
-  rejectedAt
-);
+        localStorage.setItem(
+          "rejectedAt",
+          rejectedAt
+        );
 
-    window.location.hash =
-      '#/rejected-approval';
+        window.location.hash =
+          "#/rejected-approval";
 
-    return;
-  }
-    if (
-    message.includes(
-      'Too many login attempts'
-    )
-  ) {
-    const lockUntil =
-    Date.now() + 60000;
+        return;
+      }
 
-  localStorage.setItem(
-    'loginLockUntil',
-    String(lockUntil)
-  );
+      /* ===================================================
+         RATE LIMIT LOCK
+      =================================================== */
 
-  setIsLocked(true);
-  setLockCountdown(60);// 60 seconds
+      if (
+        message.includes(
+          "Too many login attempts"
+        )
+      ) {
 
-  setLockMessage(LOCK_ERROR);
-  }
-  }
+        const lockUntil =
+          Date.now() + 60000;
+
+        localStorage.setItem(
+          "loginLockUntil",
+          String(lockUntil)
+        );
+
+        setIsLocked(true);
+
+        setLockCountdown(
+          60
+        );
+
+        setLockMessage(
+          LOCK_ERROR
+        );
+      }
+    }
   };
 
-    return (
+  /* =========================================================
+     UI
+  ========================================================= */
 
+  return (
+
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "20px",
+      }}
+    >
 
       <div
         style={{
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '20px',
+          position: "relative",
+          zIndex: 10,
+          width: "100%",
+          display: "flex",
+          justifyContent:
+            "center",
         }}
       >
-        <div
-          style={{
-            position: 'relative',
-            zIndex: 10,
-            width: '100%',
-            display: 'flex',
-            justifyContent: 'center',
-          }}
-        >
-          <AuthForm
-            title="SIGN IN"
-            buttonText="Login"
-            onSubmit={handleSignin}
-            loading={loading}
-            isLocked={isLocked}
-            lockCountdown={lockCountdown}
-            error={lockMessage || error?.message}
-            mode="login"
-          />
-        </div>
+
+        <AuthForm
+          title="SIGN IN"
+          buttonText="Login"
+          onSubmit={
+            handleSignin
+          }
+          loading={loading}
+          isLocked={isLocked}
+          lockCountdown={
+            lockCountdown
+          }
+          error={
+            lockMessage ||
+            error?.message
+          }
+          mode="login"
+        />
+
       </div>
 
-
+    </div>
   );
-  }
+}

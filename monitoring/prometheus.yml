@@ -54,7 +54,18 @@ scrape_configs:
 
 
   # =========================================================
-  # BLACKBOX EXPORTER
+  # COLLECTD ROUTER METRICS
+  # =========================================================
+  - job_name: "collectd-router"
+
+    static_configs:
+      - targets:
+          - "collectd-exporter:9103"
+
+
+
+  # =========================================================
+  # BLACKBOX ICMP / PING MONITORING
   # =========================================================
   - job_name: "blackbox-ping"
 
@@ -75,6 +86,9 @@ scrape_configs:
           # LOCALHOST
           - localhost
 
+          # ROUTER
+          - 192.168.8.1
+
     relabel_configs:
 
       - source_labels: [__address__]
@@ -85,3 +99,71 @@ scrape_configs:
 
       - target_label: __address__
         replacement: blackbox-exporter:9115
+
+
+
+  # =========================================================
+  # BLACKBOX HTTP MONITORING
+  # =========================================================
+  - job_name: "blackbox-http"
+
+    metrics_path: /probe
+
+    params:
+      module: [http_2xx]
+
+    static_configs:
+      - targets:
+
+          # FRONTEND
+          - http://host.docker.internal:5173
+
+          # BACKEND
+          - http://host.docker.internal:4000
+
+          # AI SERVICE
+          - http://host.docker.internal:5000
+
+          # GRAFANA
+          - http://host.docker.internal:3000
+
+    relabel_configs:
+
+      - source_labels: [__address__]
+        target_label: __param_target
+
+      - source_labels: [__param_target]
+        target_label: instance
+
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+
+
+  # =========================================================
+  # SNMP ROUTER MONITORING
+  # =========================================================
+  - job_name: "snmp-router"
+
+    metrics_path: /snmp
+
+    params:
+      module: [if_mib]
+      auth: [public_v2]
+
+    static_configs:
+      - targets:
+
+          # ROUTER IP
+          - 192.168.8.1
+
+    relabel_configs:
+
+      - source_labels: [__address__]
+        target_label: __param_target
+
+      - source_labels: [__param_target]
+        target_label: instance
+
+      - target_label: __address__
+        replacement: snmp-exporter:9116

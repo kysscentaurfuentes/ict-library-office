@@ -19,6 +19,11 @@ import Router from '../pages/Router';
 import AuditLogs from '../pages/Admin/AuditLogs';
 import AdminRoute from '../guards/AdminRoute';
 import ScanLogs from '../pages/Admin/ScanLogs';
+import SystemMonitoring from '../pages/Admin/SystemMonitoring';
+import SecurityMonitoring from '../pages/Admin/SecurityMonitoring';
+import OperationalIntelligence from '../pages/Admin/OperationalIntelligence';
+import SurveillanceAI from '../pages/Admin/SurveillanceAI';
+import NetworkOperationsCenter from '../pages/Admin/NetworkOperationsCenter';
 
 import SignIn from '../auth/SignIn';
 import SignUp from '../auth/SignUp';
@@ -79,6 +84,12 @@ export default function AppRouter() {
           <Route path="/router" element={<Router />} />
           <Route path="/admin/audit-logs" element={ <AdminRoute> <AuditLogs /> </AdminRoute> }/>
           <Route path="/admin/scan-logs" element={ <AdminRoute> <ScanLogs /> </AdminRoute> }/>
+          <Route path="/admin/system-monitoring" element={ <AdminRoute> <SystemMonitoring /> </AdminRoute> }/>
+          <Route path="/admin/security-monitoring" element={ <AdminRoute> <SecurityMonitoring /> </AdminRoute> }/>
+          <Route path="/admin/operational-intelligence" element={ <AdminRoute> <OperationalIntelligence /> </AdminRoute> }/>
+          <Route path="/admin/surveillance-ai" element={ <AdminRoute> <SurveillanceAI /> </AdminRoute> }/>
+          <Route path="/admin/network-operations" element={ <AdminRoute> <NetworkOperationsCenter /> </AdminRoute> }/>
+
         </Route>
 
         <Route path="*" element={<div style={{ color: 'white' }}>404</div>} />
