@@ -21,7 +21,7 @@ export default function FaceDetect() {
     formData.append("file", file);
 
     try {
-      const res = await fetch("http://${window.location.hostname}:5000/detect", {
+      const res = await fetch(`http://${window.location.hostname}:5000/detect`, {
         method: "POST",
         body: formData,  
       });

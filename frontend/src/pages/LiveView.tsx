@@ -16,6 +16,9 @@ export default function LiveView() {
 >([]);
   const [latency, setLatency] = useState<number>(0);
   const [bufferHealth, setBufferHealth] = useState<number>(0);
+  const [currentDateTime, setCurrentDateTime] = useState('');
+  const [videoWidth, setVideoWidth] = useState(0);
+const [videoHeight, setVideoHeight] = useState(0);
   
   // >>> 1. IN-UPDATE NA STATE: Kumukuha muna sa localStorage kung may nakasave <<<
   const [positionX, setPositionX] = useState<number>(() => {
@@ -28,9 +31,12 @@ export default function LiveView() {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
+  const videoContainerRef =
+  useRef<HTMLDivElement>(null);
 
+  // (IF PYTHON MJPEG USE) http://192.168.8.236:5000/video
 const STREAM_URL =
-`http://${window.location.hostname}:5000/hls/stream.m3u8`;
+`http://${window.location.hostname}:4000/hls/stream.m3u8`;
 
 const FACES_API =
 `http://${window.location.hostname}:5000/faces`;
@@ -40,6 +46,29 @@ const FACES_API =
     setPositionX(value);
     localStorage.setItem('layoutXPosition', String(value));
   };
+
+  useEffect(() => {
+  const updateClock = () => {
+    const now = new Date();
+
+    const formatted =
+      now.toLocaleDateString('en-PH') +
+      ' | ' +
+      now.toLocaleTimeString('en-PH');
+
+    setCurrentDateTime(formatted);
+  };
+
+  updateClock();
+
+  const timer = setInterval(
+    updateClock,
+    1000
+  );
+
+  return () => clearInterval(timer);
+
+}, []);
 
   // Load dark mode preference
   useEffect(() => {
@@ -98,7 +127,7 @@ setFaceBoxes(data.boxes || []);
     fetchFaceCount();
     const interval = setInterval(fetchFaceCount, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, []); 
 
   // Monitor latency and buffer
   useEffect(() => {
@@ -230,15 +259,31 @@ if (hlsRef.current) {
 
   startFragPrefetch: true,
 
-  capLevelToPlayerSize: true,
+  capLevelToPlayerSize: false,
 });
         
         hls.loadSource(STREAM_URL);
         hls.attachMedia(video);
         
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          video.play().catch(e => console.log('Auto-play:', e));
-        });
+hls.on(Hls.Events.MANIFEST_PARSED, () => {
+
+  setTimeout(() => {
+
+    setVideoWidth(video.videoWidth);
+    setVideoHeight(video.videoHeight);
+
+    console.log(
+      "VIDEO SIZE:",
+      video.videoWidth,
+      video.videoHeight
+    );
+
+  }, 500);
+
+  video.play().catch(e =>
+    console.log('Auto-play:', e)
+  );
+});
         
         hls.on(Hls.Events.FRAG_LOADING, (_, data) => {
   console.log('📦 Loading Fragment:', data.frag.sn);
@@ -287,8 +332,15 @@ hls.on(Hls.Events.LEVEL_UPDATED, (_, data) => {
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = STREAM_URL;
         video.addEventListener('loadedmetadata', () => {
-          video.play().catch(e => console.log('Auto-play:', e));
-        });
+
+  setVideoWidth(video.videoWidth);
+  setVideoHeight(video.videoHeight);
+
+  video.play().catch(e =>
+    console.log('Auto-play:', e)
+  );
+
+});
       }
     };
     
@@ -348,6 +400,18 @@ hls.on(Hls.Events.LEVEL_UPDATED, (_, data) => {
     if (latency < 1000) return '#fbbf24';
     return '#ef4444';
   };
+
+  const displayWidth =
+  videoRef.current?.clientWidth || 800;
+
+const displayHeight =
+  videoRef.current?.clientHeight || 450;
+
+const scaleX =
+  displayWidth / 640;
+
+const scaleY =
+  displayHeight / 360;
 
   return (
     <div style={{ 
@@ -540,8 +604,10 @@ hls.on(Hls.Events.LEVEL_UPDATED, (_, data) => {
           </div>
           
           {/* Video Container */}
-          <div style={{ 
-            position: 'relative', 
+<div
+  ref={videoContainerRef}
+  style={{
+    position:'relative',
             borderRadius: '16px', 
             overflow: 'hidden', 
             backgroundColor: '#000',
@@ -564,15 +630,41 @@ hls.on(Hls.Events.LEVEL_UPDATED, (_, data) => {
               }}
             />
 
+            <div
+  style={{
+    position: 'absolute',
+    bottom: '18px',
+    left: '18px',
+
+    background: 'rgba(0,0,0,0.7)',
+
+    color: '#ffffff',
+
+    padding: '6px 12px',
+
+    borderRadius: '6px',
+
+    fontSize: '12px',
+
+    fontWeight: 'bold',
+
+    zIndex: 15,
+
+    pointerEvents: 'none'
+  }}
+>
+  Philippine Date: {currentDateTime}
+</div>
+
             {faceBoxes.map((box, index) => (
   <div
     key={index}
     style={{
       position: 'absolute',
-left: `${box.x}px`,
-top: `${box.y}px`,
-width: `${box.width}px`,
-height: `${box.height}px`,
+left: `${box.x * scaleX}px`,
+top: `${box.y * scaleY}px`,
+width: `${box.width * scaleX}px`,
+height: `${box.height * scaleY}px`,
       border: '3px solid #00ff00',
       boxShadow: '0 0 12px #00ff00',
       borderRadius: '6px',
@@ -694,11 +786,11 @@ height: `${box.height}px`,
               </div>
               <span style={{ color: isDarkMode ? '#64748b' : '#94a3b8', fontSize: '0.7rem' }}>|</span>
               <span style={{ color: isDarkMode ? '#94a3b8' : '#64748b', fontSize: '0.7rem' }}>
-                Resolution: 800x450
+                Resolution: {videoWidth}x{videoHeight}
               </span>
               <span style={{ color: isDarkMode ? '#64748b' : '#94a3b8', fontSize: '0.7rem' }}>|</span>
               <span style={{ color: isDarkMode ? '#94a3b8' : '#64748b', fontSize: '0.7rem' }}>
-                FPS: 60
+                FPS: 15
               </span>
               <span style={{ color: isDarkMode ? '#64748b' : '#94a3b8', fontSize: '0.7rem' }}>|</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

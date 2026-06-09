@@ -32,6 +32,8 @@ import './agent/cloudSyncAgent.js';
 import './redis.js';
 import "./services/network/scheduler.js";
 import networkRoutes from "./services/network/network.routes.js"
+import { startHlsStream }
+from "./services/hls/ffmpeg.js";
 
 setInterval(() => {
   const message = `[${new Date().toISOString()}] Backend alive\n`;
@@ -758,6 +760,8 @@ app.use(
   await new Promise<void>((resolve) =>
     httpServer.listen({ port: PORT, host: '0.0.0.0' }, resolve)
   );
+
+  startHlsStream();
 const BASE_URL = process.env.PUBLIC_URL!;
   console.log("=".repeat(60));
   console.log(`${LOG.green}🚀 Node.js Backend Running${LOG.reset}`);
