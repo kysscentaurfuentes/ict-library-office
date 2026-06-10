@@ -90,6 +90,12 @@ services:
 
     image: ghcr.io/kysscentaurfuentes/ict-library-ai-service:latest
 
+    env_file:
+      - ../../ai-service/.env.docker
+
+    environment:
+      DOCKER_ENV: "true"
+
     restart: unless-stopped
 
     expose:
@@ -151,6 +157,24 @@ services:
       timeout: 5s
       retries: 5
 
+
+
+  # =========================================================
+  # MEDIAMTX
+  # =========================================================
+  mediamtx:
+    container_name: ict-mediamtx-prod
+
+    image: bluenviron/mediamtx:latest
+
+    restart: unless-stopped
+
+    expose:
+      - "8554"
+      - "8888"
+
+    volumes:
+      - ../../mediamtx/mediamtx.yml:/mediamtx.yml:ro
 
 
   # =========================================================

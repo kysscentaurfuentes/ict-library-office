@@ -1,0 +1,241 @@
+# ai-service/docs/cctv-stream-architecture.txt
+
+ICT LIBRARY OFFICE
+CCTV STREAMING AND AI PROCESSING ARCHITECTURE
+
+
+SYSTEM OVERVIEW
+
+The ICT LIBRARY OFFICE CCTV system uses a centralized
+MediaMTX streaming server to distribute a single CCTV
+stream to multiple consumers without creating direct
+RTSP connection conflicts.
+
+This architecture was implemented to improve stream
+stability, reduce decoding errors, and support future
+AI-powered privacy protection features.
+
+
+
+PROBLEM IDENTIFIED
+
+The original implementation allowed multiple services
+to consume the same RTSP stream independently.
+
+As the number of consumers increased, stream quality
+degraded and decoding issues became more frequent.
+
+
+
+LEGACY ARCHITECTURE
+
+TP-Link Tapo CCTV Camera
+            │
+            ▼
+         MediaMTX
+            │
+            ├── Face Worker
+            │      └── OpenCV VideoCapture()
+            │
+            ├── Video Generator
+            │      └── OpenCV VideoCapture()
+            │
+            └── Backend FFmpeg HLS
+
+
+ISSUES OBSERVED
+
+ ├── H264 decoding errors
+ ├── Mosaic artifacts
+ ├── Corrupted video frames
+ ├── RTP packet loss warnings
+ ├── MediaMTX "reader is too slow" warnings
+ ├── Frame discarding events
+ ├── Increased CPU utilization
+ ├── Increased memory consumption
+ └── Stream instability
+
+
+ROOT CAUSE ANALYSIS
+
+Multiple OpenCV VideoCapture() instances were reading
+the same RTSP stream simultaneously.
+
+Each consumer performed its own decoding process,
+causing unnecessary workload and creating frame
+backlogs within the streaming pipeline.
+
+This resulted in:
+
+ ├── Duplicate H264 decoding
+ ├── Delayed frame processing
+ ├── Stream congestion
+ ├── Decoder instability
+ └── Reduced overall reliability
+
+
+
+SOLUTION IMPLEMENTED
+
+A Single Capture Architecture was introduced.
+
+Only one component is allowed to consume the RTSP
+stream directly.
+
+All AI modules and video services share frames from
+a centralized memory buffer instead of opening their
+own RTSP connections.
+
+
+
+CURRENT ARCHITECTURE
+
+TP-Link Tapo CCTV Camera
+            │
+            ▼
+         MediaMTX
+            │
+            ▼
+     Python Capture Worker
+            │
+            ▼
+        latest_frame
+            │
+            ├── Face Detection Worker
+            │
+            ├── Video Generator
+            │
+            └── Future AI Modules
+                    │
+                    ├── Human Detection
+                    ├── Head Detection
+                    ├── Person Tracking
+                    └── Privacy Protection
+
+            │
+            ▼
+      Backend FFmpeg HLS
+            │
+            ▼
+     Web and Mobile Clients
+
+
+
+COMPONENT RESPONSIBILITIES
+
+
+CAPTURE WORKER
+
+ ├── Sole RTSP consumer
+ ├── Maintains MediaMTX connection
+ ├── Handles automatic reconnection
+ ├── Receives CCTV frames
+ ├── Rotates frames when required
+ └── Updates latest_frame buffer
+
+
+FACE DETECTION WORKER
+
+ ├── Reads frames from latest_frame
+ ├── Does not connect to RTSP
+ ├── Performs face detection
+ ├── Tracks detected faces
+ └── Updates latest_faces buffer
+
+
+VIDEO GENERATOR
+
+ ├── Reads frames from latest_frame
+ ├── Draws detection overlays
+ ├── Draws face bounding boxes
+ ├── Adds Philippine date and time
+ └── Streams MJPEG output
+
+
+MEDIAMTX
+
+ ├── Receives CCTV RTSP stream
+ ├── Centralized stream distributor
+ ├── Eliminates connection conflicts
+ ├── Supports multiple consumers
+ └── Improves stream reliability
+
+
+BACKEND FFMPEG HLS
+
+ ├── Reads stream from MediaMTX
+ ├── Converts RTSP to HLS
+ ├── Generates .m3u8 playlists
+ ├── Generates .ts segments
+ └── Serves live streams to clients
+
+
+
+BENEFITS ACHIEVED
+
+ ├── Single H264 decoding pipeline
+ ├── Reduced latency
+ ├── Reduced memory usage
+ ├── Reduced CPU usage
+ ├── Eliminated mosaic artifacts
+ ├── Reduced frame corruption
+ ├── Improved MediaMTX stability
+ ├── Easier maintenance
+ ├── Easier Docker deployment
+ ├── Better scalability
+ └── Improved CCTV reliability
+
+
+
+PRIVACY PROTECTION ROADMAP
+
+latest_frame
+      │
+      ▼
+Human Detection
+      │
+      ▼
+Head Detection
+      │
+      ▼
+Automatic Head Blur
+      │
+      ▼
+Face Detection
+      │
+      ▼
+Automatic Face Blur
+      │
+      ▼
+Privacy-Protected CCTV Stream
+
+
+
+DOCKERIZED DEPLOYMENT
+
+TP-Link Tapo CCTV
+        │
+        ▼
+     MediaMTX
+        │
+        ├── AI Service Container
+        │
+        ├── Backend Container
+        │
+        └── Future AI Containers
+
+        │
+        ▼
+      Nginx
+        │
+        ▼
+Web Application
+Mobile Application
+
+
+DESIGN OBJECTIVE
+
+Provide a scalable, privacy-aware, AI-assisted CCTV
+streaming architecture capable of supporting future
+computer vision modules while maintaining a single,
+stable, high-quality video source.

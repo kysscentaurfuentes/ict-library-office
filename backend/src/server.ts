@@ -46,9 +46,9 @@ const require = createRequire(import.meta.url);
 // ✅ Gagamitin natin ang 'expressMiddleware' na variable name dito
 import { expressMiddleware } from "@as-integrations/express4";
 
-dotenv.config({
-  path: ".env.local"
-});
+if (!process.env.DOCKER_ENV) {
+  dotenv.config({ path: ".env.local" });
+}
 const app = express();
 
 // ===============================
@@ -75,11 +75,15 @@ app.use(cors({
       .map(o => o.trim())
       .filter(Boolean) || [];
 
-    const isAllowed =
-      allowedOrigins.includes(origin) ||
-      new URL(origin).hostname === "localhost" || // dev safety
-      new URL(origin).hostname.startsWith("192.168.") ||// local network safety
-      new URL(origin).hostname.startsWith("10.");
+    const hostname = new URL(origin).hostname;
+
+  const isAllowed =
+    allowedOrigins.includes(origin) ||
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname.startsWith("192.168.") ||
+    hostname.startsWith("10.") ||
+    hostname.startsWith("172.");
       
     if (isAllowed) {
       return callback(null, true);

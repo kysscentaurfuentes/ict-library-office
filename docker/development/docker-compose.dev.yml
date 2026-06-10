@@ -81,6 +81,12 @@ services:
     build:
       context: ../../ai-service
 
+    env_file:
+      - ../../ai-service/.env.docker
+
+    environment:
+      DOCKER_ENV: "true"
+    
     restart: unless-stopped
 
     ports:
@@ -148,6 +154,24 @@ services:
       timeout: 5s
       retries: 5
 
+
+
+  # =========================================================
+  # MEDIAMTX
+  # =========================================================
+  mediamtx:
+    container_name: ict-mediamtx-dev
+
+    image: bluenviron/mediamtx:latest
+
+    restart: unless-stopped
+
+    ports:
+      - "8554:8554"
+      - "8888:8888"
+
+    volumes:
+      - ../../mediamtx/mediamtx.yml:/mediamtx.yml
 
 
   # =========================================================

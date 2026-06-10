@@ -408,10 +408,10 @@ const displayHeight =
   videoRef.current?.clientHeight || 450;
 
 const scaleX =
-  displayWidth / 640;
+  displayWidth / videoWidth;
 
 const scaleY =
-  displayHeight / 360;
+  displayHeight / videoHeight;
 
   return (
     <div style={{ 

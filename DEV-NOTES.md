@@ -21,9 +21,36 @@ cd ai-service
 to navigate to the ai-service directory, and then run:
 python flask_stream.py
 
-const { default: bcrypt } = await import('bcrypt');
-const hash = await bcrypt.hash('PASSWORD HERE', 10);
-console.log(hash);
+#===================================================
+
+# Development Startup Order
+
+## Terminal 1
+```powershell
+Set-Location D:\mediamtx
+.\mediamtx.exe
+```
+
+## Terminal 2
+```powershell
+cd D:\ICT-Library-Office\backend
+npm run dev
+```
+
+## Terminal 3
+```powershell
+cd D:\ICT-Library-Office\frontend
+npm run dev
+```
+
+## Terminal 4
+```powershell
+cd D:\ICT-Library-Office
+.\.venv\Scripts\Activate.ps1
+
+cd ai-service
+python flask_stream.py
+```
 
 #===================================================
 If there is changes on:

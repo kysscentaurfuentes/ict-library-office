@@ -1,0 +1,52 @@
+# docker/docs/container-architecture.txt
+
+ICT LIBRARY OFFICE
+
+CONTAINER ARCHITECTURE
+
+
+SERVICES
+
+ ├── frontend
+ │     React + Vite
+ │
+ ├── backend
+ │     Node.js + GraphQL + FFmpeg
+ │
+ ├── ai-service
+ │     OpenCV Face Detection
+ │
+ ├── mediamtx
+ │     RTSP Multiplexer
+ │
+ ├── postgres
+ │     Database
+ │
+ ├── redis
+ │     Cache Layer
+ │
+ └── nginx
+       Reverse Proxy
+
+
+STREAM FLOW
+
+Tapo Camera
+      │
+      ▼
+MediaMTX
+      │
+      ├── AI Service
+      │
+      └── Backend FFmpeg
+
+
+BENEFITS
+
+ ├── Single startup command
+ ├── Stream multiplexing
+ ├── No RTSP connection conflicts
+ ├── Container isolation
+ ├── Easier deployment
+ ├── Easier maintenance
+ └── Future AI scalability

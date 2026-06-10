@@ -116,10 +116,25 @@ ffmpeg.stderr.on("data", data => {
   console.log(data.toString());
 });
 
-  ffmpeg.on("close", code => {
-    console.log(
-      "FFmpeg exited:",
-      code
-    );
-  });
+ffmpeg.on("close", code => {
+  console.log(
+    "FFmpeg exited:",
+    code
+  );
+
+  console.log(
+    "🔄 Restarting FFmpeg in 5 seconds..."
+  );
+
+  setTimeout(() => {
+    startHlsStream();
+  }, 5000);
+});
+
+ffmpeg.on("error", err => {
+  console.error(
+    "❌ FFmpeg process error:",
+    err
+  );
+});
 }
