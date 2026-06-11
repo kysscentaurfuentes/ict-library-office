@@ -66,8 +66,14 @@ grafana.db
 logs/
 *.log
 backend.log
-security.log
+*security.log
 
+
+# =========================================================
+# # HLS / VIDEO STREAMING FILES
+# =========================================================
+backend/public/hls/*.ts
+backend/public/hls/*.m3u8
 
 
 # =========================================================
@@ -75,6 +81,14 @@ security.log
 # =========================================================
 docker-compose.override.yml
 *.pid
+
+
+
+# =========================================================
+# Docker Desktop WSL / Virtual Disk Files
+# =========================================================
+DockerDesktopWSL/
+*.vhdx
 
 
 

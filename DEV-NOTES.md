@@ -1,144 +1,376 @@
 # 📌 DEV NOTES (ICT Library Office)
-## 🧑‍💻 Development Mode
-Run this when actively coding:
+
+# ===================================================
+# FRONTEND DEVELOPMENT
+# ===================================================
+
+## Development Mode
 
 ```bash
 npm run dev
+```
 
-Run this when deploying or testing production build:
+## Production Build
+
+```bash
 npm run build
 npm start
+```
 
-#===================================================
+# ===================================================
+# AI SERVICE (LOCAL)
+# ===================================================
 
-To activate the .venv:
+## Activate Virtual Environment
 
-.\.venv\Scripts\Activate.ps1
-
-then type 
-cd ai-service 
-
-to navigate to the ai-service directory, and then run:
-python flask_stream.py
-
-#===================================================
-
-# Development Startup Order
-
-## Terminal 1
 ```powershell
-Set-Location D:\mediamtx
+.\.venv\Scripts\Activate.ps1
+```
+
+## Start AI Service
+
+```powershell
+cd ai-service
+python flask_stream.py
+```
+
+# ===================================================
+# MANUAL DEVELOPMENT STARTUP
+# ===================================================
+
+## Terminal 1 - MediaMTX
+
+```powershell
+cd D:\mediamtx
 .\mediamtx.exe
 ```
 
-## Terminal 2
+## Terminal 2 - Backend
+
 ```powershell
 cd D:\ICT-Library-Office\backend
 npm run dev
 ```
 
-## Terminal 3
+## Terminal 3 - Frontend
+
 ```powershell
 cd D:\ICT-Library-Office\frontend
 npm run dev
 ```
 
-## Terminal 4
+## Terminal 4 - AI Service
+
 ```powershell
 cd D:\ICT-Library-Office
+
 .\.venv\Scripts\Activate.ps1
 
 cd ai-service
 python flask_stream.py
 ```
 
-#===================================================
-If there is changes on:
-Dockerfile
-package.json
-docker-compose.yml
-docker compose down # to reset
+# ===================================================
+# DOCKER QUICK START
+# ===================================================
 
-run then:
-docker compose up -d --build #
-#===================================================
-docker containers:
-enter backend container:
-docker exec -it ict-backend sh
-docker ps # to check if every container is healthy
+## Start Docker Service
+Run PowerShell as Administrator:
 
-check files:
+```powershell
+Start-Service com.docker.service
+```
+
+## Start Project
+
+```powershell
+docker compose --env-file docker/development/.env.dev -f docker/development/docker-compose.dev.yml up -d
+```
+
+## Rebuild Containers
+Use if Dockerfiles, dependencies, or compose files changed:
+
+```powershell
+docker compose --env-file docker/development/.env.dev -f docker/development/docker-compose.dev.yml up -d --build
+```
+
+# ===================================================
+# CHECK CONTAINER STATUS
+# ===================================================
+
+```powershell
+docker ps
+```
+
+Expected:
+
+- postgres = healthy
+- redis = healthy
+- ai-service = healthy
+- backend = healthy
+- frontend = healthy
+
+# ===================================================
+# STOP PROJECT
+# ===================================================
+
+```powershell
+docker compose --env-file docker/development/.env.dev -f docker/development/docker-compose.dev.yml down
+```
+
+# ===================================================
+# STOP DOCKER COMPLETELY
+# ===================================================
+
+Run PowerShell as Administrator:
+
+```powershell
+Stop-Service com.docker.service
+taskkill /F /IM "Docker Desktop.exe"
+```
+
+Optional:
+
+```powershell
+wsl --shutdown
+```
+
+# ===================================================
+# IF CODING AGAIN
+# ===================================================
+
+Run PowerShell as Administrator:
+
+```powershell
+Start-Service com.docker.service
+```
+
+Verify:
+
+```powershell
+docker ps
+```
+
+# ===================================================
+# DOCKER TROUBLESHOOTING
+# ===================================================
+
+## Docker Engine Stuck Loading
+
+```powershell
+wsl --shutdown
+
+Stop-Service com.docker.service
+
+Start-Service com.docker.service
+```
+
+Verify:
+
+```powershell
+docker ps
+```
+
+## 502 Bad Gateway
+
+Check container status:
+
+```powershell
+docker ps
+```
+
+Wait until:
+
+- frontend = healthy
+- backend = healthy
+- postgres = healthy
+
+Restart nginx:
+
+```powershell
+docker restart ict-nginx-dev
+```
+
+Then hard refresh browser:
+
+```text
+Ctrl + Shift + R
+```
+
+## Docker File Changes
+
+If there are changes to:
+
+- Dockerfile
+- package.json
+- requirements.txt
+- docker-compose.yml
+
+Run:
+
+```powershell
+docker compose down
+```
+
+Then:
+
+```powershell
+docker compose --env-file docker/development/.env.dev -f docker/development/docker-compose.dev.yml up -d --build
+```
+
+# ===================================================
+# CONTAINER ACCESS
+# ===================================================
+
+## Open Backend Container
+
+```powershell
+docker exec -it ict-backend-dev sh
+```
+
+## Check Files
+
+```bash
 ls
+```
 
-check uploads:
-ls uploads 
+## Check Uploads
 
-check node module exists:
+```bash
+ls uploads
+```
+
+## Check Node Modules
+
+```bash
 ls node_modules
+```
 
-container quit
+## Exit Container
+
+```bash
 exit
-#===================================================
+```
+
+# ===================================================
+# DOCKER CLEANUP
+# ===================================================
+
+```powershell
 docker builder prune -a
-docker compose up --build
+```
 
-#===================================================
-# =========================================
-# DATABASE BACKUP & RESTORE GUIDE
-# =========================================
+Rebuild:
 
-# STEP 1:
-# CREATE DATABASE BACKUP
+```powershell
+docker compose --env-file docker/development/.env.dev -f docker/development/docker-compose.dev.yml up -d --build
+```
 
+# ===================================================
+# PROJECT URLS
+# ===================================================
+
+Frontend:
+
+```text
+http://localhost
+```
+
+Backend:
+
+```text
+http://localhost:4000
+```
+
+AI Service:
+
+```text
+http://localhost:5000
+```
+
+HLS Stream:
+
+```text
+http://localhost:4000/hls/stream.m3u8
+```
+
+# ===================================================
+# DATABASE BACKUP & RESTORE
+# ===================================================
+
+## Create Backup
+
+```powershell
 .\backup-database.bat
+```
 
-# STEP 2:
-# OPEN POSTGRES CONTAINER
+## Open PostgreSQL Container
 
-docker exec -it ict-postgres psql -U postgres
+```powershell
+docker exec -it ict-postgres-dev psql -U postgres
+```
 
-# STEP 3:
-# CREATE TEMPORARY TEST DATABASE
-# (RUN INSIDE POSTGRES)
+## Create Test Database
 
+Run inside PostgreSQL:
+
+```sql
 CREATE DATABASE ict_restore_test;
+```
 
-# STEP 4:
-# EXIT POSTGRES
+## Exit PostgreSQL
 
+```sql
 \q
+```
 
-# STEP 5:
-# RESTORE BACKUP INTO TEST DATABASE
+## Restore Backup
 
-type database_backups\YOUR_BACKUP.sql | docker exec -i ict-postgres psql -U postgres -d ict_restore_test
+```powershell
+type database_backups\YOUR_BACKUP.sql | docker exec -i ict-postgres-dev psql -U postgres -d ict_restore_test
+```
 
-# STEP 6:
-# VERIFY RESTORE SUCCESS
+## Verify Restore
 
-docker exec -it ict-postgres psql -U postgres -d ict_restore_test
+```powershell
+docker exec -it ict-postgres-dev psql -U postgres -d ict_restore_test
+```
 
-# STEP 7:
-# SHOW ALL TABLES
-# (RUN INSIDE POSTGRES)
+## Show Tables
 
+Run inside PostgreSQL:
+
+```sql
 \dt
+```
 
-# EXPECTED RESULT:
-# Tables such as:
-# - users
-# - audit_logs
-# - attendance
-# - devices
-# etc...
-#
-# If tables appear:
-# BACKUP + RESTORE SUCCESSFUL
+Expected tables:
 
+- users
+- audit_logs
+- attendance
+- devices
+- etc.
 
-# OPEN POWERSHELL
+If tables appear:
+BACKUP + RESTORE SUCCESSFUL
+
+# ===================================================
+# POWERSHELL PROFILE
+# ===================================================
+
+Open Profile:
+
+```powershell
 code $PROFILE
+```
 
-SAVE CHANGES THEN
-# REFRESH
-profile
+After saving changes:
+
+```powershell
+. $PROFILE
+```
+
+# ===================================================
+# END OF DEV NOTES
+# ===================================================
