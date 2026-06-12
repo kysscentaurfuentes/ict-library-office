@@ -68,7 +68,7 @@ console.log(
 
     // 180° rotation + resize
     "-vf",
-    "transpose=2,transpose=2,scale=1280:720",
+    "scale=1280:720",
 
     "-c:v",
     "libx264",

@@ -1,4 +1,4 @@
-// frontend/src/pages/LiveView.tsx
+// ICT-LIBRARY-OFFICE/frontend/src/pages/LiveView.tsx
 import { useState, useEffect, useRef } from 'react';
 import Hls from 'hls.js';
 
@@ -692,40 +692,7 @@ hls.on(Hls.Events.LEVEL_UPDATED, (_, data) => {
               )}
             </div>
 
-{persons.map((person) => (
-  <div
-    key={person.id}
-    style={{
-      position: "absolute",
-      left: `${(person.x / 1280) * 100}%`,
-      top: `${(person.y / 720) * 100}%`,
-      width: `${(person.width / 1280) * 100}%`,
-      height: `${(person.height / 720) * 100}%`,
-      border: "3px solid #0080ff",
-      boxSizing: "border-box",
-      pointerEvents: "none",
-      zIndex: 10
-    }}
-  />
-))}
 
-{boxes.map((face, index) => (
-  <div
-    key={`face-${index}`}
-    style={{
-      position: "absolute",
-      left: `${(face.x / 1280) * 100}%`,
-      top: `${(face.y / 720) * 100}%`,
-      width: `${(face.width / 1280) * 100}%`,
-      height: `${(face.height / 720) * 100}%`,
-      border: "3px solid #00ff00",
-      boxSizing: "border-box",
-      pointerEvents: "none",
-      zIndex: 20
-    }}
-  />
-))}
-   
 
             {/* REC + Camera Overlay */}
             <div style={{

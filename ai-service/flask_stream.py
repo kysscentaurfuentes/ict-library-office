@@ -305,19 +305,11 @@ def face_worker():
 
             for person in persons:
 
-                x = person["x"]
-                y = person["y"]
-                w = person["width"]
-                h = person["height"]
+                x = int(person["x"] * scale_x)
+                y = int(person["y"] * scale_y)
 
-                x = max(0, min(x, frame.shape[1] - 1))
-                y = max(0, min(y, frame.shape[0] - 1))
-
-                w = min(w, frame.shape[1] - x)
-                h = min(h, frame.shape[0] - y)
-
-                w = max(1, w)
-                h = max(1, h)
+                w = int(person["width"] * scale_x)
+                h = int(person["height"] * scale_y)
 
                 temp_persons.append({
                     "id": person["id"],
