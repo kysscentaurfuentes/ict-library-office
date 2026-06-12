@@ -1,6 +1,82 @@
 # 📌 DEV NOTES (ICT Library Office)
 
 # ===================================================
+# GITHUB WORKFLOW
+# ===================================================
+
+## Check Current Changes
+```bash
+git status
+```
+
+## Stage All Changes
+```bash
+git add .
+```
+
+## Undo Staged Changes (Before Commit)
+```bash
+git restore --staged .
+```
+
+## Create Commit
+```bash
+git commit -m "Your commit message"
+```
+
+## Push to GitHub
+```bash
+git push origin main
+```
+
+## If Git Becomes Slow
+
+Check what is staged:
+
+```bash
+git status
+```
+
+View staged file summary:
+
+```bash
+git diff --cached --stat
+```
+
+If large files were staged accidentally:
+
+```bash
+git restore --staged .
+```
+
+Then update `.gitignore` and run:
+
+```bash
+git add .
+```
+
+again.
+
+## Check Commit History
+
+```bash
+git log --oneline
+```
+
+## Undo Last Commit (Keep Files)
+
+```bash
+git reset --soft HEAD~1
+```
+
+## Undo Last Commit (Discard Commit Completely)
+
+WARNING: Use carefully.
+
+```bash
+git reset --hard HEAD~1
+```
+# ===================================================
 # FRONTEND DEVELOPMENT
 # ===================================================
 
@@ -84,7 +160,7 @@ Start-Service com.docker.service
 ## Start Project
 
 ```powershell
-docker compose --env-file docker/development/.env.dev -f docker/development/docker-compose.dev.yml up -d
+docker compose --env-file docker/development/.env.dev -f docker/development/docker-compose.dev.yml build -d
 ```
 
 ## Rebuild Containers

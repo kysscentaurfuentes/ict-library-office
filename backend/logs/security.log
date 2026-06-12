@@ -191,3 +191,21 @@
 [2026-06-11T13:27:38.620Z] SUCCESSFUL_LOGIN | STUDENT_ID=211-01850 | USER=7 | IP=172.18.0.1
 {"timestamp":"2026-06-11T13:27:43.500Z","severity":"INFO","event":"SUCCESSFUL_LOGIN","email":"kyss.fuentes1@gmail.com","studentId":"211-01850","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
 [2026-06-11T13:27:43.512Z] SUCCESSFUL_LOGIN | STUDENT_ID=211-01850 | USER=7 | IP=172.18.0.1
+{"timestamp":"2026-06-11T15:15:52.411Z","severity":"INFO","event":"SUCCESSFUL_LOGIN","email":"kyss.fuentes1@gmail.com","studentId":"211-01850","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
+[2026-06-11T15:15:52.469Z] SUCCESSFUL_LOGIN | STUDENT_ID=211-01850 | USER=7 | IP=172.18.0.1
+{"timestamp":"2026-06-11T19:18:24.139Z","severity":"INFO","event":"SUCCESSFUL_LOGIN","email":"kyss.fuentes1@gmail.com","studentId":"211-01850","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
+[2026-06-11T19:18:24.171Z] SUCCESSFUL_LOGIN | STUDENT_ID=211-01850 | USER=7 | IP=172.18.0.1
+{"timestamp":"2026-06-11T19:45:23.785Z","severity":"INFO","event":"SUCCESSFUL_LOGIN","email":"kyss.fuentes1@gmail.com","studentId":"211-01850","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
+[2026-06-11T19:45:23.804Z] SUCCESSFUL_LOGIN | STUDENT_ID=211-01850 | USER=7 | IP=172.18.0.1
+{"timestamp":"2026-06-11T22:24:12.548Z","severity":"INFO","event":"SUCCESSFUL_LOGIN","email":"kyss.fuentes1@gmail.com","studentId":"211-01850","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
+[2026-06-11T22:24:12.611Z] SUCCESSFUL_LOGIN | STUDENT_ID=211-01850 | USER=7 | IP=172.18.0.1
+{"timestamp":"2026-06-11T22:29:04.331Z","severity":"INFO","event":"SUCCESSFUL_LOGIN","email":"kyss.fuentes1@gmail.com","studentId":"211-01850","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
+[2026-06-11T22:29:04.354Z] SUCCESSFUL_LOGIN | STUDENT_ID=211-01850 | USER=7 | IP=172.18.0.1
+{"timestamp":"2026-06-11T22:57:01.593Z","severity":"INFO","event":"SUCCESSFUL_LOGIN","email":"kyss.fuentes1@gmail.com","studentId":"211-01850","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
+[2026-06-11T22:57:01.628Z] SUCCESSFUL_LOGIN | STUDENT_ID=211-01850 | USER=7 | IP=172.18.0.1
+{"timestamp":"2026-06-12T00:20:24.025Z","severity":"INFO","event":"SUCCESSFUL_LOGIN","email":"kyss.fuentes1@gmail.com","studentId":"211-01850","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
+[2026-06-12T00:20:24.077Z] SUCCESSFUL_LOGIN | STUDENT_ID=211-01850 | USER=7 | IP=172.18.0.1
+{"timestamp":"2026-06-12T01:02:03.495Z","severity":"INFO","event":"SUCCESSFUL_LOGIN","email":"kyss.fuentes1@gmail.com","studentId":"211-01850","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
+[2026-06-12T01:02:03.519Z] SUCCESSFUL_LOGIN | STUDENT_ID=211-01850 | USER=7 | IP=172.18.0.1
+{"timestamp":"2026-06-12T09:11:08.670Z","severity":"INFO","event":"SUCCESSFUL_LOGIN","email":"kyss.fuentes1@gmail.com","studentId":"211-01850","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
+[2026-06-12T09:11:08.732Z] SUCCESSFUL_LOGIN | STUDENT_ID=211-01850 | USER=7 | IP=172.18.0.1

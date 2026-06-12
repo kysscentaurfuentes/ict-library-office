@@ -48,19 +48,21 @@ export function startHlsStream() {
  "-i",
  rtspUrl,
 
+ "-vf",
+"scale=1280:720",
+
 // ======================================
 // DEVELOPMENT
 // Rotated because camera is not mounted
 // ======================================
 
- "-vf",
- "transpose=2,transpose=2",
+
 
  "-c:v",
  "libx264",
 
  "-preset",
- "fast",
+ "ultrafast",
 
  "-tune",
  "zerolatency",
@@ -77,8 +79,14 @@ export function startHlsStream() {
 // "-vf",
 // "transpose=2,transpose=2",
 
- "-g",
- "30",
+"-g",
+"15",
+
+"-keyint_min",
+"15",
+
+"-force_key_frames",
+"expr:gte(t,n_forced*1)",
 
  "-sc_threshold",
  "0",
@@ -90,10 +98,10 @@ export function startHlsStream() {
 "1",
 
  "-hls_list_size",
- "3",
+ "6",
 
  "-hls_flags",
- "delete_segments+append_list",
+"delete_segments+append_list+independent_segments",
 
  "-hls_segment_filename",
  path.join(

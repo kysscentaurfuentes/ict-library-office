@@ -6,19 +6,12 @@ export default function LiveView() {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [faceCount, setFaceCount] = useState<number>(0);
 
-  const [faceBoxes, setFaceBoxes] = useState<
-  {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  }[]
->([]);
+
   const [latency, setLatency] = useState<number>(0);
   const [bufferHealth, setBufferHealth] = useState<number>(0);
   const [currentDateTime, setCurrentDateTime] = useState('');
   const [videoWidth, setVideoWidth] = useState(0);
-const [videoHeight, setVideoHeight] = useState(0);
+  const [videoHeight, setVideoHeight] = useState(0);
   
   // >>> 1. IN-UPDATE NA STATE: Kumukuha muna sa localStorage kung may nakasave <<<
   const [positionX, setPositionX] = useState<number>(() => {
@@ -118,7 +111,6 @@ const FACES_API =
 console.log("FACE API:", data);
 
 setFaceCount(data.faces || 0);
-setFaceBoxes(data.boxes || []);
       } catch (error) {
         console.error('Error fetching face count:', error);
       }
@@ -236,13 +228,13 @@ if (hlsRef.current) {
 
   lowLatencyMode: true,
 
-  liveSyncDurationCount: 2,
-  liveMaxLatencyDurationCount: 4,
+  liveSyncDurationCount: 3,
+  liveMaxLatencyDurationCount: 6,
 
   maxLiveSyncPlaybackRate: 1.5,
 
-  maxBufferLength: 3,
-  maxMaxBufferLength: 5,
+  maxBufferLength: 10,
+  maxMaxBufferLength: 20,
 
   backBufferLength: 0,
 
@@ -283,6 +275,7 @@ hls.on(Hls.Events.MANIFEST_PARSED, () => {
   video.play().catch(e =>
     console.log('Auto-play:', e)
   );
+  video.playbackRate = 1;
 });
         
         hls.on(Hls.Events.FRAG_LOADING, (_, data) => {
@@ -339,6 +332,7 @@ hls.on(Hls.Events.LEVEL_UPDATED, (_, data) => {
   video.play().catch(e =>
     console.log('Auto-play:', e)
   );
+  video.playbackRate = 1;
 
 });
       }
@@ -375,11 +369,11 @@ hls.on(Hls.Events.LEVEL_UPDATED, (_, data) => {
         const newHls = new Hls({
           enableWorker: true,
           lowLatencyMode: true,
-          liveSyncDurationCount: 2,
-          liveMaxLatencyDurationCount: 4,
+          liveSyncDurationCount: 3,
+          liveMaxLatencyDurationCount: 6,
           maxLiveSyncPlaybackRate: 1.5,
-          maxBufferLength: 3,
-          maxMaxBufferLength: 5,
+          maxBufferLength: 10,
+          maxMaxBufferLength: 20,
           backBufferLength: 0.5,
           liveDurationInfinity: true,
           manifestLoadingTimeOut: 1000,
@@ -656,23 +650,6 @@ const scaleY =
   Philippine Date: {currentDateTime}
 </div>
 
-            {faceBoxes.map((box, index) => (
-  <div
-    key={index}
-    style={{
-      position: 'absolute',
-left: `${box.x * scaleX}px`,
-top: `${box.y * scaleY}px`,
-width: `${box.width * scaleX}px`,
-height: `${box.height * scaleY}px`,
-      border: '3px solid #00ff00',
-      boxShadow: '0 0 12px #00ff00',
-      borderRadius: '6px',
-      zIndex: 20,
-      pointerEvents: 'none'
-    }}
-  />
-))}
 
             {/* Face Detection Overlay */}
             <div style={{
@@ -711,6 +688,8 @@ height: `${box.height * scaleY}px`,
                 }} />
               )}
             </div>
+
+   
 
             {/* REC + Camera Overlay */}
             <div style={{

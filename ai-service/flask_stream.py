@@ -8,9 +8,13 @@ from datetime import datetime
 import pytz
 from collections import deque
 import threading
-
 import os
 from dotenv import load_dotenv
+import subprocess
+from ultralytics import YOLO
+person_model = YOLO("yolov8n.pt")
+
+ffmpeg_process = None
 
 app = Flask(__name__)
 CORS(app)
@@ -25,6 +29,8 @@ RTSP_URL = os.getenv(
 
 print("RTSP_URL =", RTSP_URL)
 
+latest_annotated_frame = None
+
 PH_TIMEZONE = pytz.timezone("Asia/Manila")
 
 # Face Detection Setup
@@ -37,6 +43,7 @@ face_history = deque(maxlen=5)
 
 latest_frame = None
 latest_faces = []
+latest_persons = []
 
 frame_lock = threading.Lock()
 
@@ -95,9 +102,84 @@ def detect_faces(frame):
     return []
 
 
+def detect_persons(frame):
+
+    results = person_model(frame, verbose=False)
+
+    persons = []
+
+    for result in results:
+
+        for box in result.boxes:
+
+            cls = int(box.cls[0])
+
+            if cls == 0:  # person
+
+                x1, y1, x2, y2 = map(
+                    int,
+                    box.xyxy[0]
+                )
+
+                persons.append({
+                    "x": x1,
+                    "y": y1,
+                    "width": x2 - x1,
+                    "height": y2 - y1
+                })
+
+    return persons
+
+def start_rtsp_publisher(width, height):
+
+    global ffmpeg_process
+
+    ffmpeg_process = subprocess.Popen(
+        [
+            "ffmpeg",
+
+            "-f",
+            "rawvideo",
+
+            "-pix_fmt",
+            "bgr24",
+
+            "-s",
+            f"{width}x{height}",
+
+            "-r",
+            "15",
+
+            "-i",
+            "-",
+
+            "-c:v",
+            "libx264",
+
+            "-preset",
+            "ultrafast",
+
+            "-tune",
+            "zerolatency",
+
+            "-rtsp_transport",
+            "tcp",
+
+            "-f",
+            "rtsp",
+
+            "rtsp://mediamtx:8554/processed"
+        ],
+        stdin=subprocess.PIPE
+    )
+
+
 def face_worker():
 
     global latest_faces
+    global latest_persons
+    global latest_annotated_frame
+    global ffmpeg_process
 
     print("🧠 FACE WORKER STARTED")
 
@@ -114,33 +196,141 @@ def face_worker():
 
             frame = latest_frame.copy()
 
-        frame_skip += 1
+        annotated = frame.copy()
 
-        if frame_skip % 5 != 0:
-            continue
+        if ffmpeg_process is None:
+
+            start_rtsp_publisher(
+                frame.shape[1],
+                frame.shape[0]
+            )
+
+        frame_skip += 1
 
         small = cv2.resize(
             frame,
-            (640, 360)
+            (416, 234)
         )
 
-        faces = detect_faces(small)
+        if frame_skip % 8 == 0:
 
-        scale_x = frame.shape[1] / 640
-        scale_y = frame.shape[0] / 360
+            try:
 
-        temp_faces = []
+                persons = detect_persons(
+                    small
+                )
 
-        for (x, y, w, h) in faces:
+                print(
+                    "PERSONS:",
+                    len(persons)
+                )
 
-            temp_faces.append({
-                "x": int(x * scale_x),
-                "y": int(y * scale_y),
-                "width": int(w * scale_x),
-                "height": int(h * scale_y)
-            })
+            except Exception as e:
 
-        latest_faces = temp_faces
+                print(
+                    "YOLO ERROR:",
+                    e
+                )
+
+                persons = []
+
+            faces = detect_faces(
+                small
+            )
+
+            scale_x = (
+                frame.shape[1] / 416
+            )
+
+            scale_y = (
+                frame.shape[0] / 234
+            )
+
+            temp_faces = []
+
+            for (x, y, w, h) in faces:
+
+                temp_faces.append({
+                    "x": int(x * scale_x),
+                    "y": int(y * scale_y),
+                    "width": int(w * scale_x),
+                    "height": int(h * scale_y)
+                })
+
+            latest_faces = temp_faces
+
+            temp_persons = []
+
+            for person in persons:
+
+                temp_persons.append({
+                    "x": int(person["x"] * scale_x),
+                    "y": int(person["y"] * scale_y),
+                    "width": int(
+                        person["width"] * scale_x
+                    ),
+                    "height": int(
+                        person["height"] * scale_y
+                    )
+                })
+
+            latest_persons = temp_persons
+
+        for face in latest_faces:
+
+            cv2.rectangle(
+                annotated,
+                (
+                    face["x"],
+                    face["y"]
+                ),
+                (
+                    face["x"] + face["width"],
+                    face["y"] + face["height"]
+                ),
+                (0, 255, 0),
+                2
+            )
+
+        for person in latest_persons:
+
+            cv2.rectangle(
+                annotated,
+                (
+                    person["x"],
+                    person["y"]
+                ),
+                (
+                    person["x"] + person["width"],
+                    person["y"] + person["height"]
+                ),
+                (255, 0, 0),
+                2
+            )
+
+        latest_annotated_frame = (
+            annotated
+        )
+
+        try:
+
+            if (
+                ffmpeg_process
+                and ffmpeg_process.stdin
+            ):
+
+                ffmpeg_process.stdin.write(
+                    annotated.tobytes()
+                )
+
+                ffmpeg_process.stdin.flush()
+
+        except Exception as e:
+
+            print(
+                "RTSP PUBLISH ERROR:",
+                e
+            )
 
         time.sleep(0.03)
 
@@ -218,6 +408,7 @@ def capture_worker():
 def generate():
 
     global latest_faces
+    global latest_annotated_frame
 
     print("🚀 VIDEO GENERATOR STARTED")
 
@@ -227,12 +418,12 @@ def generate():
 
         with frame_lock:
 
-            if latest_frame is None:
+            if latest_annotated_frame is None:
 
                 time.sleep(0.01)
                 continue
 
-            frame = latest_frame.copy()
+            frame = latest_annotated_frame.copy()
 
         frame_count += 1
 
@@ -240,22 +431,6 @@ def generate():
 
             print(
                 f"✅ FRAME OK: {frame_count}"
-            )
-
-        # Draw latest detected faces
-        for face in latest_faces:
-
-            x = face["x"]
-            y = face["y"]
-            w = face["width"]
-            h = face["height"]
-
-            cv2.rectangle(
-                frame,
-                (x, y),
-                (x + w, y + h),
-                (0, 255, 0),
-                2
             )
 
         ph_date, ph_time = get_ph_dt()
@@ -342,7 +517,8 @@ def get_faces():
 
     return jsonify({
         "faces": len(latest_faces),
-        "boxes": latest_faces
+        "boxes": latest_faces,
+        "persons": latest_persons
     })
 
 @app.route("/health")

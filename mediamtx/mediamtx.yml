@@ -1,3 +1,4 @@
+# ICT-LIBRARY-OFFICE/mediamtx/mediamtx.yml
 ###############################################
 # Global settings
 
@@ -328,7 +329,7 @@ hlsAllowOrigins: ["*"]
 hlsTrustedProxies: []
 # By default, HLS is generated only when requested by a user.
 # This option allows to generate it always, avoiding the delay between request and generation.
-hlsAlwaysRemux: false
+hlsAlwaysRemux: true
 # Variant of the HLS protocol to use. Available options are:
 # * mpegts - uses MPEG-TS segments, for maximum compatibility.
 # * fmp4 - uses fragmented MP4 segments, more efficient.
@@ -813,5 +814,8 @@ paths:
     source: rtsp://Khysss333:Deluxbaby123@192.168.8.156:554/stream1
     rtspTransport: tcp
     sourceOnDemand: no
+
+  processed:
+    source: publisher
 
   all_others:

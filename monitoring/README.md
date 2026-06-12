@@ -582,12 +582,16 @@ create a rollback point:
 git add .
 ```
 
+# IF WANT TO CANCEL The accidentally add,
+git restore --staged .
+
+
 ```bash
 git commit -m "fix: monitoring smtp alerts and persistent grafana configuration"
 ```
 
 ---
-
+git push origin main
 # =========================================================
 # ✅ FINAL IMPORTANT REMINDERS
 # =========================================================
