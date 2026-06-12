@@ -1,3 +1,4 @@
+// ICT-LIBRARY-OFFICE/backend/scripts/hash-password.ts
 import bcrypt from 'bcrypt';
 
 const password = process.argv[2];

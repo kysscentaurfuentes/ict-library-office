@@ -1,3 +1,5 @@
+-- ICT-LIBRARY-OFFICE/backend/database/migrations/001_full_schema.sql
+
 --
 -- PostgreSQL database dump
 --

@@ -1,3 +1,4 @@
+:: ICT-LIBRARY-OFFICE/backend/scripts/change-password.bat
 @echo off
 
 set /p pass=Enter password:

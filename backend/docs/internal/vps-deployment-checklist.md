@@ -1,4 +1,4 @@
-# BACKEND/docs/internal/vps-deployment-checklist.md
+# ICT-LIBRARY-OFFICE/BACKEND/docs/internal/vps-deployment-checklist.md
 
 # ICT LIBRARY OFFICE VPS DEPLOYMENT CHECKLIST
 

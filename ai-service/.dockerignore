@@ -1,4 +1,4 @@
-# ai-service/.dockerignore
+# ICT-LIBRARY-OFFICE/ai-service/.dockerignore
 __pycache__
 venv
 .env

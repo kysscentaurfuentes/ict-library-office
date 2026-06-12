@@ -6,6 +6,12 @@ export default function LiveView() {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [faceCount, setFaceCount] = useState<number>(0);
 
+  const [boxes, setBoxes] = useState<any[]>([]);
+const [persons, setPersons] = useState<any[]>([]);
+
+  const [personCount, setPersonCount] = useState<number>(0);
+  const [cpuUsage, setCpuUsage] = useState<number>(0);
+  const [ramUsage, setRamUsage] = useState<number>(0);
 
   const [latency, setLatency] = useState<number>(0);
   const [bufferHealth, setBufferHealth] = useState<number>(0);
@@ -108,9 +114,16 @@ const FACES_API =
         const response = await fetch(FACES_API);
         const data = await response.json();
         setFaceCount(data.faces);
-console.log("FACE API:", data);
+console.log(
+  "FACE API JSON:",
+  JSON.stringify(data, null, 2)
+);
 
 setFaceCount(data.faces || 0);
+
+setBoxes(data.boxes || []);
+
+setPersons(data.persons || []);
       } catch (error) {
         console.error('Error fetching face count:', error);
       }
@@ -395,17 +408,7 @@ hls.on(Hls.Events.LEVEL_UPDATED, (_, data) => {
     return '#ef4444';
   };
 
-  const displayWidth =
-  videoRef.current?.clientWidth || 800;
 
-const displayHeight =
-  videoRef.current?.clientHeight || 450;
-
-const scaleX =
-  displayWidth / videoWidth;
-
-const scaleY =
-  displayHeight / videoHeight;
 
   return (
     <div style={{ 
@@ -689,6 +692,39 @@ const scaleY =
               )}
             </div>
 
+{persons.map((person) => (
+  <div
+    key={person.id}
+    style={{
+      position: "absolute",
+      left: `${(person.x / 1280) * 100}%`,
+      top: `${(person.y / 720) * 100}%`,
+      width: `${(person.width / 1280) * 100}%`,
+      height: `${(person.height / 720) * 100}%`,
+      border: "3px solid #0080ff",
+      boxSizing: "border-box",
+      pointerEvents: "none",
+      zIndex: 10
+    }}
+  />
+))}
+
+{boxes.map((face, index) => (
+  <div
+    key={`face-${index}`}
+    style={{
+      position: "absolute",
+      left: `${(face.x / 1280) * 100}%`,
+      top: `${(face.y / 720) * 100}%`,
+      width: `${(face.width / 1280) * 100}%`,
+      height: `${(face.height / 720) * 100}%`,
+      border: "3px solid #00ff00",
+      boxSizing: "border-box",
+      pointerEvents: "none",
+      zIndex: 20
+    }}
+  />
+))}
    
 
             {/* REC + Camera Overlay */}

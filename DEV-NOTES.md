@@ -1,63 +1,79 @@
+# ICT-LIBRARY-OFFICE/DEV-NOTES.md
 # 📌 DEV NOTES (ICT Library Office)
+
+# ===================================================
+# TABLE OF CONTENTS
+# ===================================================
+
+[LINE 018] GITHUB WORKFLOW
+[LINE 096] DEVELOPMENT
+[LINE 163] DOCKER OPERATIONS
+[LINE 247] DOCKER TROUBLESHOOTING
+[LINE 358] PROJECT URLS
+[LINE 386] DATABASE BACKUP & RESTORE
+[LINE 446] POWERSHELL PROFILE
+[LINE 463] POWERSHELL CLIPBOARD
+[LINE 500] END OF DEV NOTES
 
 # ===================================================
 # GITHUB WORKFLOW
 # ===================================================
 
 ## Check Current Changes
+
 ```bash
 git status
 ```
 
 ## Stage All Changes
+
 ```bash
 git add .
 ```
 
-## Undo Staged Changes (Before Commit)
+## Undo Staged Changes
+
 ```bash
 git restore --staged .
 ```
 
 ## Create Commit
+
 ```bash
 git commit -m "Your commit message"
 ```
 
 ## Push to GitHub
+
 ```bash
 git push origin main
 ```
 
 ## If Git Becomes Slow
 
-Check what is staged:
+Check staged files:
 
 ```bash
 git status
 ```
 
-View staged file summary:
-
 ```bash
 git diff --cached --stat
 ```
 
-If large files were staged accidentally:
+Remove staged files:
 
 ```bash
 git restore --staged .
 ```
 
-Then update `.gitignore` and run:
+Update `.gitignore` if needed, then:
 
 ```bash
 git add .
 ```
 
-again.
-
-## Check Commit History
+## Commit History
 
 ```bash
 git log --oneline
@@ -69,73 +85,71 @@ git log --oneline
 git reset --soft HEAD~1
 ```
 
-## Undo Last Commit (Discard Commit Completely)
+## Undo Last Commit (Discard Completely)
 
 WARNING: Use carefully.
 
 ```bash
 git reset --hard HEAD~1
 ```
+
 # ===================================================
-# FRONTEND DEVELOPMENT
+# DEVELOPMENT
 # ===================================================
 
-## Development Mode
+## Frontend
 
-```bash
+```powershell
+cd frontend
 npm run dev
 ```
 
-## Production Build
+Production:
 
-```bash
+```powershell
 npm run build
 npm start
 ```
 
-# ===================================================
-# AI SERVICE (LOCAL)
-# ===================================================
+## AI Service
 
-## Activate Virtual Environment
+Activate virtual environment:
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
 ```
 
-## Start AI Service
+Start AI Service:
 
 ```powershell
 cd ai-service
 python flask_stream.py
 ```
 
-# ===================================================
-# MANUAL DEVELOPMENT STARTUP
-# ===================================================
+## Manual Development Startup
 
-## Terminal 1 - MediaMTX
+### Terminal 1 - MediaMTX
 
 ```powershell
 cd D:\mediamtx
 .\mediamtx.exe
 ```
 
-## Terminal 2 - Backend
+### Terminal 2 - Backend
 
 ```powershell
 cd D:\ICT-Library-Office\backend
 npm run dev
 ```
 
-## Terminal 3 - Frontend
+### Terminal 3 - Frontend
 
 ```powershell
 cd D:\ICT-Library-Office\frontend
 npm run dev
 ```
 
-## Terminal 4 - AI Service
+### Terminal 4 - AI Service
 
 ```powershell
 cd D:\ICT-Library-Office
@@ -147,10 +161,11 @@ python flask_stream.py
 ```
 
 # ===================================================
-# DOCKER QUICK START
+# DOCKER OPERATIONS
 # ===================================================
 
 ## Start Docker Service
+
 Run PowerShell as Administrator:
 
 ```powershell
@@ -159,20 +174,27 @@ Start-Service com.docker.service
 
 ## Start Project
 
+Build containers:
+
 ```powershell
-docker compose --env-file docker/development/.env.dev -f docker/development/docker-compose.dev.yml build -d
+docker compose -f docker/development/docker-compose.dev.yml build
+```
+
+Start containers:
+
+```powershell
+docker compose --env-file docker/development/.env.dev -f docker/development/docker-compose.dev.yml up -d
 ```
 
 ## Rebuild Containers
-Use if Dockerfiles, dependencies, or compose files changed:
+
+Use when Dockerfiles, dependencies, or compose files change:
 
 ```powershell
 docker compose --env-file docker/development/.env.dev -f docker/development/docker-compose.dev.yml up -d --build
 ```
 
-# ===================================================
-# CHECK CONTAINER STATUS
-# ===================================================
+## Check Container Status
 
 ```powershell
 docker ps
@@ -186,22 +208,19 @@ Expected:
 - backend = healthy
 - frontend = healthy
 
-# ===================================================
-# STOP PROJECT
-# ===================================================
+## Stop Project
 
 ```powershell
 docker compose --env-file docker/development/.env.dev -f docker/development/docker-compose.dev.yml down
 ```
 
-# ===================================================
-# STOP DOCKER COMPLETELY
-# ===================================================
+## Stop Docker Completely
 
 Run PowerShell as Administrator:
 
 ```powershell
 Stop-Service com.docker.service
+
 taskkill /F /IM "Docker Desktop.exe"
 ```
 
@@ -211,9 +230,7 @@ Optional:
 wsl --shutdown
 ```
 
-# ===================================================
-# IF CODING AGAIN
-# ===================================================
+## Start Again After Shutdown
 
 Run PowerShell as Administrator:
 
@@ -249,7 +266,7 @@ docker ps
 
 ## 502 Bad Gateway
 
-Check container status:
+Check containers:
 
 ```powershell
 docker ps
@@ -267,7 +284,7 @@ Restart nginx:
 docker restart ict-nginx-dev
 ```
 
-Then hard refresh browser:
+Hard refresh browser:
 
 ```text
 Ctrl + Shift + R
@@ -275,7 +292,7 @@ Ctrl + Shift + R
 
 ## Docker File Changes
 
-If there are changes to:
+If changes were made to:
 
 - Dockerfile
 - package.json
@@ -294,43 +311,39 @@ Then:
 docker compose --env-file docker/development/.env.dev -f docker/development/docker-compose.dev.yml up -d --build
 ```
 
-# ===================================================
-# CONTAINER ACCESS
-# ===================================================
+## Container Access
 
-## Open Backend Container
+Open backend container:
 
 ```powershell
 docker exec -it ict-backend-dev sh
 ```
 
-## Check Files
+Check files:
 
 ```bash
 ls
 ```
 
-## Check Uploads
+Check uploads:
 
 ```bash
 ls uploads
 ```
 
-## Check Node Modules
+Check node modules:
 
 ```bash
 ls node_modules
 ```
 
-## Exit Container
+Exit:
 
 ```bash
 exit
 ```
 
-# ===================================================
-# DOCKER CLEANUP
-# ===================================================
+## Docker Cleanup
 
 ```powershell
 docker builder prune -a
@@ -346,25 +359,25 @@ docker compose --env-file docker/development/.env.dev -f docker/development/dock
 # PROJECT URLS
 # ===================================================
 
-Frontend:
+Frontend
 
 ```text
 http://localhost
 ```
 
-Backend:
+Backend
 
 ```text
 http://localhost:4000
 ```
 
-AI Service:
+AI Service
 
 ```text
 http://localhost:5000
 ```
 
-HLS Stream:
+HLS Stream
 
 ```text
 http://localhost:4000/hls/stream.m3u8
@@ -380,7 +393,7 @@ http://localhost:4000/hls/stream.m3u8
 .\backup-database.bat
 ```
 
-## Open PostgreSQL Container
+## Open PostgreSQL
 
 ```powershell
 docker exec -it ict-postgres-dev psql -U postgres
@@ -388,7 +401,7 @@ docker exec -it ict-postgres-dev psql -U postgres
 
 ## Create Test Database
 
-Run inside PostgreSQL:
+Inside PostgreSQL:
 
 ```sql
 CREATE DATABASE ict_restore_test;
@@ -414,13 +427,11 @@ docker exec -it ict-postgres-dev psql -U postgres -d ict_restore_test
 
 ## Show Tables
 
-Run inside PostgreSQL:
-
 ```sql
 \dt
 ```
 
-Expected tables:
+Expected:
 
 - users
 - audit_logs
@@ -429,23 +440,61 @@ Expected tables:
 - etc.
 
 If tables appear:
+
 BACKUP + RESTORE SUCCESSFUL
 
 # ===================================================
 # POWERSHELL PROFILE
 # ===================================================
 
-Open Profile:
+Open profile:
 
 ```powershell
 code $PROFILE
 ```
 
-After saving changes:
+Reload profile:
 
 ```powershell
 . $PROFILE
 ```
+
+# ===================================================
+# POWERSHELL CLIPBOARD
+# ===================================================
+
+```powershell
+# Show clipboard
+Get-Clipboard
+
+# Copy output only
+COMMAND 2>&1 | clip
+COMMAND 2>&1 | Set-Clipboard
+
+# Copy command + output (silent)
+("[COMMAND]`nCOMMAND_HERE`n`n[OUTPUT]`n" + (COMMAND_HERE 2>&1 | Out-String)) | Set-Clipboard
+
+# Print to terminal + copy command + output (recommended)
+COMMAND_HERE 2>&1 | Tee-Object -Variable out
+("[COMMAND]`nCOMMAND_HERE`n`n[OUTPUT]`n" + ($out | Out-String)) | Set-Clipboard
+
+# Examples
+
+# Silent
+("[COMMAND]`ndocker ps -a`n`n[OUTPUT]`n" + (docker ps -a | Out-String)) | Set-Clipboard
+
+# Print + Copy
+docker ps -a | Tee-Object -Variable out
+("[COMMAND]`ndocker ps -a`n`n[OUTPUT]`n" + ($out | Out-String)) | Set-Clipboard
+
+# Print + Copy AI logs
+docker logs ict-ai-service-dev --tail 50 2>&1 | Tee-Object -Variable out
+("[COMMAND]`ndocker logs ict-ai-service-dev --tail 50`n`n[OUTPUT]`n" + ($out | Out-String)) | Set-Clipboard
+
+# Paste
+Ctrl + V
+```
+# NO NEED HIGHLIGHT, CLICK AND DRAG, CTRL+C HERE ...
 
 # ===================================================
 # END OF DEV NOTES

@@ -1,4 +1,4 @@
-# ai-service/flask_stream.py
+# ICT-LIBRARY-OFFICE/ai-service/flask_stream.py
 from flask import Flask, Response, jsonify
 from flask_cors import CORS
 import cv2
@@ -12,9 +12,21 @@ import os
 from dotenv import load_dotenv
 import subprocess
 from ultralytics import YOLO
+import supervision as sv
+import psutil
+
 person_model = YOLO("yolov8n.pt")
+tracker = sv.ByteTrack()
 
 ffmpeg_process = None
+
+latest_stats = {
+    "fps": 0,
+    "cpu": 0,
+    "ram": 0,
+    "persons": 0,
+    "faces": 0
+}
 
 app = Flask(__name__)
 CORS(app)
@@ -104,29 +116,45 @@ def detect_faces(frame):
 
 def detect_persons(frame):
 
-    results = person_model(frame, verbose=False)
+    results = person_model(
+        frame,
+        verbose=False
+    )[0]
+
+    detections = sv.Detections.from_ultralytics(
+        results
+    )
+
+    detections = detections[
+        detections.class_id == 0
+    ]
+
+    tracked = tracker.update_with_detections(
+        detections
+    )
 
     persons = []
 
-    for result in results:
+    for i in range(
+        len(tracked.xyxy)
+    ):
 
-        for box in result.boxes:
+        x1, y1, x2, y2 = map(
+            int,
+            tracked.xyxy[i]
+        )
 
-            cls = int(box.cls[0])
+        track_id = int(
+            tracked.tracker_id[i]
+        )
 
-            if cls == 0:  # person
-
-                x1, y1, x2, y2 = map(
-                    int,
-                    box.xyxy[0]
-                )
-
-                persons.append({
-                    "x": x1,
-                    "y": y1,
-                    "width": x2 - x1,
-                    "height": y2 - y1
-                })
+        persons.append({
+            "id": track_id,
+            "x": x1,
+            "y": y1,
+            "width": x2 - x1,
+            "height": y2 - y1
+        })
 
     return persons
 
@@ -184,6 +212,7 @@ def face_worker():
     print("🧠 FACE WORKER STARTED")
 
     frame_skip = 0
+    persons = []
 
     while True:
 
@@ -209,16 +238,18 @@ def face_worker():
 
         small = cv2.resize(
             frame,
-            (416, 234)
+            (640, 360)
         )
 
-        if frame_skip % 8 == 0:
+        if frame_skip % 3 == 0:
 
             try:
 
                 persons = detect_persons(
                     small
                 )
+
+                latest_stats["persons"] = len(persons)
 
                 print(
                     "PERSONS:",
@@ -238,23 +269,34 @@ def face_worker():
                 small
             )
 
-            scale_x = (
-                frame.shape[1] / 416
-            )
+            latest_stats["faces"] = len(faces)
+            latest_stats["cpu"] = psutil.cpu_percent()
+            latest_stats["ram"] = psutil.virtual_memory().percent
 
-            scale_y = (
-                frame.shape[0] / 234
-            )
+            scale_x = frame.shape[1] / small.shape[1]
+            scale_y = frame.shape[0] / small.shape[0]
 
             temp_faces = []
 
             for (x, y, w, h) in faces:
 
+                fx = int(x * scale_x)
+                fy = int(y * scale_y)
+
+                fw = int(w * scale_x)
+                fh = int(h * scale_y)
+
+                fx = max(0, min(fx, frame.shape[1] - 1))
+                fy = max(0, min(fy, frame.shape[0] - 1))
+
+                fw = min(fw, frame.shape[1] - fx)
+                fh = min(fh, frame.shape[0] - fy)
+
                 temp_faces.append({
-                    "x": int(x * scale_x),
-                    "y": int(y * scale_y),
-                    "width": int(w * scale_x),
-                    "height": int(h * scale_y)
+                    "x": fx,
+                    "y": fy,
+                    "width": fw,
+                    "height": fh
                 })
 
             latest_faces = temp_faces
@@ -263,18 +305,32 @@ def face_worker():
 
             for person in persons:
 
+                x = person["x"]
+                y = person["y"]
+                w = person["width"]
+                h = person["height"]
+
+                x = max(0, min(x, frame.shape[1] - 1))
+                y = max(0, min(y, frame.shape[0] - 1))
+
+                w = min(w, frame.shape[1] - x)
+                h = min(h, frame.shape[0] - y)
+
+                w = max(1, w)
+                h = max(1, h)
+
                 temp_persons.append({
-                    "x": int(person["x"] * scale_x),
-                    "y": int(person["y"] * scale_y),
-                    "width": int(
-                        person["width"] * scale_x
-                    ),
-                    "height": int(
-                        person["height"] * scale_y
-                    )
+                    "id": person["id"],
+                    "x": x,
+                    "y": y,
+                    "width": w,
+                    "height": h
                 })
 
             latest_persons = temp_persons
+
+            print("PERSON DATA:", latest_persons)
+            print("FACE DATA:", latest_faces)
 
         for face in latest_faces:
 
@@ -304,6 +360,19 @@ def face_worker():
                     person["x"] + person["width"],
                     person["y"] + person["height"]
                 ),
+                (255, 0, 0),
+                2
+            )
+
+            cv2.putText(
+                annotated,
+                f'ID {person["id"]}',
+                (
+                    person["x"],
+                    person["y"] - 10
+                ),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
                 (255, 0, 0),
                 2
             )
@@ -382,6 +451,12 @@ def capture_worker():
             frame = cv2.rotate(
                 frame,
                 cv2.ROTATE_180
+            )
+
+            print(
+             "FRAME SIZE:",
+             frame.shape[1],
+             frame.shape[0]
             )
 
             with frame_lock:
@@ -530,6 +605,9 @@ def health():
         "faces": len(latest_faces)
     })
 
+@app.route("/stats")
+def stats():
+    return jsonify(latest_stats)
 
 if __name__ == "__main__":
 

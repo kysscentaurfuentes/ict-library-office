@@ -5,13 +5,18 @@ import fs from "fs";
 import path from "path";
 
 export function startHlsStream() {
-  const ffmpegPath = process.env.FFMPEG_PATH;
+const ffmpegPath =
+  process.env.FFMPEG_PATH ||
+  "ffmpeg";
+
+
+
   const rtspUrl = process.env.RTSP_URL;
 
-  if (!ffmpegPath || !rtspUrl) {
-    console.error("❌ Missing FFMPEG_PATH or RTSP_URL");
-    return;
-  }
+if (!rtspUrl) {
+  console.error("❌ Missing RTSP_URL");
+  return;
+}
 
   const hlsDir = path.join(process.cwd(), "public", "hls");
 
@@ -35,86 +40,87 @@ export function startHlsStream() {
   console.log("🎥 Starting FFmpeg HLS...");
   console.log("📺 RTSP:", rtspUrl);
 
+  console.log(
+  "📁 HLS DIR:",
+  hlsDir
+);
+
+console.log(
+  "🎬 FFMPEG PATH:",
+  ffmpegPath
+);
+
   const ffmpeg = spawn(
-    ffmpegPath,
-    [
- "-hide_banner",
- "-loglevel",
- "error",
+  ffmpegPath,
+  [
+    "-hide_banner",
 
- "-rtsp_transport",
- "tcp",
+    "-loglevel",
+    "warning",
 
- "-i",
- rtspUrl,
+    "-rtsp_transport",
+    "tcp",
 
- "-vf",
-"scale=1280:720",
+    "-i",
+    rtspUrl,
 
-// ======================================
-// DEVELOPMENT
-// Rotated because camera is not mounted
-// ======================================
+    "-an",
 
+    // 180° rotation + resize
+    "-vf",
+    "transpose=2,transpose=2,scale=1280:720",
 
+    "-c:v",
+    "libx264",
 
- "-c:v",
- "libx264",
+    "-preset",
+    "ultrafast",
 
- "-preset",
- "ultrafast",
+    "-tune",
+    "zerolatency",
 
- "-tune",
- "zerolatency",
+    "-pix_fmt",
+    "yuv420p",
 
-// ======================================
-// PRODUCTION
-// Use when camera is ceiling mounted
-// ======================================
+    "-g",
+    "15",
 
-// "-c:v",
-// "copy",
-//
-// remove:
-// "-vf",
-// "transpose=2,transpose=2",
+    "-keyint_min",
+    "15",
 
-"-g",
-"15",
+    "-sc_threshold",
+    "0",
 
-"-keyint_min",
-"15",
+    "-f",
+    "hls",
 
-"-force_key_frames",
-"expr:gte(t,n_forced*1)",
+    "-hls_time",
+    "1",
 
- "-sc_threshold",
- "0",
+    "-hls_list_size",
+    "6",
 
- "-f",
- "hls",
+    "-hls_flags",
+    "delete_segments+append_list",
 
- "-hls_time",
-"1",
+    "-hls_allow_cache",
+    "0",
 
- "-hls_list_size",
- "6",
+    "-start_number",
+    "0",
 
- "-hls_flags",
-"delete_segments+append_list+independent_segments",
+    "-hls_segment_filename",
+    path.join(
+      hlsDir,
+      "segment_%05d.ts"
+    ),
 
- "-hls_segment_filename",
- path.join(
-   hlsDir,
-   "segment_%05d.ts"
- ),
-
- outputFile
-],
-    {
-      windowsHide: true,
-    }
-  );
+    outputFile
+  ],
+  {
+    windowsHide: true
+  }
+);
 
   ffmpeg.stdout.on("data", data => {
     console.log(data.toString());
