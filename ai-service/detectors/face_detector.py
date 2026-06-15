@@ -1,34 +1,39 @@
 # ICT-LIBRARY-OFFICE/ai-service/detectors/face_detector.py
-import cv2
 
-face_cascade = cv2.CascadeClassifier(
-    cv2.data.haarcascades +
-    "haarcascade_frontalface_default.xml"
+from ultralytics import YOLO
+
+face_model = YOLO(
+    "models/face/yolov8n_100e.pt"
 )
+
+print("YOLO FACE DETECTOR LOADED")
 
 def detect_faces(frame):
 
-    gray = cv2.cvtColor(
+    results = face_model(
         frame,
-        cv2.COLOR_BGR2GRAY
-    )
+        verbose=False
+    )[0]
 
-    faces = face_cascade.detectMultiScale(
-        gray,
-        scaleFactor=1.05,
-        minNeighbors=3,
-        minSize=(30, 30)
-    )
+    faces = []
 
-    results = []
+    if results.boxes is None:
+        return faces
 
-    for (x, y, w, h) in faces:
+    for box in results.boxes.xyxy.cpu().numpy():
 
-        results.append({
-            "x": int(x),
-            "y": int(y),
-            "width": int(w),
-            "height": int(h)
+        x1, y1, x2, y2 = map(
+            int,
+            box[:4]
+        )
+
+        faces.append({
+            "x": x1,
+            "y": y1,
+            "width": x2 - x1,
+            "height": y2 - y1
         })
 
-    return results
+    print("Faces Found:", len(faces))
+
+    return faces

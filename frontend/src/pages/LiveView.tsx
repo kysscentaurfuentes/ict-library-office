@@ -5,9 +5,9 @@ import Hls from 'hls.js';
 export default function LiveView() {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [faceCount, setFaceCount] = useState<number>(0);
-
+  const [headCount, setHeadCount] = useState<number>(0);
   const [boxes, setBoxes] = useState<any[]>([]);
-const [persons, setPersons] = useState<any[]>([]);
+  const [persons, setPersons] = useState<any[]>([]);
 
   const [personCount, setPersonCount] = useState<number>(0);
   const [cpuUsage, setCpuUsage] = useState<number>(0);
@@ -33,12 +33,12 @@ const [persons, setPersons] = useState<any[]>([]);
   const videoContainerRef =
   useRef<HTMLDivElement>(null);
 
-  // (IF PYTHON MJPEG USE) http://192.168.8.236:5000/video
+  // (IF PYTHON MJPEG USE) http://${window.location.hostname}:5000/video
 const STREAM_URL =
 `http://${window.location.hostname}:4000/hls/stream.m3u8`;
 
 const FACES_API =
-`http://${window.location.hostname}:5000/faces`;
+`http://${window.location.hostname}:5000/detections`;
 
   // Bagong function para sa pagbabago at pag-save ng posisyon
   const updatePositionX = (value: number) => {
@@ -121,16 +121,18 @@ console.log(
 
 setFaceCount(data.faces || 0);
 
-setBoxes(data.boxes || []);
+setHeadCount(data.heads || 0);
 
-setPersons(data.persons || []);
+setBoxes(data.face_boxes || []);
+setPersons(data.person_boxes || []);
+        setBoxes(data.head_boxes || []);
       } catch (error) {
         console.error('Error fetching face count:', error);
       }
     };
 
     fetchFaceCount();
-    const interval = setInterval(fetchFaceCount, 1000);
+    const interval = setInterval(fetchFaceCount, 200);
     return () => clearInterval(interval);
   }, []); 
 
@@ -678,6 +680,7 @@ hls.on(Hls.Events.LEVEL_UPDATED, (_, data) => {
                 fontWeight: 'bold'
               }}>
                 Faces: {faceCount}
+              | Heads: {headCount}
               </span>
               {faceCount > 0 && (
                 <span style={{
@@ -794,6 +797,29 @@ hls.on(Hls.Events.LEVEL_UPDATED, (_, data) => {
                 <span style={{ fontSize: '0.7rem', fontWeight: 'bold', color: faceCount > 0 ? '#ef4444' : '#10b981' }}>
                   {faceCount}
                 </span>
+                <span
+  style={{
+    fontSize: '0.7rem',
+    color: isDarkMode
+      ? '#64748b'
+      : '#94a3b8'
+  }}
+>
+  🧠 Heads:
+</span>
+
+<span
+  style={{
+    fontSize: '0.7rem',
+    fontWeight: 'bold',
+    color:
+      headCount > 0
+        ? '#f59e0b'
+        : '#10b981'
+  }}
+>
+  {headCount}
+</span>
               </div>
             </div>
             

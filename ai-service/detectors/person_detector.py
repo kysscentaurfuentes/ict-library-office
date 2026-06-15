@@ -1,4 +1,5 @@
 # ICT-LIBRARY-OFFICE/ai-service/detectors/person_detector.py
+
 from ultralytics import YOLO
 import supervision as sv
 
@@ -17,7 +18,9 @@ def detect_persons(frame):
     )
 
     detections = detections[
-        detections.class_id == 0
+        (detections.class_id == 0)
+        &
+        (detections.confidence > 0.50)
     ]
 
     tracked = tracker.update_with_detections(

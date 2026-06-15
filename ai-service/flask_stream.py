@@ -26,7 +26,8 @@ latest_stats = {
     "ram": 0,
     "persons": 0,
     "faces": 0,
-    "heads": 0
+    "heads": 0,
+    "tracked_ids": []
 }
 
 app = Flask(__name__)
@@ -166,6 +167,11 @@ def face_worker():
 
                 latest_stats["persons"] = len(persons)
 
+                latest_stats["tracked_ids"] = [
+                    p["id"]
+                    for p in persons
+                ]
+
                 print(
                     "PERSONS:",
                     len(persons)
@@ -180,20 +186,76 @@ def face_worker():
 
                 persons = []
 
-            faces = detect_faces(
-                small
-            )
+            faces = []
+            heads = []
 
-            heads = detect_heads(
-            persons
-            )
+            for person in persons:
 
-   
+                px = person["x"]
+                py = person["y"]
+                pw = person["width"]
+                ph = person["height"]
 
-            latest_stats["faces"] = len(faces)
-            latest_stats["heads"] = len(heads)
-            latest_stats["cpu"] = psutil.cpu_percent()
-            latest_stats["ram"] = psutil.virtual_memory().percent
+                roi = small[
+                    py:py + ph,
+                    px:px + pw
+                ]
+
+                if roi.size == 0:
+                    continue
+
+                person_faces = detect_faces(
+                    roi
+                )
+
+                person_heads = detect_heads(
+                    roi
+                )
+
+                print(
+                    "FACE:",
+                    len(person_faces),
+                    "HEAD:",
+                    len(person_heads)
+                )
+
+                if len(person_faces) > 0:
+
+                    biggest_face = max(
+                        person_faces,
+                        key=lambda f:
+                            f["width"] * f["height"]
+                    )
+
+                    faces.append({
+                        "x": px + biggest_face["x"],
+                        "y": py + biggest_face["y"],
+                        "width": biggest_face["width"],
+                        "height": biggest_face["height"]
+                    })
+
+
+                if len(person_heads) > 0:
+
+                    biggest_head = max(
+                        person_heads,
+                        key=lambda h:
+                            h["width"] * h["height"]
+                )
+
+                    heads.append({
+                        "person_id": person["id"],
+                        "x": px + biggest_head["x"],
+                        "y": py + biggest_head["y"],
+                        "width": biggest_head["width"],
+                        "height": biggest_head["height"]
+                    })
+
+
+                latest_stats["faces"] = len(faces)
+                latest_stats["heads"] = len(heads)
+                latest_stats["cpu"] = psutil.cpu_percent()
+                latest_stats["ram"] = psutil.virtual_memory().percent
 
             scale_x = frame.shape[1] / small.shape[1]
             scale_y = frame.shape[0] / small.shape[0]
@@ -284,18 +346,18 @@ def face_worker():
         for head in latest_heads:
 
             cv2.rectangle(
-        annotated,
-        (
-            head["x"],
-            head["y"]
-        ),
-        (
-            head["x"] + head["width"],
-            head["y"] + head["height"]
-        ),
-        (0, 0, 255),
-        2
-    )
+                annotated,
+                (
+                    head["x"],
+                    head["y"]
+                ),
+                (
+                    head["x"] + head["width"],
+                    head["y"] + head["height"]
+                ),
+                (0, 0, 255),
+                2
+            )
 
         for person in latest_persons:
 
@@ -540,18 +602,24 @@ def get_time():
     })
 
 
-@app.route("/faces")
-def get_faces():
+@app.route("/detections")
+def get_detections():
 
     print(
-        "👤 FACES API:",
-        len(latest_faces)
+        "👤 FACES:",
+        len(latest_faces),
+        "| HEADS:",
+        len(latest_heads)
     )
 
     return jsonify({
         "faces": len(latest_faces),
-        "boxes": latest_faces,
-        "persons": latest_persons
+        "heads": len(latest_heads),
+        "persons": len(latest_persons),
+
+        "face_boxes": latest_faces,
+        "head_boxes": latest_heads,
+        "person_boxes": latest_persons
     })
 
 @app.route("/health")
