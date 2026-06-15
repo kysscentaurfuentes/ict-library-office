@@ -18,7 +18,10 @@ from detectors.head_detector import detect_heads
 
 latest_heads = []
 
-ffmpeg_process = None
+# ffmpeg_process = None
+
+admin_ffmpeg_process = None
+student_ffmpeg_process = None
 
 latest_stats = {
     "fps": 0,
@@ -69,7 +72,7 @@ def get_ph_dt():
 
 
 
-
+"""
 def start_rtsp_publisher(width, height):
 
     global ffmpeg_process
@@ -115,6 +118,54 @@ def start_rtsp_publisher(width, height):
         ],
         stdin=subprocess.PIPE
     )
+"""
+
+def start_admin_rtsp_publisher(width, height):
+
+    global admin_ffmpeg_process
+
+    admin_ffmpeg_process = subprocess.Popen(
+        [
+            "ffmpeg",
+            "-f", "rawvideo",
+            "-pix_fmt", "bgr24",
+            "-s", f"{width}x{height}",
+            "-r", "15",
+            "-i", "-",
+            "-c:v", "libx264",
+            "-preset", "ultrafast",
+            "-tune", "zerolatency",
+            "-rtsp_transport", "tcp",
+            "-f", "rtsp",
+            "rtsp://mediamtx:8554/admin"
+        ],
+        stdin=subprocess.PIPE
+    )
+
+
+def start_student_rtsp_publisher(width, height):
+
+    global student_ffmpeg_process
+
+    student_ffmpeg_process = subprocess.Popen(
+        [
+            "ffmpeg",
+            "-f", "rawvideo",
+            "-pix_fmt", "bgr24",
+            "-s", f"{width}x{height}",
+            "-r", "15",
+            "-i", "-",
+            "-c:v", "libx264",
+            "-preset", "ultrafast",
+            "-tune", "zerolatency",
+            "-rtsp_transport", "tcp",
+            "-f", "rtsp",
+            "rtsp://mediamtx:8554/student"
+        ],
+        stdin=subprocess.PIPE
+    )
+
+    
 
 
 def face_worker():
@@ -124,6 +175,8 @@ def face_worker():
     global latest_persons
     global latest_annotated_frame
     global ffmpeg_process
+    global admin_ffmpeg_process
+    global student_ffmpeg_process
 
     print("🧠 FACE WORKER STARTED")
 
@@ -141,11 +194,26 @@ def face_worker():
 
             frame = latest_frame.copy()
 
-        annotated = frame.copy()
+        admin_frame = frame.copy()
+        student_frame = frame.copy()
 
-        if ffmpeg_process is None:
+        #if ffmpeg_process is None:
+        #
+        #    start_rtsp_publisher(
+        #        frame.shape[1],
+        #        frame.shape[0]
+        #    )
 
-            start_rtsp_publisher(
+        if admin_ffmpeg_process is None:
+
+            start_admin_rtsp_publisher(
+                frame.shape[1],
+                frame.shape[0]
+            )
+
+        if student_ffmpeg_process is None:
+
+            start_student_rtsp_publisher(
                 frame.shape[1],
                 frame.shape[0]
             )
@@ -172,10 +240,10 @@ def face_worker():
                     for p in persons
                 ]
 
-                print(
-                    "PERSONS:",
-                    len(persons)
-                )
+                #print(
+                #    "PERSONS:",
+                #    len(persons)
+                #)
 
             except Exception as e:
 
@@ -212,12 +280,12 @@ def face_worker():
                     roi
                 )
 
-                print(
-                    "FACE:",
-                    len(person_faces),
-                    "HEAD:",
-                    len(person_heads)
-                )
+                #print(
+                #    "FACE:",
+                #    len(person_faces),
+                #    "HEAD:",
+                #    len(person_heads)
+                #)
 
                 if len(person_faces) > 0:
 
@@ -324,13 +392,47 @@ def face_worker():
 
             latest_persons = temp_persons
 
-            print("PERSON DATA:", latest_persons)
-            print("FACE DATA:", latest_faces)
+            #print("PERSON DATA:", latest_persons)
+            #print("FACE DATA:", latest_faces)
+
+# ====================================
+# STUDENT FACE BLUR
+# ====================================
+
+        for face in latest_faces:
+
+            x = face["x"]
+            y = face["y"]
+            w = face["width"]
+            h = face["height"]
+
+            # safety bounds
+            if w <= 0 or h <= 0:
+                continue
+
+            roi = student_frame[
+                y:y+h,
+                x:x+w
+            ]
+
+            if roi.size == 0:
+                continue
+
+            blurred = cv2.GaussianBlur(
+                roi,
+                (99, 99),
+                30
+            )
+
+            student_frame[
+                y:y+h,
+                x:x+w
+            ] = blurred
 
         for face in latest_faces:
 
             cv2.rectangle(
-                annotated,
+                admin_frame,
                 (
                     face["x"],
                     face["y"]
@@ -346,7 +448,7 @@ def face_worker():
         for head in latest_heads:
 
             cv2.rectangle(
-                annotated,
+                admin_frame,
                 (
                     head["x"],
                     head["y"]
@@ -362,7 +464,7 @@ def face_worker():
         for person in latest_persons:
 
             cv2.rectangle(
-                annotated,
+                admin_frame,
                 (
                     person["x"],
                     person["y"]
@@ -376,7 +478,7 @@ def face_worker():
             )
 
             cv2.putText(
-                annotated,
+                admin_frame,
                 f'ID {person["id"]}',
                 (
                     person["x"],
@@ -389,37 +491,50 @@ def face_worker():
             )
 
         latest_annotated_frame = (
-            annotated
+            admin_frame
         )
 
         try:
 
+            # old processed stream
+            #if (
+            #    ffmpeg_process
+            #    and ffmpeg_process.poll() is None
+            #    and ffmpeg_process.stdin
+            #):
+            #    ffmpeg_process.stdin.write(
+            #        admin_frame.tobytes()
+            #    )
+            #    ffmpeg_process.stdin.flush()
+
+            # admin stream
             if (
-                ffmpeg_process
-                and ffmpeg_process.poll() is None
-                and ffmpeg_process.stdin
+                admin_ffmpeg_process
+                and admin_ffmpeg_process.poll() is None
+                and admin_ffmpeg_process.stdin
             ):
-
-                ffmpeg_process.stdin.write(
-                    annotated.tobytes()
+                admin_ffmpeg_process.stdin.write(
+                    admin_frame.tobytes()
                 )
+                admin_ffmpeg_process.stdin.flush()
 
-                ffmpeg_process.stdin.flush()
+            # student stream
+            if (
+                student_ffmpeg_process
+                and student_ffmpeg_process.poll() is None
+                and student_ffmpeg_process.stdin
+            ):
+                student_ffmpeg_process.stdin.write(
+                    student_frame.tobytes()
+                )
+                student_ffmpeg_process.stdin.flush()
 
         except Exception as e:
 
             print(
-            "RTSP PUBLISH ERROR:",
-            e
+                "RTSP PUBLISH ERROR:",
+                e
             )
-
-            try:
-                if ffmpeg_process:
-                    ffmpeg_process.kill()
-            except:
-                pass
-
-            ffmpeg_process = None
 
         time.sleep(0.03)
 
@@ -473,11 +588,11 @@ def capture_worker():
                 cv2.ROTATE_180
             )
 
-            print(
-             "FRAME SIZE:",
-             frame.shape[1],
-             frame.shape[0]
-            )
+           # print(
+           #  "FRAME SIZE:",
+           #  frame.shape[1],
+           #  frame.shape[0]
+           # )
 
             with frame_lock:
 
@@ -605,12 +720,12 @@ def get_time():
 @app.route("/detections")
 def get_detections():
 
-    print(
-        "👤 FACES:",
-        len(latest_faces),
-        "| HEADS:",
-        len(latest_heads)
-    )
+    #print(
+    #    "👤 FACES:",
+    #    len(latest_faces),
+    #    "| HEADS:",
+    #    len(latest_heads)
+    #)
 
     return jsonify({
         "faces": len(latest_faces),

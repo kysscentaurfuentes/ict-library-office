@@ -8,6 +8,10 @@ export default function LiveView() {
   const [headCount, setHeadCount] = useState<number>(0);
   const [boxes, setBoxes] = useState<any[]>([]);
   const [persons, setPersons] = useState<any[]>([]);
+  
+  const [faceBoxes, setFaceBoxes] = useState<any[]>([]);
+  const [headBoxes, setHeadBoxes] = useState<any[]>([]);
+  const [personBoxes, setPersonBoxes] = useState<any[]>([]);
 
   const [personCount, setPersonCount] = useState<number>(0);
   const [cpuUsage, setCpuUsage] = useState<number>(0);
@@ -18,6 +22,8 @@ export default function LiveView() {
   const [currentDateTime, setCurrentDateTime] = useState('');
   const [videoWidth, setVideoWidth] = useState(0);
   const [videoHeight, setVideoHeight] = useState(0);
+
+
   
   // >>> 1. IN-UPDATE NA STATE: Kumukuha muna sa localStorage kung may nakasave <<<
   const [positionX, setPositionX] = useState<number>(() => {
@@ -34,9 +40,26 @@ export default function LiveView() {
   useRef<HTMLDivElement>(null);
 
   // (IF PYTHON MJPEG USE) http://${window.location.hostname}:5000/video
-const STREAM_URL =
-`http://${window.location.hostname}:4000/hls/stream.m3u8`;
+const role =
+(
+  localStorage.getItem("role") || ""
+).toLowerCase();
 
+const STREAM_URL =
+role === "admin"
+  ? `http://${window.location.hostname}:8888/admin/index.m3u8`
+  : `http://${window.location.hostname}:8888/student/index.m3u8`
+  /*
+  console.log(
+  "ROLE:",
+  role
+);
+
+console.log(
+  "STREAM_URL:",
+  STREAM_URL
+);
+*/
 const FACES_API =
 `http://${window.location.hostname}:5000/detections`;
 
@@ -114,25 +137,27 @@ const FACES_API =
         const response = await fetch(FACES_API);
         const data = await response.json();
         setFaceCount(data.faces);
+        /*
 console.log(
   "FACE API JSON:",
   JSON.stringify(data, null, 2)
 );
-
+*/
 setFaceCount(data.faces || 0);
+console.log("DETECTIONS", data);
 
 setHeadCount(data.heads || 0);
 
 setBoxes(data.face_boxes || []);
 setPersons(data.person_boxes || []);
-        setBoxes(data.head_boxes || []);
+setBoxes(data.head_boxes || []);
       } catch (error) {
         console.error('Error fetching face count:', error);
       }
     };
 
     fetchFaceCount();
-    const interval = setInterval(fetchFaceCount, 200);
+    const interval = setInterval(fetchFaceCount, 1000);
     return () => clearInterval(interval);
   }, []); 
 
@@ -140,6 +165,7 @@ setPersons(data.person_boxes || []);
   useEffect(() => {
     const monitorPerformance = () => {
 
+      /*
       console.log('==========================');
 console.log('VIDEO DEBUG');
 
@@ -196,6 +222,7 @@ if (hlsRef.current) {
     hlsRef.current.bandwidthEstimate
   );
 }
+      */
       if (hlsRef.current && videoRef.current) {
         const hls = hlsRef.current;
         const video = videoRef.current;
@@ -292,7 +319,8 @@ hls.on(Hls.Events.MANIFEST_PARSED, () => {
   );
   video.playbackRate = 1;
 });
-        
+
+/*        
         hls.on(Hls.Events.FRAG_LOADING, (_, data) => {
   console.log('📦 Loading Fragment:', data.frag.sn);
 });
@@ -305,16 +333,18 @@ hls.on(Hls.Events.BUFFER_APPENDED, () => {
   console.log('📥 Buffer Appended');
 });
 
+hls.on(Hls.Events.LEVEL_UPDATED, (_, data) => {
+  console.log('📺 Level Updated');
+  console.log(data.details);
+});
+*/
+
 hls.on(Hls.Events.ERROR, (_, data) => {
   if (data.details === 'bufferStalledError') {
     console.warn('⚠️ BUFFER STALLED');
   }
 });
 
-hls.on(Hls.Events.LEVEL_UPDATED, (_, data) => {
-  console.log('📺 Level Updated');
-  console.log(data.details);
-});
         hls.on(Hls.Events.ERROR, (event, data) => {
           if (data.fatal) {
             switch (data.type) {

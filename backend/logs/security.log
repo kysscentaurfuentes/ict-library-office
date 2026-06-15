@@ -253,3 +253,42 @@
 [2026-06-15T13:55:47.865Z] SUCCESSFUL_LOGIN | STUDENT_ID=211-01850 | USER=7 | IP=172.18.0.1
 {"timestamp":"2026-06-15T13:58:44.837Z","severity":"INFO","event":"SUCCESSFUL_LOGIN","email":"kyss.fuentes1@gmail.com","studentId":"211-01850","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
 [2026-06-15T13:58:44.856Z] SUCCESSFUL_LOGIN | STUDENT_ID=211-01850 | USER=7 | IP=172.18.0.1
+{"timestamp":"2026-06-15T14:44:35.822Z","severity":"INFO","event":"SUCCESSFUL_LOGIN","email":"kyss.fuentes1@gmail.com","studentId":"211-01850","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
+[2026-06-15T14:44:35.864Z] SUCCESSFUL_LOGIN | STUDENT_ID=211-01850 | USER=7 | IP=172.18.0.1
+{"timestamp":"2026-06-15T14:46:39.969Z","severity":"INFO","event":"SUCCESSFUL_LOGIN","email":"kyss.fuentes1@gmail.com","studentId":"211-01850","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
+[2026-06-15T14:46:39.977Z] SUCCESSFUL_LOGIN | STUDENT_ID=211-01850 | USER=7 | IP=172.18.0.1
+[2026-06-15T14:47:12.603Z] FAILED_LOGIN | STUDENT_ID=211-01851 | USER=10 | IP=172.18.0.1
+{"timestamp":"2026-06-15T14:47:12.606Z","severity":"WARNING","event":"FAILED_LOGIN","email":"kyss.fuentes3@gmail.com","studentId":"211-01851","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
+[2026-06-15T14:47:16.467Z] FAILED_LOGIN | STUDENT_ID=211-01851 | USER=10 | IP=172.18.0.1
+{"timestamp":"2026-06-15T14:47:16.478Z","severity":"WARNING","event":"FAILED_LOGIN","email":"kyss.fuentes3@gmail.com","studentId":"211-01851","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
+[2026-06-15T14:47:22.073Z] FAILED_LOGIN | STUDENT_ID=211-01851 | USER=10 | IP=172.18.0.1
+{"timestamp":"2026-06-15T14:47:22.079Z","severity":"WARNING","event":"FAILED_LOGIN","email":"kyss.fuentes3@gmail.com","studentId":"211-01851","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
+[2026-06-15T14:49:44.390Z] FAILED_LOGIN | STUDENT_ID=234-23423 | USER=30 | IP=172.18.0.1
+{"timestamp":"2026-06-15T14:49:44.433Z","severity":"WARNING","event":"FAILED_LOGIN","email":"234@carsu.edu.ph","studentId":"234-23423","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
+[2026-06-15T14:49:46.981Z] FAILED_LOGIN | STUDENT_ID=234-23423 | USER=30 | IP=172.18.0.1
+{"timestamp":"2026-06-15T14:49:46.984Z","severity":"WARNING","event":"FAILED_LOGIN","email":"234@carsu.edu.ph","studentId":"234-23423","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
+[2026-06-15T14:49:55.985Z] FAILED_LOGIN | STUDENT_ID=234-23423 | USER=30 | IP=172.18.0.1
+{"timestamp":"2026-06-15T14:49:55.988Z","severity":"WARNING","event":"FAILED_LOGIN","email":"234@carsu.edu.ph","studentId":"234-23423","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
+[2026-06-15T14:49:58.686Z] FAILED_LOGIN | STUDENT_ID=234-23423 | USER=30 | IP=172.18.0.1
+{"timestamp":"2026-06-15T14:49:58.691Z","severity":"WARNING","event":"FAILED_LOGIN","email":"234@carsu.edu.ph","studentId":"234-23423","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
+{"timestamp":"2026-06-15T14:50:09.441Z","severity":"CRITICAL","event":"BRUTE_FORCE_DETECTED","email":"234@carsu.edu.ph","studentId":"234-23423","attempts":5,"ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
+[2026-06-15T14:50:09.454Z] BRUTE_FORCE_DETECTED | STUDENT_ID=234-23423 | USER=30 | IP=172.18.0.1
+[2026-06-15T14:50:09.536Z] FAILED_LOGIN | STUDENT_ID=234-23423 | USER=30 | IP=172.18.0.1
+{"timestamp":"2026-06-15T14:50:09.553Z","severity":"WARNING","event":"FAILED_LOGIN","email":"234@carsu.edu.ph","studentId":"234-23423","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
+{"timestamp":"2026-06-15T14:50:18.509Z","severity":"INFO","event":"SUCCESSFUL_LOGIN","email":"123@carsu.edu.ph","studentId":"123-12312","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36","requiresPolicyUpdate":true}
+[2026-06-15T14:50:18.514Z] SUCCESSFUL_LOGIN | STUDENT_ID=123-12312 | USER=31 | IP=172.18.0.1
+[2026-06-15T14:50:24.235Z] USER_ACCEPTED_POLICY | STUDENT_ID=3 | USER=31 | IP=172.18.0.1
+{"timestamp":"2026-06-15T15:22:11.583Z","severity":"INFO","event":"SUCCESSFUL_LOGIN","email":"kyss.fuentes1@gmail.com","studentId":"211-01850","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
+[2026-06-15T15:22:11.631Z] SUCCESSFUL_LOGIN | STUDENT_ID=211-01850 | USER=7 | IP=172.18.0.1
+{"timestamp":"2026-06-15T15:22:25.455Z","severity":"INFO","event":"SUCCESSFUL_LOGIN","email":"123@carsu.edu.ph","studentId":"123-12312","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
+[2026-06-15T15:22:25.463Z] SUCCESSFUL_LOGIN | STUDENT_ID=123-12312 | USER=31 | IP=172.18.0.1
+{"timestamp":"2026-06-15T16:04:42.202Z","severity":"INFO","event":"SUCCESSFUL_LOGIN","email":"kyss.fuentes1@gmail.com","studentId":"211-01850","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
+[2026-06-15T16:04:42.284Z] SUCCESSFUL_LOGIN | STUDENT_ID=211-01850 | USER=7 | IP=172.18.0.1
+{"timestamp":"2026-06-15T16:40:18.804Z","severity":"INFO","event":"SUCCESSFUL_LOGIN","email":"kyss.fuentes1@gmail.com","studentId":"211-01850","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
+[2026-06-15T16:40:18.872Z] SUCCESSFUL_LOGIN | STUDENT_ID=211-01850 | USER=7 | IP=172.18.0.1
+{"timestamp":"2026-06-15T16:40:43.116Z","severity":"INFO","event":"SUCCESSFUL_LOGIN","email":"123@carsu.edu.ph","studentId":"123-12312","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
+[2026-06-15T16:40:43.123Z] SUCCESSFUL_LOGIN | STUDENT_ID=123-12312 | USER=31 | IP=172.18.0.1
+{"timestamp":"2026-06-15T16:41:06.728Z","severity":"INFO","event":"SUCCESSFUL_LOGIN","email":"123@carsu.edu.ph","studentId":"123-12312","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
+[2026-06-15T16:41:06.752Z] SUCCESSFUL_LOGIN | STUDENT_ID=123-12312 | USER=31 | IP=172.18.0.1
+{"timestamp":"2026-06-15T16:56:43.860Z","severity":"INFO","event":"SUCCESSFUL_LOGIN","email":"kyss.fuentes1@gmail.com","studentId":"211-01850","ip":"172.18.0.1","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"}
+[2026-06-15T16:56:43.885Z] SUCCESSFUL_LOGIN | STUDENT_ID=211-01850 | USER=7 | IP=172.18.0.1

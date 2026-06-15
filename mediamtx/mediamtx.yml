@@ -815,7 +815,10 @@ paths:
     rtspTransport: tcp
     sourceOnDemand: no
 
-  processed:
+  admin:
+    source: publisher
+
+  student:
     source: publisher
 
   all_others:
