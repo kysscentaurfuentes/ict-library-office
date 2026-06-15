@@ -11,12 +11,12 @@ import threading
 import os
 from dotenv import load_dotenv
 import subprocess
-from ultralytics import YOLO
-import supervision as sv
 import psutil
+from detectors.person_detector import detect_persons
+from detectors.face_detector import detect_faces
+from detectors.head_detector import detect_heads
 
-person_model = YOLO("yolov8n.pt")
-tracker = sv.ByteTrack()
+latest_heads = []
 
 ffmpeg_process = None
 
@@ -25,7 +25,8 @@ latest_stats = {
     "cpu": 0,
     "ram": 0,
     "persons": 0,
-    "faces": 0
+    "faces": 0,
+    "heads": 0
 }
 
 app = Flask(__name__)
@@ -45,11 +46,6 @@ latest_annotated_frame = None
 
 PH_TIMEZONE = pytz.timezone("Asia/Manila")
 
-# Face Detection Setup
-face_cascade = cv2.CascadeClassifier(
-    cv2.data.haarcascades +
-    "haarcascade_frontalface_default.xml"
-)
 
 face_history = deque(maxlen=5)
 
@@ -70,93 +66,8 @@ def get_ph_dt():
     )
 
 
-def detect_faces(frame):
-
-    global face_history
-
-    gray = cv2.cvtColor(
-        frame,
-        cv2.COLOR_BGR2GRAY
-    )
-
-    gray = cv2.equalizeHist(gray)
-
-    faces = face_cascade.detectMultiScale(
-        gray,
-        scaleFactor=1.05,
-        minNeighbors=3,
-        minSize=(30, 30)
-    )
-
-    if len(faces) > 0:
-
-        main_face = max(
-            faces,
-            key=lambda f: f[2] * f[3]
-        )
-
-        face_history.append(main_face)
-
-    else:
-
-        if len(face_history) > 0:
-            face_history.popleft()
-
-    if face_history:
-
-        avg_face = np.mean(
-            face_history,
-            axis=0
-        ).astype(int)
-
-        return [avg_face]
-
-    return []
 
 
-def detect_persons(frame):
-
-    results = person_model(
-        frame,
-        verbose=False
-    )[0]
-
-    detections = sv.Detections.from_ultralytics(
-        results
-    )
-
-    detections = detections[
-        detections.class_id == 0
-    ]
-
-    tracked = tracker.update_with_detections(
-        detections
-    )
-
-    persons = []
-
-    for i in range(
-        len(tracked.xyxy)
-    ):
-
-        x1, y1, x2, y2 = map(
-            int,
-            tracked.xyxy[i]
-        )
-
-        track_id = int(
-            tracked.tracker_id[i]
-        )
-
-        persons.append({
-            "id": track_id,
-            "x": x1,
-            "y": y1,
-            "width": x2 - x1,
-            "height": y2 - y1
-        })
-
-    return persons
 
 def start_rtsp_publisher(width, height):
 
@@ -196,7 +107,10 @@ def start_rtsp_publisher(width, height):
             "-f",
             "rtsp",
 
+            os.getenv(
+            "PROCESSED_RTSP_URL",
             "rtsp://mediamtx:8554/processed"
+    )
         ],
         stdin=subprocess.PIPE
     )
@@ -205,6 +119,7 @@ def start_rtsp_publisher(width, height):
 def face_worker():
 
     global latest_faces
+    global latest_heads
     global latest_persons
     global latest_annotated_frame
     global ffmpeg_process
@@ -269,7 +184,14 @@ def face_worker():
                 small
             )
 
+            heads = detect_heads(
+            persons
+            )
+
+   
+
             latest_stats["faces"] = len(faces)
+            latest_stats["heads"] = len(heads)
             latest_stats["cpu"] = psutil.cpu_percent()
             latest_stats["ram"] = psutil.virtual_memory().percent
 
@@ -278,19 +200,20 @@ def face_worker():
 
             temp_faces = []
 
-            for (x, y, w, h) in faces:
+            temp_heads = []
+
+            for face in faces:
+
+                x = face["x"]
+                y = face["y"]
+                w = face["width"]
+                h = face["height"]
 
                 fx = int(x * scale_x)
                 fy = int(y * scale_y)
 
                 fw = int(w * scale_x)
                 fh = int(h * scale_y)
-
-                fx = max(0, min(fx, frame.shape[1] - 1))
-                fy = max(0, min(fy, frame.shape[0] - 1))
-
-                fw = min(fw, frame.shape[1] - fx)
-                fh = min(fh, frame.shape[0] - fy)
 
                 temp_faces.append({
                     "x": fx,
@@ -299,7 +222,25 @@ def face_worker():
                     "height": fh
                 })
 
+            for head in heads:
+
+                hx = int(head["x"] * scale_x)
+                hy = int(head["y"] * scale_y)
+
+                hw = int(head["width"] * scale_x)
+                hh = int(head["height"] * scale_y)
+
+                temp_heads.append({
+                    "person_id": head["person_id"],
+                    "x": hx,
+                    "y": hy,
+                    "width": hw,
+                "height": hh
+                })
+
             latest_faces = temp_faces
+
+            latest_heads = temp_heads
 
             temp_persons = []
 
@@ -340,6 +281,22 @@ def face_worker():
                 2
             )
 
+        for head in latest_heads:
+
+            cv2.rectangle(
+        annotated,
+        (
+            head["x"],
+            head["y"]
+        ),
+        (
+            head["x"] + head["width"],
+            head["y"] + head["height"]
+        ),
+        (0, 0, 255),
+        2
+    )
+
         for person in latest_persons:
 
             cv2.rectangle(
@@ -377,6 +334,7 @@ def face_worker():
 
             if (
                 ffmpeg_process
+                and ffmpeg_process.poll() is None
                 and ffmpeg_process.stdin
             ):
 
@@ -389,9 +347,17 @@ def face_worker():
         except Exception as e:
 
             print(
-                "RTSP PUBLISH ERROR:",
-                e
+            "RTSP PUBLISH ERROR:",
+            e
             )
+
+            try:
+                if ffmpeg_process:
+                    ffmpeg_process.kill()
+            except:
+                pass
+
+            ffmpeg_process = None
 
         time.sleep(0.03)
 
