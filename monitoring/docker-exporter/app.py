@@ -42,18 +42,40 @@ def update_metrics():
 
             state = attrs.get("State", {})
 
-            top = container.top()
-
-            if name == "ict-grafana":
-                print(top)
-
-            pids_count = len(
-                top.get("Processes", [])
+            stats = container.stats(
+                stream=False
             )
 
-            running = 1 if state.get("Running", False) else 0
+            pids_count = (
+                stats
+                .get("pids_stats", {})
+                .get("current")
+            )
 
-            restart_count = attrs.get("RestartCount", 0)
+            if pids_count is None:
+
+                top = container.top()
+
+                pids_count = len(
+                    top.get("Processes", [])
+                )
+
+            if name == "ict-ai-service-dev":
+                print(
+                    f"[DEBUG] {name} pids_stats={stats.get('pids_stats', {})}"
+                )
+
+            running = (
+                1 if state.get(
+                    "Running",
+                    False
+                ) else 0
+            )
+
+            restart_count = attrs.get(
+                "RestartCount",
+                0
+            )
 
             container_pids.labels(
                 container_name=name
