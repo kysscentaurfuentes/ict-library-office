@@ -1,5 +1,5 @@
 # ICT-LIBRARY-OFFICE/ai-service/detectors/head_detector.py
-
+import time
 from ultralytics import YOLO
 
 head_model = YOLO(
@@ -35,6 +35,11 @@ def detect_heads(frame):
             "height": y2 - y1
         })
 
-    print("Heads Found:", len(heads))
+    if not hasattr(detect_heads, "_last_log"):
+        detect_heads._last_log = time.time()
+
+    if time.time() - detect_heads._last_log >= 10:
+        print("Heads Found:", len(heads))
+        detect_heads._last_log = time.time()
 
     return heads

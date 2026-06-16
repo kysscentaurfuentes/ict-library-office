@@ -47,9 +47,9 @@ const role =
 
 const STREAM_URL =
 role === "admin"
-  ? `http://${window.location.hostname}:8888/admin/index.m3u8`
-  : `http://${window.location.hostname}:8888/student/index.m3u8`
-  /*
+  ? `http://${window.location.hostname}:4000/hls/admin/index.m3u8`
+  : `http://${window.location.hostname}:4000/hls/student/index.m3u8`;
+
   console.log(
   "ROLE:",
   role
@@ -59,7 +59,7 @@ console.log(
   "STREAM_URL:",
   STREAM_URL
 );
-*/
+
 const FACES_API =
 `http://${window.location.hostname}:5000/detections`;
 
@@ -270,10 +270,10 @@ if (hlsRef.current) {
 
   lowLatencyMode: true,
 
-  liveSyncDurationCount: 3,
-  liveMaxLatencyDurationCount: 6,
+  liveSyncDurationCount: 5,
+  liveMaxLatencyDurationCount: 10,
 
-  maxLiveSyncPlaybackRate: 1.5,
+  maxLiveSyncPlaybackRate: 1,
 
   maxBufferLength: 10,
   maxMaxBufferLength: 20,
@@ -414,9 +414,9 @@ hls.on(Hls.Events.ERROR, (_, data) => {
         const newHls = new Hls({
           enableWorker: true,
           lowLatencyMode: true,
-          liveSyncDurationCount: 3,
-          liveMaxLatencyDurationCount: 6,
-          maxLiveSyncPlaybackRate: 1.5,
+          liveSyncDurationCount: 5,
+          liveMaxLatencyDurationCount: 10,
+          maxLiveSyncPlaybackRate: 1,
           maxBufferLength: 10,
           maxMaxBufferLength: 20,
           backBufferLength: 0.5,
@@ -704,14 +704,17 @@ hls.on(Hls.Events.ERROR, (_, data) => {
               boxShadow: faceCount > 0 ? '0 0 15px rgba(239,68,68,0.5)' : 'none'
             }}>
               <span style={{ fontSize: '16px' }}>👤</span>
-              <span style={{ 
-                color: 'white', 
-                fontSize: '14px', 
-                fontWeight: 'bold'
-              }}>
-                Faces: {faceCount}
-              | Heads: {headCount}
-              </span>
+              {role === "admin" && (
+  <span
+    style={{
+      color: "white",
+      fontSize: "14px",
+      fontWeight: "bold"
+    }}
+  >
+    Faces: {faceCount} | Heads: {headCount}
+  </span>
+)}
               {faceCount > 0 && (
                 <span style={{
                   display: 'inline-block',
@@ -822,35 +825,63 @@ hls.on(Hls.Events.ERROR, (_, data) => {
                 </span>
               </div>
               <span style={{ color: isDarkMode ? '#64748b' : '#94a3b8', fontSize: '0.7rem' }}>|</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '0.7rem', color: isDarkMode ? '#64748b' : '#94a3b8' }}>👤 Faces:</span>
-                <span style={{ fontSize: '0.7rem', fontWeight: 'bold', color: faceCount > 0 ? '#ef4444' : '#10b981' }}>
-                  {faceCount}
-                </span>
-                <span
-  style={{
-    fontSize: '0.7rem',
-    color: isDarkMode
-      ? '#64748b'
-      : '#94a3b8'
-  }}
->
-  🧠 Heads:
-</span>
+              {role === "admin" && (
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: "6px"
+    }}
+  >
+    <span
+      style={{
+        fontSize: "0.7rem",
+        color: isDarkMode
+          ? "#64748b"
+          : "#94a3b8"
+      }}
+    >
+      👤 Faces:
+    </span>
 
-<span
-  style={{
-    fontSize: '0.7rem',
-    fontWeight: 'bold',
-    color:
-      headCount > 0
-        ? '#f59e0b'
-        : '#10b981'
-  }}
->
-  {headCount}
-</span>
-              </div>
+    <span
+      style={{
+        fontSize: "0.7rem",
+        fontWeight: "bold",
+        color:
+          faceCount > 0
+            ? "#ef4444"
+            : "#10b981"
+      }}
+    >
+      {faceCount}
+    </span>
+
+    <span
+      style={{
+        fontSize: "0.7rem",
+        color: isDarkMode
+          ? "#64748b"
+          : "#94a3b8"
+      }}
+    >
+      🧠 Heads:
+    </span>
+
+    <span
+      style={{
+        fontSize: "0.7rem",
+        fontWeight: "bold",
+        color:
+          headCount > 0
+            ? "#f59e0b"
+            : "#10b981"
+      }}
+    >
+      {headCount}
+    </span>
+  </div>
+)}
             </div>
             
             {/* Control Buttons */}

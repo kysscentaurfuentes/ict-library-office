@@ -1,0 +1,317 @@
+# ICT-LIBRARY-OFFICE/ai-service/docs/cctv-ai-performance-tuning.txt
+
+============================================================
+ICT LIBRARY OFFICE
+CCTV AI PERFORMANCE TUNING GUIDE
+============================================================
+
+FILE:
+ai-service/flask_stream.py
+
+============================================================
+1. DETECTION RESOLUTION
+============================================================
+
+Code:
+
+small = cv2.resize(
+    frame,
+    (320, 180)
+)
+
+Purpose:
+
+Resize the original CCTV frame before running AI detection.
+
+Why:
+
+AI models run much faster on smaller images.
+
+Example:
+
+Original CCTV:
+2560 x 1440
+
+Detection Resolution:
+320 x 180
+
+Benefits:
+- Faster startup
+- Lower CPU usage
+- Faster face/head/person detection
+
+Tradeoffs:
+- Small faces may be missed
+- Small heads may be missed
+- Lower detection accuracy
+
+Examples:
+
+(160, 90)
+Very Fast
+Lowest Accuracy
+
+(320, 180)
+Recommended Balance
+
+(640, 360)
+Better Accuracy
+Higher CPU
+
+(1280, 720)
+Very Accurate
+Heavy CPU
+
+============================================================
+2. FRAME SKIP
+============================================================
+
+Code:
+
+if frame_skip % 10 == 0:
+
+Purpose:
+
+Controls how often AI detection runs.
+
+Examples:
+
+%1
+
+Detect every frame
+
+Frame 1 -> Detect
+Frame 2 -> Detect
+Frame 3 -> Detect
+
+Advantages:
+- Highest accuracy
+- Best tracking
+
+Disadvantages:
+- Highest CPU usage
+
+------------------------------------------------------------
+
+%3
+
+Detect every 3 frames
+
+Frame 1
+Frame 2
+Frame 3 -> Detect
+
+Advantages:
+- Good balance
+
+Disadvantages:
+- Moderate CPU
+
+------------------------------------------------------------
+
+%6
+
+Detect every 6 frames
+
+Advantages:
+- Lower CPU
+
+Disadvantages:
+- Slight tracking delay
+
+------------------------------------------------------------
+
+%10
+
+Current ICT Library Office Setting
+
+Frame 1-9
+No Detection
+
+Frame 10
+Detect
+
+Advantages:
+- Lower CPU
+- Faster startup
+- Better system stability
+
+Disadvantages:
+- Boxes update slower
+- Fast-moving people may temporarily outrun boxes
+
+============================================================
+3. STARTUP TIME HISTORY
+============================================================
+
+Timeline #1
+
+Detection Resolution:
+(320, 180)
+
+Frame Skip:
+%3
+
+Startup:
+135 seconds
+------------------------------------------------------------
+Timeline #2
+
+Detection Resolution:
+(320, 180)
+
+Frame Skip:
+%6
+
+Startup:
+110 seconds
+------------------------------------------------------------
+Timeline #3
+
+Detection Resolution:
+(320, 180)
+
+Frame Skip:
+%10
+
+Startup:
+81 seconds
+------------------------------------------------------------
+Timeline #4
+
+Detection Resolution:
+(320, 180)
+
+Frame Skip:
+%10
+
+Reduced Face/Head Logging
+Automatic HLS Cleanup
+
+Startup:
+58 seconds
+------------------------------------------------------------
+" Current Coded in the flask_stream.py "
+    Detection Resolution:
+        (640, 360)
+
+    Frame Skip:
+        %3    
+============================================================
+4. ADMIN STREAM
+============================================================
+
+RTSP:
+rtsp://mediamtx:8554/admin
+
+Features:
+
+Person Box:
+Blue
+
+Face Box:
+Green
+
+Head Box:
+Red
+
+Blur:
+Disabled
+
+Tracking:
+Enabled
+
+============================================================
+5. STUDENT STREAM
+============================================================
+
+RTSP:
+rtsp://mediamtx:8554/student
+
+Features:
+
+Person Box:
+Hidden
+
+Face Box:
+Hidden
+
+Head Box:
+Hidden
+
+Face Blur:
+Enabled
+
+Head Blur:
+Future Option
+
+Tracking:
+Hidden
+
+============================================================
+6. WHEN TO INCREASE ACCURACY
+============================================================
+
+Increase resolution:
+
+(320,180)
+to
+(640,360)
+
+or
+
+Change:
+
+frame_skip % 10
+
+to
+
+frame_skip % 6
+
+or
+
+frame_skip % 3
+
+Expected Result:
+
+Better Detection
+
+Expected Cost:
+
+Higher CPU
+Longer Startup
+More Heat
+
+============================================================
+7. WHEN TO INCREASE SPEED
+============================================================
+
+Lower resolution:
+
+(320,180)
+to
+(160,90)
+
+or
+
+Increase:
+
+frame_skip % 10
+
+to
+
+frame_skip % 15
+
+Expected Result:
+
+Lower CPU
+Faster Startup
+
+Expected Cost:
+
+Lower Accuracy
+Slower Box Updates
+
+============================================================
+END OF DOCUMENT
+============================================================

@@ -4,151 +4,211 @@ import { spawn } from "child_process";
 import fs from "fs";
 import path from "path";
 
-export function startHlsStream() {
-const ffmpegPath =
-  process.env.FFMPEG_PATH ||
-  "ffmpeg";
+function startSingleHlsStream(
+  rtspUrl: string,
+  outputFolder: string
+) {
 
+  console.log(
+  `🚀 Starting ${outputFolder} HLS from ${rtspUrl}`
+);
 
+  const ffmpegPath =
+    process.env.FFMPEG_PATH ||
+    "ffmpeg";
 
-  const rtspUrl = process.env.RTSP_URL;
+  const hlsDir = path.join(
+    process.cwd(),
+    "public",
+    "hls",
+    outputFolder
+  );
 
-if (!rtspUrl) {
-  console.error("❌ Missing RTSP_URL");
-  return;
+  fs.mkdirSync(
+    hlsDir,
+    { recursive: true }
+  );
+
+  for (const file of fs.readdirSync(hlsDir)) {
+
+  if (
+    file.endsWith(".ts") ||
+    file.endsWith(".m3u8")
+  ) {
+
+    fs.unlinkSync(
+      path.join(hlsDir, file)
+    );
+
+  }
+
 }
 
-  const hlsDir = path.join(process.cwd(), "public", "hls");
+  const outputFile = path.join(
+    hlsDir,
+    "index.m3u8"
+  );
 
-  if (!fs.existsSync(hlsDir)) {
-    fs.mkdirSync(hlsDir, { recursive: true });
-  }
+  const startedAt = Date.now();
 
-  // cleanup old files
-  for (const file of fs.readdirSync(hlsDir)) {
-    if (
-      file.endsWith(".ts") ||
-      file.endsWith(".m3u8")
-    ) {
-      fs.unlinkSync(path.join(hlsDir, file));
-    }
-  }
+const waitTimer = setInterval(() => {
 
-  const outputFile =
-    path.join(hlsDir, "stream.m3u8");
-
-  console.log("🎥 Starting FFmpeg HLS...");
-  console.log("📺 RTSP:", rtspUrl);
+  const seconds = Math.floor(
+    (Date.now() - startedAt) / 1000
+  );
 
   console.log(
-  "📁 HLS DIR:",
-  hlsDir
-);
+    `[${outputFolder}] Waiting ${seconds}s for first HLS files...`
+  );
 
-console.log(
-  "🎬 FFMPEG PATH:",
-  ffmpegPath
-);
+}, 5000);
+
+const watchTimer = setInterval(() => {
+
+  if (
+    fs.existsSync(outputFile)
+  ) {
+
+    clearInterval(waitTimer);
+
+    const seconds = Math.floor(
+      (Date.now() - startedAt) / 1000
+    );
+
+    console.log(
+      `[${outputFolder}] HLS READY after ${seconds}s`
+    );
+
+    clearInterval(watchTimer);
+
+  }
+
+}, 1000);
 
   const ffmpeg = spawn(
-  ffmpegPath,
-  [
-    "-hide_banner",
+    ffmpegPath,
+    [
+      "-hide_banner",
 
-    "-loglevel",
-    "warning",
+      "-loglevel",
+      "warning",
 
-    "-rtsp_transport",
-    "tcp",
+      "-rtsp_transport",
+      "tcp",
 
-    "-i",
-    rtspUrl,
+      "-i",
+      rtspUrl,
 
-    "-an",
+      "-an",
 
-    // 180° rotation + resize
-    "-vf",
-    "scale=1280:720",
+      "-vf",
+      "scale=1280:720",
 
-    "-c:v",
-    "libx264",
+      "-c:v",
+      "libx264",
 
-    "-preset",
-    "ultrafast",
+      "-preset",
+      "ultrafast",
 
-    "-tune",
-    "zerolatency",
+      "-tune",
+      "zerolatency",
 
-    "-pix_fmt",
-    "yuv420p",
+      "-pix_fmt",
+      "yuv420p",
 
-    "-g",
-    "15",
+      "-g",
+      "15",
 
-    "-keyint_min",
-    "15",
+      "-keyint_min",
+      "15",
 
-    "-sc_threshold",
-    "0",
+      "-sc_threshold",
+      "0",
 
-    "-f",
-    "hls",
+      "-f",
+      "hls",
 
-    "-hls_time",
-    "1",
+      "-hls_time",
+      "1",
 
-    "-hls_list_size",
-    "6",
+      "-hls_list_size",
+      "6",
 
-    "-hls_flags",
-    "delete_segments+append_list",
+      "-hls_flags",
+      "delete_segments+append_list",
 
-    "-hls_allow_cache",
-    "0",
+      "-hls_allow_cache",
+      "0",
 
-    "-start_number",
-    "0",
+      "-start_number",
+      "0",
 
-    "-hls_segment_filename",
-    path.join(
-      hlsDir,
-      "segment_%05d.ts"
-    ),
+      "-hls_segment_filename",
 
-    outputFile
-  ],
-  {
-    windowsHide: true
+      path.join(
+        hlsDir,
+        "segment_%05d.ts"
+      ),
+
+      outputFile
+    ],
+    {
+      windowsHide: true
+    }
+  );
+
+  ffmpeg.stderr.on(
+  "data",
+  data => {
+    console.log(
+      `[${outputFolder}]`,
+      data.toString()
+    );
   }
 );
 
-  ffmpeg.stdout.on("data", data => {
-    console.log(data.toString());
-  });
+ffmpeg.on(
+  "close",
+  code => {
 
-ffmpeg.stderr.on("data", data => {
-  console.log(data.toString());
-});
+    console.log(
+      `[${outputFolder}] FFmpeg exited:`,
+      code
+    );
 
-ffmpeg.on("close", code => {
-  console.log(
-    "FFmpeg exited:",
-    code
+    setTimeout(() => {
+
+      startSingleHlsStream(
+        rtspUrl,
+        outputFolder
+      );
+
+    }, 5000);
+
+  }
+);
+
+ffmpeg.on(
+  "error",
+  err => {
+    console.error(
+      `[${outputFolder}] FFmpeg error`,
+      err
+    );
+  }
+);
+}
+
+export function startHlsStream() {
+
+  startSingleHlsStream(
+    "rtsp://mediamtx:8554/admin",
+    "admin"
   );
 
-  console.log(
-    "🔄 Restarting FFmpeg in 5 seconds..."
+  startSingleHlsStream(
+    "rtsp://mediamtx:8554/student",
+    "student"
   );
 
-  setTimeout(() => {
-    startHlsStream();
-  }, 5000);
-});
-
-ffmpeg.on("error", err => {
-  console.error(
-    "❌ FFmpeg process error:",
-    err
-  );
-});
 }

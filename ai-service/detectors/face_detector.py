@@ -1,5 +1,7 @@
 # ICT-LIBRARY-OFFICE/ai-service/detectors/face_detector.py
 
+import time
+
 from ultralytics import YOLO
 
 face_model = YOLO(
@@ -34,6 +36,11 @@ def detect_faces(frame):
             "height": y2 - y1
         })
 
-    print("Faces Found:", len(faces))
+    if not hasattr(detect_faces, "_last_log"):
+        detect_faces._last_log = time.time()
+
+    if time.time() - detect_faces._last_log >= 10:
+        print("Faces Found:", len(faces))
+        detect_faces._last_log = time.time()
 
     return faces

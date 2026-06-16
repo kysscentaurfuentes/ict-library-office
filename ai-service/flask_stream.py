@@ -13,10 +13,15 @@ from dotenv import load_dotenv
 import subprocess
 import psutil
 from detectors.person_detector import detect_persons
-from detectors.face_detector import detect_faces
+# from detectors.face_detector import detect_faces
 from detectors.head_detector import detect_heads
 
 latest_heads = []
+last_heads = []
+last_head_seen = 0
+
+
+
 
 # ffmpeg_process = None
 
@@ -121,6 +126,7 @@ def start_rtsp_publisher(width, height):
 """
 
 def start_admin_rtsp_publisher(width, height):
+    print("🚀 ADMIN RTSP PUBLISHER STARTED")
 
     global admin_ffmpeg_process
 
@@ -132,6 +138,7 @@ def start_admin_rtsp_publisher(width, height):
             "-s", f"{width}x{height}",
             "-r", "15",
             "-i", "-",
+            "-vf", "scale=1280:720",
             "-c:v", "libx264",
             "-preset", "ultrafast",
             "-tune", "zerolatency",
@@ -144,6 +151,7 @@ def start_admin_rtsp_publisher(width, height):
 
 
 def start_student_rtsp_publisher(width, height):
+    print("🚀 STUDENT RTSP PUBLISHER STARTED")
 
     global student_ffmpeg_process
 
@@ -155,6 +163,7 @@ def start_student_rtsp_publisher(width, height):
             "-s", f"{width}x{height}",
             "-r", "15",
             "-i", "-",
+            "-vf", "scale=1280:720",
             "-c:v", "libx264",
             "-preset", "ultrafast",
             "-tune", "zerolatency",
@@ -173,6 +182,11 @@ def face_worker():
     global latest_faces
     global latest_heads
     global latest_persons
+    global latest_heads
+    global latest_persons
+    global last_heads
+    global last_head_seen
+
     global latest_annotated_frame
     global ffmpeg_process
     global admin_ffmpeg_process
@@ -220,12 +234,20 @@ def face_worker():
 
         frame_skip += 1
 
+        # Resize frame before AI detection.
+        # Smaller size = faster AI, lower accuracy. EX (320, 180)
+        # Larger size = slower AI, higher accuracy. EX (640, 360)
+
         small = cv2.resize(
             frame,
             (640, 360)
         )
 
-        if frame_skip % 3 == 0:
+        # Detection frequency:
+        # %1  = every frame (most accurate, highest CPU)
+        # %10 = every 10 frames (lower CPU, less responsive)
+        # if % 1 = CPU Heavy, if %10 = Lighter but less real-time
+        if frame_skip % 10 == 0:
 
             try:
 
@@ -272,9 +294,9 @@ def face_worker():
                 if roi.size == 0:
                     continue
 
-                person_faces = detect_faces(
-                    roi
-                )
+                # person_faces = detect_faces(
+                #     roi
+                # )
 
                 person_heads = detect_heads(
                     roi
@@ -286,7 +308,7 @@ def face_worker():
                 #    "HEAD:",
                 #    len(person_heads)
                 #)
-
+                """
                 if len(person_faces) > 0:
 
                     biggest_face = max(
@@ -301,7 +323,7 @@ def face_worker():
                         "width": biggest_face["width"],
                         "height": biggest_face["height"]
                     })
-
+                    """
 
                 if len(person_heads) > 0:
 
@@ -320,7 +342,7 @@ def face_worker():
                     })
 
 
-                latest_stats["faces"] = len(faces)
+                latest_stats["faces"] = 0
                 latest_stats["heads"] = len(heads)
                 latest_stats["cpu"] = psutil.cpu_percent()
                 latest_stats["ram"] = psutil.virtual_memory().percent
@@ -328,10 +350,10 @@ def face_worker():
             scale_x = frame.shape[1] / small.shape[1]
             scale_y = frame.shape[0] / small.shape[0]
 
-            temp_faces = []
+            # temp_faces = []
 
             temp_heads = []
-
+            """
             for face in faces:
 
                 x = face["x"]
@@ -351,7 +373,7 @@ def face_worker():
                     "width": fw,
                     "height": fh
                 })
-
+            """
             for head in heads:
 
                 hx = int(head["x"] * scale_x)
@@ -368,9 +390,19 @@ def face_worker():
                 "height": hh
                 })
 
-            latest_faces = temp_faces
+            #latest_faces = temp_faces
 
             latest_heads = temp_heads
+
+            if len(temp_heads) > 0:
+                last_heads = temp_heads.copy()
+                last_head_seen = time.time()
+
+            elif (
+                len(temp_heads) == 0
+                and time.time() - last_head_seen < 1
+            ):
+                latest_heads = last_heads.copy()
 
             temp_persons = []
 
@@ -399,12 +431,12 @@ def face_worker():
 # STUDENT FACE BLUR
 # ====================================
 
-        for face in latest_faces:
+        for head in latest_heads:
 
-            x = face["x"]
-            y = face["y"]
-            w = face["width"]
-            h = face["height"]
+            x = head["x"]
+            y = head["y"]
+            w = head["width"]
+            h = head["height"]
 
             # safety bounds
             if w <= 0 or h <= 0:
@@ -428,22 +460,6 @@ def face_worker():
                 y:y+h,
                 x:x+w
             ] = blurred
-
-        for face in latest_faces:
-
-            cv2.rectangle(
-                admin_frame,
-                (
-                    face["x"],
-                    face["y"]
-                ),
-                (
-                    face["x"] + face["width"],
-                    face["y"] + face["height"]
-                ),
-                (0, 255, 0),
-                2
-            )
 
         for head in latest_heads:
 
@@ -513,6 +529,10 @@ def face_worker():
                 and admin_ffmpeg_process.poll() is None
                 and admin_ffmpeg_process.stdin
             ):
+                if not hasattr(face_worker, "_admin_first_frame"):
+                    print("✅ FIRST ADMIN FRAME SENT")
+                    face_worker._admin_first_frame = True
+
                 admin_ffmpeg_process.stdin.write(
                     admin_frame.tobytes()
                 )
@@ -524,6 +544,10 @@ def face_worker():
                 and student_ffmpeg_process.poll() is None
                 and student_ffmpeg_process.stdin
             ):
+                if not hasattr(face_worker, "_student_first_frame"):
+                    print("✅ FIRST STUDENT FRAME SENT")
+                    face_worker._student_first_frame = True
+
                 student_ffmpeg_process.stdin.write(
                     student_frame.tobytes()
                 )
@@ -536,7 +560,7 @@ def face_worker():
                 e
             )
 
-        time.sleep(0.03)
+        time.sleep(0.066)
 
 
 def capture_worker():
@@ -743,7 +767,7 @@ def health():
     return jsonify({
         "status": "ok",
         "stream_ready": stream_ready,
-        "faces": len(latest_faces)
+        "heads": len(latest_heads)
     })
 
 @app.route("/stats")

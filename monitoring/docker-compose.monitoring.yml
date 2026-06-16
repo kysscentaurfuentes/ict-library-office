@@ -9,7 +9,6 @@ services:
   # =========================================================
   prometheus:
     image: prom/prometheus:latest
-
     container_name: ict-prometheus
 
     ports:
@@ -29,13 +28,11 @@ services:
       - monitoring-network
 
 
-
   # =========================================================
   # GRAFANA
   # =========================================================
   grafana:
     image: grafana/grafana-oss:latest
-
     container_name: ict-grafana
 
     env_file:
@@ -54,7 +51,6 @@ services:
       GF_SMTP_FROM_NAME: ICT Security Alerts
 
     volumes:
-
       # Persistent Grafana Database
       - ./grafana-data:/var/lib/grafana
 
@@ -65,7 +61,7 @@ services:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
 
       # Auto-load Dashboards
-      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards-json:ro
+      # - ./grafana/dashboards:/etc/grafana/provisioning/dashboards-json:ro
 
     restart: unless-stopped
 
@@ -78,13 +74,11 @@ services:
       - prod-network
 
 
-
   # =========================================================
   # LOKI (LOG STORAGE)
   # =========================================================
   loki:
     image: grafana/loki:3.7.2
-
     container_name: ict-loki
 
     ports:
@@ -102,13 +96,11 @@ services:
       - monitoring-network
 
 
-
   # =========================================================
   # PROMTAIL (LOG SHIPPER)
   # =========================================================
   promtail:
     image: grafana/promtail:latest
-
     container_name: ict-promtail
 
     command:
@@ -127,13 +119,11 @@ services:
       - monitoring-network
 
 
-
   # =========================================================
   # NODE EXPORTER (HOST METRICS)
   # =========================================================
   node-exporter:
     image: prom/node-exporter:latest
-
     container_name: ict-node-exporter
 
     ports:
@@ -145,13 +135,11 @@ services:
       - monitoring-network
 
 
-
   # =========================================================
   # CADVISOR (DOCKER CONTAINER METRICS)
   # =========================================================
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
-
     container_name: ict-cadvisor
 
     ports:
@@ -169,13 +157,32 @@ services:
       - monitoring-network
 
 
+  # =========================================================
+  # DOCKER ENGINE EXPORTER
+  # =========================================================
+  docker-exporter:
+    build:
+      context: ./docker-exporter
+
+    container_name: ict-docker-exporter
+
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+    ports:
+      - "8082:8000"
+
+    restart: unless-stopped
+
+    networks:
+      - monitoring-network
+
 
   # =========================================================
   # BLACKBOX EXPORTER
   # =========================================================
   blackbox-exporter:
     image: prom/blackbox-exporter:latest
-
     container_name: ict-blackbox-exporter
 
     ports:
@@ -193,13 +200,11 @@ services:
       - monitoring-network
 
 
-
   # =========================================================
   # SNMP EXPORTER
   # =========================================================
   snmp-exporter:
     image: prom/snmp-exporter:latest
-
     container_name: ict-snmp-exporter
 
     ports:
@@ -214,13 +219,11 @@ services:
       - monitoring-network
 
 
-
   # =========================================================
   # COLLECTD EXPORTER (ROUTER TELEMETRY)
   # =========================================================
   collectd-exporter:
     image: prom/collectd-exporter:latest
-
     container_name: ict-collectd-exporter
 
     command:
@@ -236,7 +239,6 @@ services:
       - monitoring-network
 
 
-
 # =========================================================
 # NETWORKS
 # =========================================================
@@ -247,4 +249,4 @@ networks:
 
   prod-network:
     external: true
-    name: ict-library-prod_default
+    name: ict-library-dev_default

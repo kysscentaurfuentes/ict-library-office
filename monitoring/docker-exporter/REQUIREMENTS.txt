@@ -1,0 +1,5 @@
+# ICT-LIBRARY-OFFICE/monitoring/docker-exporter/REQUIREMENTS.txt
+
+flask
+prometheus-client
+docker
