@@ -3,3 +3,4 @@
 flask
 prometheus-client
 docker
+requests

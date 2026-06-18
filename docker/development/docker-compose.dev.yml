@@ -33,7 +33,6 @@ services:
       start_period: 10s
 
 
-
   # =========================================================
   # BACKEND API
   # =========================================================
@@ -78,7 +77,6 @@ services:
         condition: service_healthy
 
 
-
   # =========================================================
   # AI SERVICE
   # =========================================================
@@ -93,7 +91,7 @@ services:
 
     environment:
       DOCKER_ENV: "true"
-    
+
     restart: unless-stopped
 
     ports:
@@ -108,7 +106,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
-
 
 
   # =========================================================
@@ -128,7 +125,6 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-      
 
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
@@ -139,7 +135,6 @@ services:
     volumes:
       - postgres_data_dev:/var/lib/postgresql/data
       - ../../backend/database/migrations:/docker-entrypoint-initdb.d
-
 
 
   # =========================================================
@@ -162,7 +157,6 @@ services:
       retries: 5
 
 
-
   # =========================================================
   # MEDIAMTX
   # =========================================================
@@ -179,6 +173,12 @@ services:
 
     volumes:
       - ../../mediamtx/mediamtx.yml:/mediamtx.yml
+
+    healthcheck:
+      test: ["CMD", "/mediamtx", "--version"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
 
   # =========================================================
@@ -207,10 +207,12 @@ services:
       ai-service:
         condition: service_healthy
 
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
 
-# =========================================================
-# VOLUMES
-# =========================================================
 volumes:
   postgres_data_dev:

@@ -27,6 +27,12 @@ services:
     networks:
       - monitoring-network
 
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:9090/-/healthy || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 
   # =========================================================
   # GRAFANA
@@ -73,6 +79,12 @@ services:
       - monitoring-network
       - prod-network
 
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 
   # =========================================================
   # LOKI (LOG STORAGE)
@@ -94,6 +106,12 @@ services:
 
     networks:
       - monitoring-network
+
+    healthcheck:
+      test: ["CMD", "/usr/bin/loki", "-version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 
   # =========================================================
@@ -118,6 +136,12 @@ services:
     networks:
       - monitoring-network
 
+    healthcheck:
+      test: ["CMD", "/usr/bin/promtail", "--version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 
   # =========================================================
   # NODE EXPORTER (HOST METRICS)
@@ -134,6 +158,11 @@ services:
     networks:
       - monitoring-network
 
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:9100/metrics || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   # =========================================================
   # CADVISOR (DOCKER CONTAINER METRICS)
@@ -177,6 +206,11 @@ services:
     networks:
       - monitoring-network
 
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   # =========================================================
   # BLACKBOX EXPORTER
@@ -199,6 +233,12 @@ services:
     networks:
       - monitoring-network
 
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:9115/-/healthy || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
 
   # =========================================================
   # SNMP EXPORTER
@@ -217,6 +257,12 @@ services:
 
     networks:
       - monitoring-network
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:9116/metrics || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
 
   # =========================================================
@@ -237,6 +283,12 @@ services:
 
     networks:
       - monitoring-network
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:9103/metrics || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
 
 # =========================================================
