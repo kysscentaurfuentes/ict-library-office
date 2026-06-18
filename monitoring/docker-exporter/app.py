@@ -8,6 +8,7 @@ import time
 import json
 import re
 import requests
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -214,7 +215,6 @@ container_days_behind = Gauge(
     ]
 )
 
-
 exporter_last_update = Gauge(
     "docker_exporter_last_update_timestamp",
     "Last successful docker metrics update"
@@ -234,7 +234,23 @@ container_update_status = Gauge(
     ]
 )
 
+container_started_timestamp = Gauge(
+    "container_started_timestamp",
+    "Container started timestamp",
+    ["container_name"]
+)
 
+container_created_timestamp = Gauge(
+    "container_created_timestamp",
+    "Container created timestamp",
+    ["container_name"]
+)
+
+container_uptime_seconds = Gauge(
+    "container_uptime_seconds",
+    "Container uptime in seconds",
+    ["container_name"]
+)
 
 # =========================================================
 # UPDATE METRICS
@@ -720,6 +736,98 @@ def update_metrics():
             name = container.name
 
             attrs = container.attrs
+
+            state = attrs.get(
+                "State",
+                {}
+            )
+
+            started_at = state.get(
+                "StartedAt"
+            )
+
+            created_at = attrs.get(
+                "Created"
+            )
+
+            if started_at:
+
+                try:
+
+                    started_ts = (
+                        datetime
+                        .fromisoformat(
+                            started_at.replace(
+                                "Z",
+                                "+00:00"
+                            )
+                        )
+                        .timestamp()
+                    )
+
+                    container_started_timestamp.labels(
+                        container_name=name
+                    ).set(started_ts)
+
+                    uptime_seconds = int(
+                        time.time() - started_ts
+                    )
+
+                    days = uptime_seconds // 86400
+                    hours = (uptime_seconds % 86400) // 3600
+                    minutes = (uptime_seconds % 3600) // 60
+                    seconds = uptime_seconds % 60
+
+                    parts = []
+
+                    if days:
+                        parts.append(f"{days}d")
+
+                    if hours:
+                        parts.append(f"{hours}h")
+
+                    if minutes:
+                        parts.append(f"{minutes}m")
+
+                    parts.append(f"{seconds}s")
+
+                    uptime_text = " ".join(parts)
+
+                    container_uptime_seconds.labels(
+                        container_name=name
+                    ).set(uptime_seconds)
+
+                except Exception as e:
+
+                    print(
+                        f"STARTED TIMESTAMP ERROR [{name}] => {e}"
+                    )
+
+            if created_at:
+
+                try:
+
+                    created_ts = (
+                        datetime
+                        .fromisoformat(
+                            created_at.replace(
+                                "Z",
+                                "+00:00"
+                            )
+                        )
+                        .timestamp()
+                    )
+
+                    container_created_timestamp.labels(
+                        container_name=name
+                    ).set(created_ts)
+
+                except Exception as e:
+
+                    print(
+                        f"CREATED TIMESTAMP ERROR [{name}] => {e}"
+                    )
+                
 
             state = attrs.get(
                 "State",
