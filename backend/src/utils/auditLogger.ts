@@ -1,6 +1,7 @@
 // backend/src/utils/auditLogger.ts
 import { pool } from "../db.js";
 import fs from "fs";
+import { logger } from '../utils/logger.js';
 
 type AuditLogInput = {
   userId?: number | null;
@@ -87,10 +88,9 @@ export async function logAuditEvent({
 
   } catch (err) {
 
-    console.error(
-      "AUDIT LOG ERROR:",
-      err
-    );
+    logger.error(
+  `[AUDIT] ${String(err)}`
+);
   }
 fs.appendFileSync(
   "logs/security.log",

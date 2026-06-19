@@ -3,6 +3,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
+import { logger } from "./utils/logger.js";
 
 // ==========================
 // 📁 ESM SAFE PATHS
@@ -180,7 +181,9 @@ const storage =
 
       } catch (err) {
 
-        console.error(err);
+        logger.error(
+  `[UPLOAD] ${String(err)}`
+);
         // 4
         return cb(
           new Error(
@@ -285,10 +288,9 @@ const storage =
           );
         }
 
-        console.log(
-          "FINAL FILE:",
-          finalFileName
-        );
+        logger.upload(
+  `FINAL FILE | ${finalFileName}`
+);
 
         cb(
           null,
@@ -297,7 +299,9 @@ const storage =
 
       } catch (err) {
 
-        console.error(err);
+        logger.error(
+  `[UPLOAD] ${String(err)}`
+);
 
         cb(
           new Error(
@@ -319,9 +323,8 @@ const fileFilter:
     cb
   ) => {
 
-    console.log(
-  "UPLOAD MIME TYPE:",
-  file.mimetype
+    logger.upload(
+  `MIME TYPE | ${file.mimetype}`
 );
 
     // ==========================

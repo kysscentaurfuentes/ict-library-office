@@ -1,5 +1,6 @@
 // backend/src/redis.ts
 import { Redis } from 'ioredis';
+import { logger } from '../src/utils/logger.js'
 
 export const redis = new Redis({
   host:
@@ -12,18 +13,22 @@ export const redis = new Redis({
 });
 
 redis.on('connect', () => {
-  console.log('🟥 Redis connected');
+ logger.server(
+  "Redis connected"
+);
 });
 
 redis.on('error', (err: Error) => {
-  console.error('Redis error:', err);
+  logger.error(
+  `[REDIS] ${err.message}`
+);
 });
 
 
 if (process.env.DISABLE_REDIS !== 'true') {
   redis.connect().catch(() => {
-    console.log(
-      '⚠️ Redis unavailable. Continuing without Redis.'
-    );
+    logger.server(
+  "Redis unavailable. Continuing without Redis."
+);
   });
 }

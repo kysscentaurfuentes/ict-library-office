@@ -252,6 +252,15 @@ container_uptime_seconds = Gauge(
     ["container_name"]
 )
 
+container_uptime_text = Gauge(
+    "container_uptime_text",
+    "Human readable uptime",
+    [
+        "container_name",
+        "uptime"
+    ]
+)
+
 # =========================================================
 # UPDATE METRICS
 # =========================================================
@@ -725,6 +734,8 @@ def update_metrics():
     #container_runtime_info.clear()
     #container_info.clear()
 
+    #container_uptime_text.clear()
+
     start = time.time()
 
     containers = client.containers.list(all=True)
@@ -796,6 +807,11 @@ def update_metrics():
                     container_uptime_seconds.labels(
                         container_name=name
                     ).set(uptime_seconds)
+
+                    container_uptime_text.labels(
+                        container_name=name,
+                        uptime=uptime_text
+                    ).set(1)
 
                 except Exception as e:
 
@@ -1041,7 +1057,7 @@ def collector_loop():
                 f"COLLECTOR ERROR => {e}"
             )
 
-        time.sleep(30)
+        time.sleep(5)
 
 
 threading.Thread(

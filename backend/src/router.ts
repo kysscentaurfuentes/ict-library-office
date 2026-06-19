@@ -1,5 +1,6 @@
 // backend/src/router.ts
 import { Client } from 'ssh2';
+import { logger } from '../src/utils/logger.js'
 
 const ROUTER_CONFIG = {
   host: process.env.ROUTER_HOST as string,
@@ -21,7 +22,9 @@ export function execRouterCommand(command: string): Promise<string> {
     conn
       .on('ready', () => {
         if (DEBUG_SSH) {
-          console.log('[SSH] Connected to router');
+          logger.network(
+  "[SSH] Connected to router"
+);
         }
 
         conn.exec(command, (err, stream) => {
@@ -51,13 +54,17 @@ export function execRouterCommand(command: string): Promise<string> {
       })
       .on('error', (err) => {
         if (DEBUG_SSH) {
-          console.error('[SSH ERROR]', err.message);
+          logger.error(
+  `[SSH] ${err.message}`
+);
         }
         reject(err);
       })
       .on('timeout', () => {
         if (DEBUG_SSH) {
-          console.error('[SSH TIMEOUT]');
+          logger.error(
+  "[SSH] Connection timeout"
+);
         }
         conn.end();
         reject(new Error('SSH connection timeout'));

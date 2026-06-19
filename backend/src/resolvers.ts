@@ -17,6 +17,7 @@ import { CURRENT_POLICY_VERSION } from "./constants/policy.js";
 import { logAuditEvent }
 from "./utils/auditLogger.js";
 import { securityLogger } from "./utils/securityLogger.js";
+import { logger } from "./utils/logger.js";
 
 const __filename =
   fileURLToPath(import.meta.url);
@@ -249,12 +250,12 @@ WHERE LOWER(u.email) = LOWER($1)
       const user = result.rows[0];
 
       assertUser(user);
-      console.log("CHECK OTP STATUS USER:", {
-  email: user.email,
-  failed_otp_attempts: user.failed_otp_attempts,
-  otp_locked_until: user.otp_locked_until,
-  serverNow: new Date().toISOString()
-});
+      logger.auth(`CHECK OTP STATUS USER 
+  | email=${user.email} 
+  | failed_attempts=${user.failed_otp_attempts} 
+  | locked_until=${user.otp_locked_until} 
+  | serverNow=${new Date().toISOString()}`
+);
 
       return {
         failedAttempts:
@@ -871,10 +872,9 @@ if (captchaRequired) {
   const verifyData: any =
     await verifyResponse.json();
 
-  console.log(
-    'TURNSTILE VERIFY:',
-    verifyData
-  );
+  logger.auth(
+  `TURNSTILE VERIFY SUCCESS: ${verifyData.success}`
+);
 
   if (!verifyData.success) {
 
@@ -1999,13 +1999,19 @@ await pool.query(
   context: Context
 ) => {
 
-    console.log("RAW IDENTIFIER:", identifier);
+    logger.auth(
+  `RAW IDENTIFIER: ${identifier}`
+);
 
     const cleanIdentifier = normalizeIdentifier(identifier);
 
-    console.log("CLEAN IDENTIFIER:", cleanIdentifier);
+    logger.auth(
+  `CLEAN IDENTIFIER: ${cleanIdentifier}`
+);
 
-   console.log("IS STUDENT ID:", isStudentId(cleanIdentifier));
+   logger.auth(
+  `IS STUDENT ID: ${isStudentId(cleanIdentifier)}`
+);
 
    let query = '';
    let value = '';
@@ -2121,7 +2127,9 @@ WHERE LOWER(TRIM(u.email)) = LOWER(TRIM($1))
     value = buildEmail(cleanIdentifier);
     }
 
-    console.log("LOGIN VALUE:", value);
+    logger.auth(
+  `LOGIN VALUE: ${value}`
+);
 
 const res =
   await pool.query<UserRow>(
@@ -2129,9 +2137,8 @@ const res =
     [value]
   );
 
-console.log(
-  "LOGIN RESULT:",
-  res.rows
+logger.auth(
+  `LOGIN RESULT COUNT: ${res.rows.length}`
 );
 
 // =========================
@@ -2613,9 +2620,8 @@ securityLogger(
   const normalizedEmail =
     email.trim().toLowerCase();
 
-      console.log(
-  "RESEND EMAIL:",
-  normalizedEmail
+     logger.auth(
+  `RESEND EMAIL: ${normalizedEmail}`
 );
 
   const result =
@@ -2631,9 +2637,8 @@ securityLogger(
   const pending =
     result.rows[0];
 
-      console.log(
-  "PENDING SIGNUP:",
-  pending
+      logger.auth(
+  `PENDING SIGNUP FOUND: ${!!pending}`
 );
 
   if (!pending) {
@@ -2715,9 +2720,8 @@ securityLogger(
   const pending =
     result.rows[0];
 
-      console.log(
-  "PENDING SIGNUP:",
-  pending
+      logger.auth(
+  `PENDING SIGNUP FOUND: ${!!pending}`
 );
 
   if (!pending) {
@@ -2950,10 +2954,9 @@ try {
 
 } catch (err) {
 
-  console.error(
-    "FAILED TO MOVE SCHOOL ID:",
-    err
-  );
+ logger.error(
+  `[UPLOAD] FAILED TO MOVE SCHOOL ID | ${String(err)}`
+);
 
   throw new Error(
     "Failed to finalize school ID"

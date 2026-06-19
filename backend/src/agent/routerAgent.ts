@@ -1,6 +1,7 @@
 // backend/src/agent/routerAgent.ts
 import { execRouterCommand } from '../router.js';
 import { pool } from '../db.js';
+import { logger } from "../utils/logger.js";
 
 function normalizeMac(mac: string) {
   return mac.toLowerCase().replace(/-/g, ':');
@@ -42,7 +43,9 @@ async function getVendor(mac: string): Promise<string | null> {
 
 async function scanDevices() {
   try {
-    console.log("🔄 Scanning router...");
+    logger.network(
+  "Scanning router..."
+);
 
     // 🔥 1. GET BASE DATA (parallel)
     const [arpResult, dhcpResult] = await Promise.all([
@@ -184,9 +187,13 @@ async function scanDevices() {
         // DB says blocked but router doesn't - sync to router
         try {
           await execRouterCommand(`ipset add GL_MAC_BLOCK ${dbDevice.device_id} -exist`);
-          console.log(`✅ Synced block: ${dbDevice.device_id}`);
+          logger.network(
+  `SYNC BLOCK | ${dbDevice.device_id}`
+);
         } catch (err) {
-          console.error(`❌ Failed to sync block for ${dbDevice.device_id}:`, err);
+          logger.error(
+  `[NETWORK] Failed sync block | ${dbDevice.device_id} | ${String(err)}`
+);
         }
       }
     }
@@ -202,17 +209,25 @@ async function scanDevices() {
         // Router says blocked but DB says not blocked - sync to router
         try {
           await execRouterCommand(`ipset del GL_MAC_BLOCK ${routerMac}`);
-          console.log(`✅ Synced unblock: ${routerMac}`);
+          logger.network(
+  `SYNC UNBLOCK | ${routerMac}`
+);
         } catch (err) {
-          console.error(`❌ Failed to sync unblock for ${routerMac}:`, err);
+          logger.error(
+  `[NETWORK] Failed sync unblock | ${routerMac} | ${String(err)}`
+);
         }
       }
     }
 
-    console.log(`✅ Scan complete - Found ${devices.length} devices`);
+    logger.network(
+  `SCAN COMPLETE | ${devices.length} devices`
+);
 
   } catch (err) {
-    console.error("❌ Agent error:", err);
+    logger.error(
+  `[NETWORK] Agent error | ${String(err)}`
+);
   }
 }
 
@@ -230,12 +245,16 @@ async function processCommands() {
       try {
         if (cmd.type === "block") {
           await execRouterCommand(`ipset add GL_MAC_BLOCK ${mac} -exist`);
-          console.log(`🚫 Blocked ${mac}`);
+          logger.network(
+  `BLOCKED | ${mac}`
+);
         }
 
         if (cmd.type === "unblock") {
           await execRouterCommand(`ipset del GL_MAC_BLOCK ${mac}`);
-          console.log(`✅ Unblocked ${mac}`);
+          logger.network(
+  `UNBLOCKED | ${mac}`
+);
         }
 
         await pool.query(
@@ -244,11 +263,15 @@ async function processCommands() {
         );
 
       } catch (err) {
-        console.error(`❌ Failed command for ${mac}:`, err);
+        logger.error(
+  `[NETWORK] Failed command | ${mac} | ${String(err)}`
+);
       }
     }
   } catch (err) {
-    console.error("❌ Command processor error:", err);
+    logger.error(
+  `[NETWORK] Command processor error | ${String(err)}`
+);
   }
 }
 

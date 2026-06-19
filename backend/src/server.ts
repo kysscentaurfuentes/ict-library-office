@@ -34,11 +34,12 @@ import "./services/network/scheduler.js";
 import networkRoutes from "./services/network/network.routes.js"
 import { startHlsStream }
 from "./services/hls/ffmpeg.js";
+import { logger } from "../src/utils/logger.js";
 
 setInterval(() => {
-  const message = `[${new Date().toISOString()}] Backend alive\n`;
-
-  fs.appendFileSync("logs/backend.log", message);
+  logger.server(
+    "Backend alive"
+  );
 }, 60000); // Every 1 minuete
 
 // Setup require for ESM
@@ -89,7 +90,9 @@ app.use(cors({
       return callback(null, true);
     }
 
-    console.log("❌ BLOCKED ORIGIN:", origin);
+    logger.error(
+  `[CORS] BLOCKED ORIGIN | ${origin}`
+);
 
     return callback(null, false); // SAFE BLOCK
   },
@@ -141,9 +144,9 @@ const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.resolve(__dirname, "..");
 
 const UPLOADS_DIR = path.join(ROOT_DIR, "uploads");
-console.log("UPLOADS_DIR:", UPLOADS_DIR);
-console.log("__dirname:", __dirname);
-console.log("ROOT_DIR:", ROOT_DIR);
+logger.server(`UPLOADS_DIR: ${UPLOADS_DIR}`);
+logger.server(`__dirname: ${__dirname}`);
+logger.server(`ROOT_DIR: ${ROOT_DIR}`);
 
 app.use("/uploads", (req, res, next) => {
 
@@ -176,11 +179,17 @@ app.use(
 app.post(
   "/api/upload-school-id",
   (req, res) => {
-    console.log("UPLOAD REQUEST HIT");
+    logger.upload(
+  "School ID upload request received"
+);
     upload.single("image")(req, res, (err: any) => {
-      console.log("BODY:", req.body);
+      logger.upload(
+  `Request body received`
+);
       if (err) {
-        console.log("UPLOAD ERROR:", err);
+        logger.error(
+  `[UPLOAD] ${err}`
+);
         return res.status(400).json({
           message: err.message || "Upload failed",
         });
@@ -189,7 +198,9 @@ app.post(
       const fileReq = req as Request & {
         file?: Express.Multer.File;
       };
-      console.log("FILE:", fileReq.file);
+      logger.upload(
+  `File uploaded: ${fileReq.file?.filename}`
+);
       if (!fileReq.file) {
         return res.status(400).json({
           message: "No file uploaded",
@@ -200,7 +211,9 @@ app.post(
         process.env.NODE_ENV === "production"
             ? process.env.PUBLIC_URL
     : `http://localhost:${PORT}`;
-console.log("BASE_URL:", BASE_URL);
+logger.upload(
+  `BASE_URL: ${BASE_URL}`
+);
       return res.json({
   imageUrl:
     `${BASE_URL}/uploads/temporary school-ids/${fileReq.file.filename}`,
@@ -254,10 +267,9 @@ app.post(
         [imageUrl, studentId]
       );
 
-      console.log(
-        "✅ PROFILE PICTURE SAVED:",
-        imageUrl
-      );
+      logger.upload(
+  `PROFILE PICTURE SAVED | ${imageUrl}`
+);
 
       return res.json({
         success: true,
@@ -266,7 +278,9 @@ app.post(
 
     } catch (err) {
 
-      console.error(err);
+      logger.error(
+  `[UPLOAD] ${String(err)}`
+);
 
       return res.status(500).json({
         message:
@@ -276,17 +290,6 @@ app.post(
   }
 );
 
-// ==========================
-// 🎨 LOG COLORS
-// ==========================
-const LOG = {
-  reset: "\x1b[0m",
-  green: "\x1b[32m",
-  red: "\x1b[31m",
-  yellow: "\x1b[33m",
-  cyan: "\x1b[36m",
-  blue: "\x1b[34m",
-};
 
 // ==========================
 // 🔐 ENV
@@ -313,7 +316,9 @@ function getLocalIP(): string {
 }
 
 const LOCAL_IP = getLocalIP();
-console.log(`${LOG.blue}🌐 Detected IP: ${LOCAL_IP}${LOG.reset}`);
+logger.server(
+  `Detected IP: ${LOCAL_IP}`
+);
 
 // ==========================
 // 🧠 FORMAT HELPERS
@@ -345,7 +350,9 @@ const ONE_HOUR = 60 * 60 * 1000;
 // ==========================
 if (!fs.existsSync(HLS_DIR)) {
   fs.mkdirSync(HLS_DIR, { recursive: true });
-  console.log(`${LOG.cyan}📁 Created HLS directory: ${HLS_DIR}${LOG.reset}`);
+ logger.server(
+  `Created HLS directory: ${HLS_DIR}`
+);
 }
 
 // ==========================
@@ -405,7 +412,9 @@ const qrScansTotal =
     const cleanID = normalizeID(rawID);
     const displayID = rawID;
 
-    console.log(`${LOG.cyan}[${time}] SCAN:${LOG.reset} ${displayID}`);
+    logger.scan(
+  `QR RECEIVED | ${displayID}`
+);
 
     try {
       const result = await pool.query(
@@ -426,6 +435,10 @@ const qrScansTotal =
            VALUES ($1, $2, $3, $4, $5)`,
           [displayID, deviceID, "fail", "not_found", 0]
         );
+
+        logger.scan(
+    `FAILED | ${displayID} | STUDENT NOT FOUND`
+  );
 
         return res.status(404).json({
           status: "fail",
@@ -489,13 +502,17 @@ const qrScansTotal =
             [displayID, deviceID, "blocked", "cooldown_violation", riskScore]
           );
 
+          logger.scan(
+  `BLOCKED | ${displayID} | COOLDOWN VIOLATION`
+);
+
           return res.status(429).json({ status: "blocked" });
         }
       }
 
-      console.log(
-        `${LOG.green}[${time}] SUCCESS:${LOG.reset} ${displayID} - ${user.first_name} ${user.last_name}`
-      );
+      logger.scan(
+  `STUDENT FOUND | ${displayID} | ${user.first_name} ${user.last_name}`
+);
 
       const nowPH = new Date();
       const hour = new Intl.DateTimeFormat("en-US", {
@@ -505,7 +522,9 @@ const qrScansTotal =
       }).format(nowPH);
 
       const hourNum = Number(hour);
-      console.log("HOUR:", hourNum);
+      logger.attendance(
+  `CURRENT HOUR | ${hourNum}`
+);
 
       if (true) {
         try {
@@ -517,14 +536,22 @@ const qrScansTotal =
 
           attendanceSaved = true;
           finalStatus = "success";
-
+          
+          logger.attendance(
+  `CHECK-IN SAVED | ${displayID}`
+);
         } catch (err: any) {
           if (err.code === "23505") {
             attendanceSaved = true;
             finalStatus = "success";
+
+            logger.attendance(
+  `CHECK-IN SAVED | ${displayID}`
+);
           } else {
             throw err;
           }
+          
         }
       } else {
         finalStatus = "closed";
@@ -544,11 +571,17 @@ const qrScansTotal =
 
       const socketId = userSockets.get(displayID);
 
-console.log("LOOKING FOR SOCKET:", displayID);
-console.log("FOUND SOCKET:", socketId);
+logger.socket(
+  `LOOKING FOR SOCKET | ${displayID}`
+);
+logger.socket(
+  `FOUND SOCKET | ${socketId}`
+);
 
 if (socketId) {
-  console.log("EMITTING scan-success to:", socketId);
+  logger.socket(
+  `EMIT scan-success | ${socketId}`
+);
 
   io.to(socketId).emit("scan-success", {
     student_id: displayID,
@@ -567,7 +600,8 @@ if (socketId) {
       });
 
     } catch (err) {
-      console.log(`${LOG.red}ERROR:${LOG.reset}`, err);
+      logger.error(
+  `[SCAN] ${String(err)}`);
       return res.status(500).json({
         status: "fail",
         message: "Server error",
@@ -607,7 +641,9 @@ if (socketId) {
 
   app.get("/api/share/:token", async (req, res) => {
     const { token } = req.params;
-    console.log("TOKEN:", token);
+    logger.attendance(
+  `SHARE TOKEN RECEIVED | ${token}`
+);
     const result = await pool.query(
       "SELECT student_id FROM share_tokens WHERE token = $1",
       [token]
@@ -616,12 +652,16 @@ if (socketId) {
       return res.status(404).json({ message: "Invalid token" });
     }
     const studentId = result.rows[0].student_id;
-    console.log("FOUND STUDENT:", studentId);
+    logger.attendance(
+  `FOUND STUDENT | ${studentId}`
+);
     const attendance = await pool.query(
       "SELECT * FROM attendance WHERE student_id = $1 ORDER BY check_in ASC",
       [studentId]
     );
-    console.log("ATTENDANCE:", attendance.rows);
+    logger.attendance(
+  `ATTENDANCE RECORDS | ${attendance.rows.length}`
+);
     res.json(attendance.rows);
   });
 
@@ -638,7 +678,9 @@ if (socketId) {
       );
       res.json(result.rows[0]);
     } catch (err) {
-      console.error("CREATE ATTENDANCE ERROR:", err);
+      logger.error(
+  `[ATTENDANCE] CREATE ERROR | ${String(err)}`
+);
       res.status(500).json({ message: "Server error" });
     }
   });
@@ -649,7 +691,9 @@ if (socketId) {
       await pool.query(`DELETE FROM attendance WHERE id = $1`, [id]);
       res.json({ success: true });
     } catch (err) {
-      console.error("DELETE ERROR:", err);
+      logger.error(
+  `[ATTENDANCE] DELETE ERROR | ${String(err)}`
+);
       res.status(500).json({ message: "Server error" });
     }
   });
@@ -767,24 +811,32 @@ app.use(
 
   startHlsStream();
 const BASE_URL = process.env.PUBLIC_URL!;
-  console.log("=".repeat(60));
-  console.log(`${LOG.green}🚀 Node.js Backend Running${LOG.reset}`);
-  console.log("=".repeat(60));
-  console.log(`${LOG.blue}📡 Server IP:${LOG.reset} ${LOCAL_IP}`);
-  console.log(`${LOG.blue}🔌 Port:${LOG.reset} ${PORT}`);
-  console.log(`${LOG.blue}🔗 GraphQL:${LOG.reset} ${BASE_URL}/graphql`);
-  console.log(`${LOG.blue}📸 Scan API:${LOG.reset} ${BASE_URL}/api/scan`);
-  console.log(`${LOG.blue}📺 HLS Stream:${LOG.reset} ${BASE_URL}/hls/stream.m3u8`);
-  console.log(`${LOG.blue}❤️  Health:${LOG.reset} ${BASE_URL}/health`);
-  console.log("=".repeat(60));
-  console.log(`${LOG.yellow}⚠️  IMPORTANT:${LOG.reset}`);
-  console.log(`${LOG.yellow}   Python Flask (port 5000) MUST be running for HLS stream${LOG.reset}`);
-  console.log(`${LOG.yellow}   Run: cd ai-service && python flask_stream.py${LOG.reset}`);
-  console.log("=".repeat(60));
-  console.log(`${LOG.cyan}📱 For Mobile App:${LOG.reset}`);
-  console.log(`${LOG.cyan}   Stream URL: http://${LOCAL_IP}:5000/hls/stream.m3u8${LOG.reset}`);
-  console.log(`${LOG.cyan}   API Base: http://${LOCAL_IP}:4000${LOG.reset}`);
-  console.log("=".repeat(60));
+logger.server("============================================================");
+logger.server("🚀 Node.js Backend Running");
+logger.server("============================================================");
+logger.server(`📡 Server IP: ${LOCAL_IP}`);
+logger.server(`🔌 Port: ${PORT}`);
+logger.server(`🔗 GraphQL: ${BASE_URL}/graphql`);
+logger.server(`📸 Scan API: ${BASE_URL}/api/scan`);
+logger.server(`📺 HLS Stream: ${BASE_URL}/hls/stream.m3u8`);
+logger.server(`❤️ Health: ${BASE_URL}/health`);
+logger.server("============================================================");
+logger.server("⚠️ IMPORTANT");
+logger.server(
+  "Python Flask (port 5000) MUST be running for HLS stream"
+);
+logger.server(
+  "Run: cd ai-service && python flask_stream.py"
+);
+logger.server("============================================================");
+logger.server("📱 For Mobile App");
+logger.server(
+  `Stream URL: http://${LOCAL_IP}:5000/hls/stream.m3u8`
+);
+logger.server(
+  `API Base: http://${LOCAL_IP}:4000`
+);
+logger.server("============================================================");
 }
 
 // ==========================
@@ -794,9 +846,9 @@ setInterval(async () => {
 
   try {
 
-    console.log(
-      "🧹 Cleaning expired signup temp files..."
-    );
+    logger.server(
+  "Cleaning expired signup temp files..."
+);
 
     const expired =
   await pool.query(
@@ -834,18 +886,16 @@ setInterval(async () => {
 
           fs.unlinkSync(filePath);
 
-          console.log(
-            "🗑 Deleted temp file:",
-            imageName
-          );
+          logger.upload(
+  `Deleted temp file | ${imageName}`
+);
         }
 
       } catch (err) {
 
-        console.error(
-          "TEMP FILE DELETE ERROR:",
-          err
-        );
+        logger.error(
+  `[CLEANUP] TEMP FILE DELETE ERROR | ${String(err)}`
+);
       }
     }
 
@@ -862,10 +912,9 @@ setInterval(async () => {
 
   } catch (err) {
 
-    console.error(
-      "CLEANUP ERROR:",
-      err
-    );
+    logger.error(
+  `[CLEANUP] ${String(err)}`
+);
   }
 
 },
@@ -876,4 +925,8 @@ setInterval(async () => {
 // ==========================
 // ▶ RUN
 // ==========================
-startServer().catch(console.error);
+startServer().catch(err => {
+  logger.error(
+    `[SERVER] STARTUP ERROR | ${String(err)}`
+  );
+});

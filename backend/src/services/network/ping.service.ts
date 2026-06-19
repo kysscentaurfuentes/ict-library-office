@@ -3,6 +3,7 @@
 import ping from "ping";
 import fs from "fs";
 import path from "path";
+import { logger } from "../../utils/logger.js";
 
 import { devices } from "./devices.js";
 import { deviceStatuses } from "./deviceState.js";
@@ -54,9 +55,9 @@ export async function monitorDevices() {
       );
 
       // CLEAN TERMINAL MESSAGE
-      console.log(
-        `[NETWORK] ${device.id} changed state`
-      );
+      logger.network(
+  `${device.id} changed state`
+);
 
       // SAVE CURRENT STATE
       previousStates.set(

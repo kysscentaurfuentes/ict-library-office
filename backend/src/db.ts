@@ -1,6 +1,7 @@
 // backend/src/db.ts
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
+import { logger } from '../src/utils/logger.js'
 
 dotenv.config({
   path:
@@ -9,9 +10,8 @@ dotenv.config({
       : ".env.local",
 });
 
-console.log(
-  'NEON DATABASE:',
-  process.env.DATABASE_URL_NEON
+logger.server(
+  `NEON DATABASE: ${process.env.DATABASE_URL_NEON}`
 );
 
 // ✅ LOCAL DATABASE (PRIMARY)

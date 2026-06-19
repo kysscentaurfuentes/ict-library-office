@@ -3,6 +3,7 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { pool } from '../db.js'; // 🔥 import mo DB connection
 import crypto from "crypto";
+import { logger } from "../utils/logger.js";
 
 const router = Router();
 
@@ -21,10 +22,15 @@ router.post('/share', async (req: Request, res: Response) => {
       "INSERT INTO share_tokens (token, student_id) VALUES ($1, $2)",
       [token, studentId]
     );
+    logger.attendance(
+  `SHARE TOKEN CREATED | ${studentId}`
+);
 
     return res.json({ token });
   } catch (error) {
-    console.error('Share error:', error);
+    logger.error(
+  `[SHARE] ${String(error)}`
+);
     return res.status(500).json({ message: 'Server error' });
   }
 });

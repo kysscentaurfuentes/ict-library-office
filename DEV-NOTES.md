@@ -191,7 +191,7 @@ docker compose --env-file docker/development/.env.dev -f docker/development/dock
 Use when Dockerfiles, dependencies, or compose files change:
 
 ```powershell
-docker compose --env-file docker/development/.env.dev -f docker/development/docker-compose.dev.yml up -d --build
+n 0
 ```
 
 ## Check Container Status

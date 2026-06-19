@@ -70,6 +70,8 @@ logs/
 *.log
 backend.log
 *security.log
+security.log
+network.log
 
 
 # =========================================================

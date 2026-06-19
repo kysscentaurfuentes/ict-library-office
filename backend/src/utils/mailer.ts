@@ -1,5 +1,6 @@
 // backend/src/utils/mailer.ts
 import nodemailer from "nodemailer";
+import { logger } from "./logger.js";
 
 export const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -23,8 +24,12 @@ export async function sendOTP(email: string, code: string) {
       `,
     });
 
-    console.log("EMAIL SENT:", info.messageId);
+    logger.auth(
+  `EMAIL SENT | ${info.messageId}`
+);
   } catch (err) {
-    console.error("EMAIL FAILED:", err);
+    logger.error(
+  `[EMAIL] ${String(err)}`
+);
   }
 }

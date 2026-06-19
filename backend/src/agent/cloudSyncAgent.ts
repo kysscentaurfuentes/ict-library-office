@@ -1,5 +1,6 @@
 // backend/src/agent/cloudSyncAgent.ts
 import { localPool, neonPool } from '../db.js';
+import { logger } from "../utils/logger.js";
 
 async function processSyncQueue() {
 
@@ -663,16 +664,15 @@ if (
   [item.id]
 );
 
-        console.log(
-          `☁️ Synced queue #${item.id}`
-        );
+       logger.server(
+  `SYNCED QUEUE | ${item.id}`
+);
 
       } catch (err: any) {
 
-        console.error(
-          `❌ Failed sync queue #${item.id}`,
-          err
-        );
+        logger.error(
+  `[SYNC] Failed queue ${item.id} | ${String(err)}`
+);
 
         await localPool.query(
   `
@@ -693,10 +693,9 @@ if (
 
   } catch (err) {
 
-    console.error(
-      '❌ Cloud sync agent error:',
-      err
-    );
+    logger.error(
+  `[SYNC] Agent error | ${String(err)}`
+);
   }
 }
 

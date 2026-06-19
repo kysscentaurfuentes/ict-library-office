@@ -3,14 +3,15 @@
 import { spawn } from "child_process";
 import fs from "fs";
 import path from "path";
+import { logger } from "../../utils/logger.js";
 
 function startSingleHlsStream(
   rtspUrl: string,
   outputFolder: string
 ) {
 
-  console.log(
-  `🚀 Starting ${outputFolder} HLS from ${rtspUrl}`
+logger.streaming(
+  `[${outputFolder.toUpperCase()}] Starting HLS from ${rtspUrl}`
 );
 
   const ffmpegPath =
@@ -57,9 +58,9 @@ const waitTimer = setInterval(() => {
     (Date.now() - startedAt) / 1000
   );
 
-  console.log(
-    `[${outputFolder}] Waiting ${seconds}s for first HLS files...`
-  );
+  logger.streaming(
+  `[${outputFolder.toUpperCase()}] Waiting ${seconds}s for first HLS files...`
+);
 
 }, 5000);
 
@@ -75,10 +76,9 @@ const watchTimer = setInterval(() => {
       (Date.now() - startedAt) / 1000
     );
 
-    console.log(
-      `[${outputFolder}] HLS READY after ${seconds}s`
-    );
-
+    logger.streaming(
+  `[${outputFolder.toUpperCase()}] HLS READY after ${seconds}s`
+);
     clearInterval(watchTimer);
 
   }
@@ -160,10 +160,19 @@ const watchTimer = setInterval(() => {
   ffmpeg.stderr.on(
   "data",
   data => {
-    console.log(
-      `[${outputFolder}]`,
-      data.toString()
-    );
+
+   const lines = data
+  .toString()
+  .split("\n")
+  .map((line: string) => line.trim())
+  .filter(Boolean);
+
+for (const line of lines) {
+  logger.streaming(
+    `[${outputFolder.toUpperCase()}] ${line}`
+  );
+}
+
   }
 );
 
@@ -171,10 +180,9 @@ ffmpeg.on(
   "close",
   code => {
 
-    console.log(
-      `[${outputFolder}] FFmpeg exited:`,
-      code
-    );
+    logger.streaming(
+  `[${outputFolder.toUpperCase()}] FFmpeg exited: ${code}`
+);
 
     setTimeout(() => {
 
@@ -191,10 +199,9 @@ ffmpeg.on(
 ffmpeg.on(
   "error",
   err => {
-    console.error(
-      `[${outputFolder}] FFmpeg error`,
-      err
-    );
+    logger.error(
+  `[STREAMING][${outputFolder.toUpperCase()}] FFmpeg error: ${err.message}`
+);
   }
 );
 }

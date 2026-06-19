@@ -1,5 +1,6 @@
 // backend/src/Socket.ts
 import { Server } from "socket.io";
+import { logger } from "./utils/logger.js";
 
 export const userSockets = new Map<string, string>();
 
@@ -11,7 +12,9 @@ export function initSocket(server: any) {
   });
 
   io.on("connection", (socket) => {
-    console.log("Socket connected:", socket.id);
+   logger.socket(
+  `CONNECTED | ${socket.id}`
+);
 
     socket.on("register", (studentId: string) => {
   // remove previous socket if exists
