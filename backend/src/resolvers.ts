@@ -1250,6 +1250,10 @@ await pool.query(
     code
   );
 
+  logger.passwordResetRequest(
+  `${user.StudentId} requested password reset`
+);
+
   securityLogger(
   "PASSWORD_RESET_REQUESTED",
 
@@ -1766,6 +1770,10 @@ await logAuditEvent({
     context.userAgent,
 });
 
+logger.passwordResetSuccess(
+  `${user.StudentId} reset password`
+);
+
   return true;
 },
     requestSignupOTP: async (
@@ -1989,6 +1997,10 @@ await pool.query(
     normalizedEmail,
     code
   );
+
+  logger.signupRequest(
+  `${normalizedStudentId} requested signup`
+);
 
   return true;
 },
@@ -2294,6 +2306,14 @@ if (lockCheck.rows[0]?.locked) {
 // =========================
 if (attempts >= 5) {
 
+  logger.bruteForceDetected(
+  `${user.StudentId} brute force detected`
+);
+
+  logger.accountLockout(
+    `${user.StudentId} account locked`
+  );
+
   securityLogger(
   "BRUTE_FORCE_DETECTED",
 
@@ -2416,6 +2436,10 @@ securityLogger(
   },
 
   "WARNING"
+);
+
+logger.loginFailed(
+  `${cleanIdentifier} login failed`
 );
 
   throw new Error("Invalid credentials");
@@ -2553,6 +2577,10 @@ securityLogger(
   },
 
   "INFO"
+);
+
+logger.loginSuccess(
+  `${user.StudentId} logged in`
 );
 
       const token = jwt.sign(
@@ -2840,6 +2868,11 @@ securityLogger(
       null;
 
     if (attempts >= 5) {
+
+      logger.otpLockout(
+  `${pending.StudentId} signup OTP locked`
+);
+
       lockUntil =
         new Date(
           Date.now() +
@@ -2987,6 +3020,10 @@ await pool.query(
   ]
 );
 
+logger.signupOtpVerified(
+  `${pending.StudentId} verified signup OTP`
+);
+
 return true;
 },
     
@@ -3115,6 +3152,10 @@ if (!verified) {
 
   if (attempts >= 5) {
 
+    logger.otpLockout(
+  `${user.StudentId} OTP locked`
+);
+
     lockUntil =
       new Date(
         Date.now() +
@@ -3137,6 +3178,10 @@ if (!verified) {
       user.id
     ]
   );
+
+  logger.twoFactorFailed(
+  `${user.StudentId} failed 2FA`
+);
 
   throw Object.assign(
     new Error(
@@ -3200,6 +3245,10 @@ securityLogger(
   },
 
   "INFO"
+);
+
+logger.twoFactorSuccess(
+  `${user.StudentId} passed 2FA`
 );
 
   const token = jwt.sign(
@@ -4091,9 +4140,13 @@ policy_accepted_at
   const createdUser =
     userInsertResult.rows[0];
 
+    logger.approveUser(
+  `${createdUser.StudentId} approved`
+);
+
     // =========================
-// CREATE USER PROFILE
-// =========================
+    // CREATE USER PROFILE
+    // =========================
 await pool.query(
   `
   INSERT INTO user_profile (

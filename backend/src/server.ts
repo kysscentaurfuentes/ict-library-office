@@ -822,20 +822,12 @@ logger.server(`📺 HLS Stream: ${BASE_URL}/hls/stream.m3u8`);
 logger.server(`❤️ Health: ${BASE_URL}/health`);
 logger.server("============================================================");
 logger.server("⚠️ IMPORTANT");
-logger.server(
-  "Python Flask (port 5000) MUST be running for HLS stream"
-);
-logger.server(
-  "Run: cd ai-service && python flask_stream.py"
-);
+logger.server("Python Flask (port 5000) MUST be running for HLS stream");
+logger.server("Run: cd ai-service && python flask_stream.py");
 logger.server("============================================================");
 logger.server("📱 For Mobile App");
-logger.server(
-  `Stream URL: http://${LOCAL_IP}:5000/hls/stream.m3u8`
-);
-logger.server(
-  `API Base: http://${LOCAL_IP}:4000`
-);
+logger.server(`Stream URL: http://${LOCAL_IP}:5000/hls/stream.m3u8`);
+logger.server(`API Base: http://${LOCAL_IP}:4000`);
 logger.server("============================================================");
 }
 

@@ -12,6 +12,19 @@ import {
   uploadEventsTotal,
   graphqlEventsTotal,
   errorEventsTotal,
+  loginSuccessTotal,
+  loginFailedTotal,
+  signupRequestsTotal,
+  passwordResetRequestsTotal,
+  approvedUsersTotal,
+  rejectedUsersTotal,
+  passwordResetSuccessTotal,
+  signupOtpVerifiedTotal,
+  twoFactorSuccessTotal,
+  twoFactorFailedTotal,
+  bruteForceDetectedTotal,
+  accountLockoutsTotal,
+  otpLockoutsTotal,
 } from "./metrics.js";
 
 // ==========================
@@ -116,6 +129,136 @@ export const logger = {
     errorEventsTotal.inc();
     write("ERROR", COLORS.error, msg);
   },
+  
+  loginSuccess: (msg: string) => {
+  loginSuccessTotal.inc();
+  write("LOGIN_SUCCESS", COLORS.auth, msg);
+},
+
+loginFailed: (msg: string) => {
+  loginFailedTotal.inc();
+  write("LOGIN_FAILED", COLORS.error, msg);
+},
+
+signupRequest: (msg: string) => {
+  signupRequestsTotal.inc();
+  write("SIGNUP", COLORS.auth, msg);
+},
+
+passwordResetRequest: (msg: string) => {
+  passwordResetRequestsTotal.inc();
+  write("PASSWORD_RESET", COLORS.auth, msg);
+},
+
+approveUser: (msg: string) => {
+  approvedUsersTotal.inc();
+
+  write(
+    "APPROVE_USER",
+    COLORS.auth,
+    msg
+  );
+},
+
+rejectUser: (msg: string) => {
+  rejectedUsersTotal.inc();
+
+  write(
+    "REJECT_USER",
+    COLORS.error,
+    msg
+  );
+},
+
+passwordResetSuccess: (
+  msg: string
+) => {
+
+  passwordResetSuccessTotal.inc();
+
+  write(
+    "PASSWORD_RESET_SUCCESS",
+    COLORS.auth,
+    msg
+  );
+},
+
+signupOtpVerified: (
+  msg: string
+) => {
+
+  signupOtpVerifiedTotal.inc();
+
+  write(
+    "SIGNUP_OTP_VERIFIED",
+    COLORS.auth,
+    msg
+  );
+},
+
+twoFactorSuccess: (
+  msg: string
+) => {
+
+  twoFactorSuccessTotal.inc();
+
+  write(
+    "TWO_FACTOR_SUCCESS",
+    COLORS.auth,
+    msg
+  );
+},
+
+twoFactorFailed: (
+  msg: string
+) => {
+
+  twoFactorFailedTotal.inc();
+
+  write(
+    "TWO_FACTOR_FAILED",
+    COLORS.error,
+    msg
+  );
+},
+bruteForceDetected: (
+  msg: string
+) => {
+
+  bruteForceDetectedTotal.inc();
+
+  write(
+    "BRUTE_FORCE",
+    COLORS.error,
+    msg
+  );
+},
+
+accountLockout: (
+  msg: string
+) => {
+
+  accountLockoutsTotal.inc();
+
+  write(
+    "ACCOUNT_LOCKOUT",
+    COLORS.error,
+    msg
+  );
+},
+
+otpLockout: (
+  msg: string
+) => {
+
+  otpLockoutsTotal.inc();
+
+  write(
+    "OTP_LOCKOUT",
+    COLORS.error,
+    msg
+  );
+},
 };
 
 // backward compatibility
@@ -126,4 +269,6 @@ export const writeLog = (message: string) => {
     message
   );
 };
+
+
 

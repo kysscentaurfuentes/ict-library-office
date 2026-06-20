@@ -301,7 +301,7 @@ useEffect(() => {
     setEmail(
       parsed.email || ""
     );
-
+/*
     setPassword(
       parsed.password || ""
     );
@@ -309,7 +309,7 @@ useEffect(() => {
     evaluatePasswordStrength(
       parsed.password || ""
     );
-
+*/
     setCourse(
       parsed.course || ""
     );
@@ -350,7 +350,7 @@ useEffect(() => {
     middleName,
     lastName,
     email,
-    password,
+//    password,
     course,
     studentId,
   };
