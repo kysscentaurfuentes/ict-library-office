@@ -25,6 +25,8 @@ import {
   bruteForceDetectedTotal,
   accountLockoutsTotal,
   otpLockoutsTotal,
+  consistencyChecksTotal,
+  consistencyMismatchesTotal,
 } from "./metrics.js";
 
 // ==========================
@@ -44,6 +46,7 @@ const COLORS = {
   graphql: "\x1b[95m",
   error: "\x1b[31m",
   general: "\x1b[37m",
+  consistency: "\x1b[93m",
 };
 
 
@@ -259,6 +262,34 @@ otpLockout: (
     msg
   );
 },
+
+consistency: (
+  msg: string
+) => {
+
+  consistencyChecksTotal.inc();
+
+  write(
+    "CONSISTENCY",
+    COLORS.consistency,
+    msg
+  );
+},
+
+consistencyMismatch: (
+  msg: string
+) => {
+
+  consistencyMismatchesTotal.inc();
+
+  write(
+    "CONSISTENCY_MISMATCH",
+    COLORS.error,
+    msg
+  );
+},
+
+
 };
 
 // backward compatibility

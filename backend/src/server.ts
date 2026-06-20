@@ -35,6 +35,7 @@ import networkRoutes from "./services/network/network.routes.js"
 import { startHlsStream }
 from "./services/hls/ffmpeg.js";
 import { logger } from "../src/utils/logger.js";
+import "./agent/consistencyAgent.js";
 
 setInterval(() => {
   logger.server(

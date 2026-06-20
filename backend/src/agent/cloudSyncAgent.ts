@@ -1,6 +1,11 @@
 // backend/src/agent/cloudSyncAgent.ts
 import { localPool, neonPool } from '../db.js';
 import { logger } from "../utils/logger.js";
+import {
+  syncQueueSize,
+  syncSuccessTotal,
+  syncFailedTotal,
+} from "../utils/metrics.js";
 
 async function processSyncQueue() {
 
@@ -14,6 +19,17 @@ async function processSyncQueue() {
       ORDER BY created_at ASC
       LIMIT 20
     `);
+
+    const queueSizeResult =
+  await localPool.query(`
+    SELECT COUNT(*)::int AS count
+    FROM sync_queue
+    WHERE synced = false
+  `);
+
+syncQueueSize.set(
+  queueSizeResult.rows[0].count
+);
 
     for (const item of pending.rows) {
 
@@ -63,6 +79,24 @@ async function processSyncQueue() {
             values
           );
         }
+
+        // =====================================================
+        // USERS DELETE
+        // =====================================================
+
+if (
+  item.table_name === 'users' &&
+  item.operation === 'delete'
+) {
+
+  await neonPool.query(
+    `
+    DELETE FROM users
+    WHERE id = $1
+    `,
+    [payload.id]
+  );
+}
 
         // =====================================================
         // USERS UPDATE
@@ -664,12 +698,16 @@ if (
   [item.id]
 );
 
+syncSuccessTotal.inc();
+
        logger.server(
   `SYNCED QUEUE | ${item.id}`
 );
 
       } catch (err: any) {
 
+        syncFailedTotal.inc();
+        
         logger.error(
   `[SYNC] Failed queue ${item.id} | ${String(err)}`
 );

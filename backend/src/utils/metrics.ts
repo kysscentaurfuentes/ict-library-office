@@ -133,3 +133,47 @@ export const otpLockoutsTotal =
     name: "ict_otp_lockouts_total",
     help: "Total OTP lockouts",
   });
+
+  export const consistencyChecksTotal =
+  new client.Counter({
+    name: "ict_consistency_checks_total",
+    help: "Total consistency checks",
+  });
+
+export const consistencyMismatchesTotal =
+  new client.Counter({
+    name: "ict_consistency_mismatches_total",
+    help: "Total consistency mismatches",
+  });
+
+
+
+export const orphanRecordsTotal =
+  new client.Counter({
+    name: "ict_orphan_records_total",
+    help: "Total orphan records detected",
+  });
+
+export const missingChildRecordsTotal =
+  new client.Counter({
+    name: "ict_missing_child_records_total",
+    help: "Total missing child records detected",
+  });
+
+  export const syncQueueSize =
+  new client.Gauge({
+    name: "ict_sync_queue_size",
+    help: "Current sync queue size",
+  });
+
+  export const syncSuccessTotal =
+  new client.Counter({
+    name: "ict_sync_success_total",
+    help: "Total successful sync operations",
+  });
+
+export const syncFailedTotal =
+  new client.Counter({
+    name: "ict_sync_failed_total",
+    help: "Total failed sync operations",
+  });
