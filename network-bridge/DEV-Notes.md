@@ -68,9 +68,92 @@ Kung gusto na ang local copy ang masunod at i-overwrite ang nasa GitHub:
 ```powershell
 git push origin main --force
 ```
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+## Modify Last Commit (Amend)
+
+Kapag may nakalimutang file pagkatapos mag-commit at hindi pa tapos ang trabaho, puwedeng idagdag ang bagong changes sa huling commit nang hindi gumagawa ng panibagong commit message.
+
+Stage changes:
+
+```powershell
+git add .
+```
+
+Reuse previous commit message:
+
+```powershell
+git commit --amend --no-edit
+```
+
+Explanation:
+
+```text
+--amend    = idagdag ang bagong changes sa huling commit
+--no-edit  = gamitin ulit ang dating commit message
+```
+
+Example:
+
+```powershell
+git add .
+git commit --amend --no-edit
+```
 
 ---
 
+### If Push Fails After Amend
+
+Possible error:
+
+```text
+! [rejected] main -> main (non-fast-forward)
+error: failed to push some refs
+```
+
+Cause:
+
+```text
+git commit --amend
+```
+
+rewrites Git history and creates a new commit ID.
+
+Example:
+
+Before amend:
+
+```text
+abc1234 My Commit
+```
+
+After amend:
+
+```text
+e2603f3 My Commit
+```
+
+GitHub still contains the old commit ID, so a normal push will be rejected.
+
+Safe fix:
+
+```powershell
+git push --force-with-lease origin main
+```
+
+Recommended workflow:
+
+```powershell
+git add .
+git commit --amend --no-edit
+git push --force-with-lease origin main
+```
+
+Use only when intentionally modifying the latest commit.
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
 ## Pull Latest Code On OLD COMPUTER
 
 Normal update:

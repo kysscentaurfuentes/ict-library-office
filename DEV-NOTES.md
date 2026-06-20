@@ -173,17 +173,20 @@ Start-Service com.docker.service
 ```
 
 ## Start Project
-
-Build containers:
-
-```powershell
-docker compose -f docker/development/docker-compose.dev.yml build
-```
-
 Start containers:
 
 ```powershell
 docker compose --env-file docker/development/.env.dev -f docker/development/docker-compose.dev.yml up -d
+
+docker compose --env-file monitoring/.env.monitoring -f monitoring/docker-compose.monitoring.yml up -d
+```
+
+Build containers:
+
+```powershell
+docker compose --env-file docker/development/.env.dev -f docker/development/docker-compose.dev.yml up -d --build
+
+docker compose --env-file monitoring/.env.monitoring -f monitoring/docker-compose.monitoring.yml up -d --build
 ```
 
 ## Rebuild Containers
@@ -247,6 +250,24 @@ docker ps
 # ===================================================
 # DOCKER TROUBLESHOOTING
 # ===================================================
+## Container Name Conflict
+Especially if Ctrl+C Stopped While building in the middle
+Error:
+
+```text
+Conflict. The container name "/ict-backend-dev" is already in use
+```
+
+# Check all containers
+docker ps -a
+
+# Remove stuck containers (usually STATUS = Created)
+docker rm -f (Ex.) ict-backend-dev ict-postgres-dev ict-redis-dev ict-ai-service-dev ict-mediamtx-dev
+
+
+# Start project again
+docker compose --env-file docker/development/.env.dev -f docker/development/docker-compose.dev.yml up -d --build
+
 
 ## Docker Engine Stuck Loading
 

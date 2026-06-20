@@ -2,6 +2,7 @@
 
 import fs from "fs";
 import path from "path";
+import { rotateLogIfNeeded } from "./logRotation.js";
 
 const logsDir =
   path.join(process.cwd(), "logs");
@@ -17,6 +18,7 @@ if (!fs.existsSync(logsDir)) {
 const securityLogPath =
   path.join(
     logsDir,
+    "security-logs",
     "security.log"
   );
 
@@ -49,10 +51,16 @@ export const securityLogger = (
     JSON.stringify(logEntry);
 
   // Save to file
-  fs.appendFileSync(
-    securityLogPath,
-    formattedLog + "\n"
-  );
+  rotateLogIfNeeded(
+  securityLogPath,
+  50,
+  3
+);
+
+fs.appendFileSync(
+  securityLogPath,
+  formattedLog + "\n"
+);
 
   // Output to console for Loki
 console.warn(

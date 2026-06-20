@@ -1,6 +1,18 @@
 // backend/src/utils/logger.ts
 
+import { rotateLogIfNeeded }from "./logRotation.js";
 import fs from "fs";
+import {
+  scanEventsTotal,
+  attendanceEventsTotal,
+  authEventsTotal,
+  networkEventsTotal,
+  streamingEventsTotal,
+  socketEventsTotal,
+  uploadEventsTotal,
+  graphqlEventsTotal,
+  errorEventsTotal,
+} from "./metrics.js";
 
 // ==========================
 // 🎨 LOG COLORS
@@ -39,43 +51,71 @@ function write(
 );
 
   if (writeToFile) {
-    fs.appendFileSync(
-      "logs/backend.log",
-      plainLog + "\n"
-    );
-  }
+
+const backendLogPath =
+  "logs/backend-logs/backend.log";
+
+rotateLogIfNeeded(
+  backendLogPath,
+  50, // 50 MB Max
+  10  // 10 Files Generated
+);
+
+fs.appendFileSync(
+  backendLogPath,
+  plainLog + "\n"
+);
+}
 }
 
 export const logger = {
   server: (msg: string) =>
     write("SERVER", COLORS.server, msg),
 
-  scan: (msg: string) =>
-    write("SCAN", COLORS.scan, msg),
+  scan: (msg: string) => {
+    scanEventsTotal.inc();
+    write("SCAN", COLORS.scan, msg);
+  },
 
-  attendance: (msg: string) =>
-    write("ATTENDANCE", COLORS.attendance, msg),
+  attendance: (msg: string) => {
+    attendanceEventsTotal.inc();
+    write("ATTENDANCE", COLORS.attendance, msg);
+  },
 
-  network: (msg: string) =>
-    write("NETWORK", COLORS.network, msg),
+  network: (msg: string) => {
+    networkEventsTotal.inc();
+    write("NETWORK", COLORS.network, msg);
+  },
 
-  streaming: (msg: string) =>
-    write("STREAMING", COLORS.streaming, msg),
+  streaming: (msg: string) => {
+    streamingEventsTotal.inc();
+    write("STREAMING", COLORS.streaming, msg);
+  },
 
-  auth: (msg: string) =>
-    write("AUTH", COLORS.auth, msg),
+  auth: (msg: string) => {
+    authEventsTotal.inc();
+    write("AUTH", COLORS.auth, msg);
+  },
 
-  socket: (msg: string) =>
-    write("SOCKET", COLORS.socket, msg),
+  socket: (msg: string) => {
+    socketEventsTotal.inc();
+    write("SOCKET", COLORS.socket, msg);
+  },
 
-  upload: (msg: string) =>
-    write("UPLOAD", COLORS.upload, msg),
+  upload: (msg: string) => {
+    uploadEventsTotal.inc();
+    write("UPLOAD", COLORS.upload, msg);
+  },
 
-  graphql: (msg: string) =>
-    write("GRAPHQL", COLORS.graphql, msg),
+  graphql: (msg: string) => {
+    graphqlEventsTotal.inc();
+    write("GRAPHQL", COLORS.graphql, msg);
+  },
 
-  error: (msg: string) =>
-    write("ERROR", COLORS.error, msg),
+  error: (msg: string) => {
+    errorEventsTotal.inc();
+    write("ERROR", COLORS.error, msg);
+  },
 };
 
 // backward compatibility
@@ -86,3 +126,4 @@ export const writeLog = (message: string) => {
     message
   );
 };
+

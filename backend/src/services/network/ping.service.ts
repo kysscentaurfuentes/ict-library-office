@@ -4,15 +4,16 @@ import ping from "ping";
 import fs from "fs";
 import path from "path";
 import { logger } from "../../utils/logger.js";
-
 import { devices } from "./devices.js";
 import { deviceStatuses } from "./deviceState.js";
+import { rotateLogIfNeeded } from "../../utils/logRotation.js";
 
 const previousStates = new Map<string, boolean>();
 
 const logFilePath = path.join(
   process.cwd(),
   "logs",
+  "network-logs",
   "network.log"
 );
 
@@ -49,10 +50,16 @@ export async function monitorDevices() {
         `Latency: ${result.time}ms\n`;
 
       // WRITE TO LOKI/PROMTAIL LOG FILE
-      fs.appendFileSync(
-        logFilePath,
-        logMessage
-      );
+      rotateLogIfNeeded(
+  logFilePath,
+  50,
+  3
+);
+
+fs.appendFileSync(
+  logFilePath,
+  logMessage
+);
 
       // CLEAN TERMINAL MESSAGE
       logger.network(

@@ -24,7 +24,7 @@ scrape_configs:
           job: ict-library-backend
           host: windows
           service: backend
-          __path__: /logs/backend.log
+          __path__: /logs/backend-logs/backend.log*
 
 
 
@@ -41,7 +41,7 @@ scrape_configs:
           job: ict-security
           host: windows
           service: security
-          __path__: /logs/security.log
+          __path__: /logs/security-logs/security.log*
 
 
 
@@ -58,4 +58,4 @@ scrape_configs:
           job: ict-network-monitoring
           host: windows
           service: network
-          __path__: /logs/network.log
+          __path__: /logs/network-logs/network.log*

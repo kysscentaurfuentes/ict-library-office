@@ -59,10 +59,13 @@ const waitTimer = setInterval(() => {
   );
 
   logger.streaming(
-  `[${outputFolder.toUpperCase()}] Waiting ${seconds}s for first HLS files...`
-);
+    `[${outputFolder.toUpperCase()}] Waiting ${seconds}s for first HLS files...`
+  );
 
-}, 5000);
+}, 5 * 60 * 1000); // 5 minuetes
+// 1000 = 1 sec
+// }, 30 * 1000); every 30 seconds
+// }, 1 * 60 * 1000); every 1 min
 
 const watchTimer = setInterval(() => {
 
